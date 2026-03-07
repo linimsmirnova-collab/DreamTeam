@@ -6,6 +6,7 @@ const cors = require('cors');
 const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const getLocalIP = require('get-local-ip');
 
 const GameManager = require('./models/GameManager');
 const DataStorage = require('./db/DataStorage');
@@ -207,17 +208,17 @@ app.post('/api/room/join', (req, res) => {
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);
     console.log(`- Локально: http://localhost:${PORT}`);
-    console.log(`- В сети: http://${getLocalIP()}:${PORT}`);
+    console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
 });
 
-function getLocalIP() {
-    const nets = require('os').networkInterfaces();
-    for (const name of Object.keys(nets)) {
-        for (const net of nets[name]) {
-            if (net.family === 'IPv4' && !net.internal) {
-                return net.address;
-            }
-        }
-    }
-    return '127.0.0.1';
-}
+// function getLocalIP() {
+//     const nets = require('os').networkInterfaces();
+//     for (const name of Object.keys(nets)) {
+//         for (const net of nets[name]) {
+//             if (net.family === 'IPv4' && !net.internal) {
+//                 return net.address;
+//             }
+//         }
+//     }
+//     return '127.0.0.1';
+// }
