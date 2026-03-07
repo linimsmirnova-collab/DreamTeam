@@ -80,6 +80,7 @@
             e.preventDefault();
             const randomEvents = document.getElementById('randomEvents').checked;
             const playersCount = parseInt(document.getElementById('playersCount').value, 10);
+            const nickname = "Выхухохоль"
 
             const responseDiv = document.getElementById('createResult');
             responseDiv.innerHTML = 'Отправка запроса...';
@@ -88,7 +89,7 @@
                 const res = await fetch('/api/room/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ randomEvents, playersCount }),
+                    body: JSON.stringify({ randomEvents, playersCount, nickname }),
                     credentials: 'include'
                 });
                 const data = await res.json();
@@ -106,6 +107,7 @@
         document.getElementById('joinForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const roomCode = document.getElementById('roomCode').value.trim();
+            const nickname = "Выхухохоль2"
 
             const responseDiv = document.getElementById('joinResult');
             responseDiv.innerHTML = 'Отправка запроса...';
@@ -114,7 +116,7 @@
                 const res = await fetch('/api/room/join', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ roomCode }),
+                    body: JSON.stringify({ roomCode, nickname }),
                     credentials: 'include'
                 });
                 const data = await res.json();

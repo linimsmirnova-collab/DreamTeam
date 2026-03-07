@@ -100,7 +100,7 @@ function authenticatePlayer(req, res, next) {
 // Эндпоинт создания комнаты
 app.post('/api/room/create', (req, res) => {
     try {
-        const { randomEvents, playersCount } = req.body;
+        const { randomEvents, playersCount, nickname } = req.body;
 
         // Простейшие проверки
         if (playersCount < 4 || playersCount > 16) {
@@ -113,7 +113,7 @@ app.post('/api/room/create', (req, res) => {
         // Создание менеджера с передачей DataStorage
         const manager = new GameManager(db);
 
-        const newPlayer = new Player(Player.nextId_next(), true, manager.GenerateNickname());
+        const newPlayer = new Player(Player.nextId_next(), true, nickname);
 
         // Создание игровой сессии (создатель будет создан автоматически)
         manager.CreateGameSession(roomCode, newPlayer, randomEvents, playersCount);
@@ -148,7 +148,7 @@ app.post('/api/room/create', (req, res) => {
 // Эндпоинт присоединения к комнате
 app.post('/api/room/join', (req, res) => {
     try {
-        const { roomCode } = req.body; // ожидаем поле roomCode (можно и roomId)
+        const { roomCode, nickname } = req.body; // ожидаем поле roomCode (можно и roomId)
 
         if (!roomCode) {
             return res.status(400).json({ error: 'Не указан код комнаты' });
@@ -162,6 +162,11 @@ app.post('/api/room/join', (req, res) => {
 
         const session = manager.GameSession;
 
+        // Проверка уникальности ника
+        if (session.players_list.find(p => p.nickname === nickname)) {
+            return res.status(400).json({ error: 'Игрок с этим ником уже есть в комнате, обновите страницу чтобы получить другой ник' });
+        }
+
         // Проверка состояния игры
         if (session.game_state !== gameState.waiting) {
             return res.status(400).json({ error: 'Игра уже началась или завершена' });
@@ -173,15 +178,15 @@ app.post('/api/room/join', (req, res) => {
         }
 
         // Создаём нового игрока (не создатель)
-        const newPlayer = new Player(Player.nextId_next(), false, manager.GenerateNickname());
+        const newPlayer = new Player(Player.nextId_next(), false, nickname);
 
         // Добавляем игрока в сессию
         manager.AddPlayerToGameSession(newPlayer);
 
-        console.log("Список игроков")
-        session.players_list.forEach(element => {
-            console.log(`id: ${element.uuid}, nick: ${element.nickname}`)
-        });
+        // console.log("Список игроков")
+        // session.players_list.forEach(element => {
+        //     console.log(`id: ${element.uuid}, nick: ${element.nickname}`)
+        // });
 
         // Устанавливаем cookie с ID нового игрока и кодом комнаты
         setPlayerSessionCookie(res, newPlayer.uuid, roomCode);
