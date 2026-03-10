@@ -1,0 +1,755 @@
+@charset "UTF-8";
+@import url("https://fonts.googleapis.com/css2?family=Inria+Serif&display=swap");
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 16px;
+  background-color: #f5f5f5;
+}
+
+.container {
+  position: relative;
+  width: 393px;
+  height: 852px;
+  background: #FFFFFF;
+  border: 2px solid #9B3D63;
+}
+
+.pink-background {
+  position: absolute;
+  width: 389px;
+  height: 214px;
+  left: 0px;
+  top: 319px;
+  background: #FFCBE5;
+}
+
+.btn.primary {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 46px;
+  top: 346px;
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.btn.secondary {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 46px;
+  top: 440px;
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.btn.logout {
+  position: absolute;
+  width: 142px;
+  height: 55px;
+  left: 13px;
+  top: 785px;
+  background: #FFCBE5;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #9B3D63;
+}
+
+.create-room-header {
+  position: absolute;
+  width: 389px;
+  height: 85px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+}
+
+.create-room-title {
+  position: absolute;
+  width: 292px;
+  height: 31px;
+  left: 12px;
+  top: 6px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  color: #7F375A;
+}
+
+.create-room-nickname-label {
+  position: absolute;
+  width: 370px;
+  height: 44px;
+  left: 12px;
+  top: 37px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 29px;
+  color: #7F375A;
+}
+
+.create-room-random-nick {
+  position: relative;
+  width: 300px;
+  height: 65px;
+  left: 47px;
+  top: 145px;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.random-nick-text {
+  position: absolute;
+  width: 205px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FE5499;
+}
+
+.create-room-random-events {
+  position: absolute;
+  width: 275px;
+  height: 65px;
+  left: 47px;
+  top: 230px;
+}
+
+.checkbox-container {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  left: 0px;
+  top: 7px;
+}
+
+.checkbox {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  cursor: pointer;
+}
+
+.checkbox:checked {
+  background: #FFCBE5;
+}
+
+.checkbox:checked::after {
+  content: "";
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: url("../images/x.png");
+  background-size: contain;
+  background-position: center;
+}
+
+.checkbox-label {
+  position: absolute;
+  width: 207px;
+  height: 65px;
+  left: 68px;
+  top: 0px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 65px;
+  display: flex;
+  align-items: center;
+  text-align: center;
+  color: #FE5499;
+}
+
+.create-room-players-control {
+  position: absolute;
+  width: 207px;
+  height: 110px;
+  left: 93px;
+  top: 371px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.minus-btn, .plus-btn {
+  width: 37px;
+  height: 37px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 36px;
+  line-height: 37px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  color: #FFFFFF;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.minus-btn:hover, .plus-btn:hover {
+  color: #F17BAB;
+}
+
+.players-count {
+  width: 50px;
+  height: 50px;
+  left: calc(50% - 25px - 0.5px);
+  top: 371px;
+  background: #FFCBE5;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+span {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.create-room-players {
+  position: absolute;
+  width: 220px;
+  height: 65px;
+  left: calc(50% - 110px);
+  top: 450px;
+}
+
+.players-label {
+  position: absolute;
+  width: 207px;
+  height: 65px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 65px;
+  text-align: center;
+  color: #FE5499;
+}
+
+.create-room-confirm {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 46px;
+  top: 584px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.confirm-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.confirm-text {
+  position: absolute;
+  width: 205px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 31px;
+  text-align: center;
+  color: #FFFFFF;
+  border: none;
+  background: transparent;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.create-room-back {
+  position: absolute;
+  width: 142px;
+  height: 55px;
+  left: 12px;
+  top: 785px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.back-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #FFCBE5;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.back-text {
+  position: absolute;
+  width: 103px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 31px;
+  text-align: center;
+  color: #9B3D63;
+  background: transparent;
+  pointer-events: none;
+}
+
+.join-room-header {
+  position: absolute;
+  width: 389px;
+  height: 85px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+}
+
+.join-room-title {
+  position: absolute;
+  width: 292px;
+  height: 31px;
+  left: 12px;
+  top: 6px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  color: #7F375A;
+  pointer-events: none;
+}
+
+.join-room-subtitle {
+  position: absolute;
+  width: 370px;
+  height: 44px;
+  left: 12px;
+  top: 37px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 29px;
+  color: #7F375A;
+  pointer-events: none;
+}
+
+.join-room-nick-field {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 47px;
+  top: 145px;
+}
+
+.join-room-nick-input {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.join-room-nick-text {
+  position: absolute;
+  width: 205px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FE5499;
+  pointer-events: none;
+}
+
+.join-room-code-field {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 47px;
+  top: 220px;
+}
+
+.join-room-code-input {
+  width: 100%;
+  height: 100%;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  font-family: "Inria Serif";
+  font-size: 20px;
+  text-align: center;
+  color: #FE5499;
+  background: transparent;
+  padding: 0 15px;
+  outline: none;
+}
+.join-room-code-input::-moz-placeholder {
+  color: #FE5499;
+  opacity: 0.7;
+}
+.join-room-code-input::placeholder {
+  color: #FE5499;
+  opacity: 0.7;
+}
+.join-room-code-input:focus {
+  border-color: #F17BAB;
+}
+
+.join-room-confirm {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 48px;
+  top: 533px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.join-room-confirm-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.join-room-confirm-text {
+  position: absolute;
+  width: 205px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  text-align: center;
+  color: #FFFFFF;
+  border: none;
+  background: transparent;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.join-room-back {
+  position: absolute;
+  width: 142px;
+  height: 55px;
+  left: 13px;
+  top: 785px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+}
+
+.join-room-back-bg {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #FFCBE5;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.join-room-back-text {
+  position: absolute;
+  width: 103px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 31px;
+  text-align: center;
+  color: #9B3D63;
+  background: transparent;
+  pointer-events: none;
+}
+
+.player-list-header {
+  position: absolute;
+  width: 389px;
+  height: 85px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+}
+
+.room-code-display {
+  position: absolute;
+  width: 285px;
+  height: 31px;
+  left: 12px;
+  top: 27px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #7F375A;
+}
+
+.connected-text {
+  position: absolute;
+  width: 170px;
+  height: 31px;
+  left: 106px;
+  top: 116px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FFFFFF;
+  pointer-events: none;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.voting-stats {
+  position: absolute;
+  width: 94px;
+  height: 65px;
+  left: 276px;
+  top: 95px;
+}
+
+.voting-badge {
+  position: absolute;
+  width: 94px;
+  height: 65px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+}
+
+.voting-count {
+  position: absolute;
+  width: 60px;
+  height: 24px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FFFFFF;
+  background: transparent;
+  pointer-events: none;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.players-list {
+  position: absolute;
+  width: 345px;
+  left: 17px;
+  top: 204px;
+  bottom: 120px; /* Отступ для кнопок внизу */
+  overflow-x: hidden; /* Убираем горизонтальный скролл */
+  overflow-y: auto; /* Включаем скролл */
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-right: 8px; /* Немного отступа для скролла */
+  /* Красивая стилизация скролла */
+}
+.players-list::-webkit-scrollbar {
+  width: 4px;
+}
+.players-list::-webkit-scrollbar-track {
+  background: #FFCBE5;
+  border-radius: 2px;
+}
+.players-list::-webkit-scrollbar-thumb {
+  background: #F17BAB;
+  border-radius: 2px;
+}
+.players-list::-webkit-scrollbar-thumb:hover {
+  background: #7F375A;
+}
+
+.player-item {
+  position: relative;
+  width: 100%;
+  height: 65px;
+  max-width: 345px; /* Ограничиваем максимальную ширину */
+  flex-shrink: 0; /* Чтобы элементы не сжимались */
+}
+.player-item .player-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+}
+.player-item .player-name {
+  position: absolute;
+  width: 90%;
+  max-width: 316px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #FE5499;
+  background: transparent;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.player-item.empty-slot .player-badge {
+  background: #DADADA;
+}
+.player-item.empty-slot .player-name {
+  color: #FE5499;
+}
+
+.player-list-start {
+  position: absolute;
+  width: 142px;
+  height: 55px;
+  left: 239px;
+  top: 785px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  bottom: 40px; /* Фиксируем снизу */
+}
+
+.start-background {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #DADADA;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+}
+
+.start-text {
+  position: absolute;
+  width: 103px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #9B3D63;
+  background: transparent;
+}/*# sourceMappingURL=style.css.map */
