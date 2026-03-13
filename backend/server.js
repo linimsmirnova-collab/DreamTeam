@@ -210,6 +210,7 @@ app.post('/api/room/join', (req, res) => {
     }
 });
 
+// Эндпоинт выдачи списка игроков для лобби
 app.get('/api/room/players', authenticatePlayer, (req, res) => {
     const manager = req.manager
 
