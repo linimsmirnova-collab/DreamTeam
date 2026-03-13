@@ -1,0 +1,18 @@
+POST http://localhost:3000/api/room/create
+Content-Type: application/json
+
+{
+  "randomEvents": true,
+  "playersCount": 4,
+  "nickname": "Player1"
+}
+###
+POST http://localhost:3000/api/room/join
+Content-Type: application/json
+
+{
+  "roomCode": "C40017",
+  "nickname": "Player2"
+}
+###
+GET http://localhost:3000/api/room/players

@@ -35,7 +35,7 @@ const gameState = Object.freeze({
 
 function generateRoomId() {
     // в будущем добавить проверку на уникальность
-    return crypto.randomBytes(10).toString('hex'); // 20 hex символов
+    return crypto.randomBytes(3).toString('hex').toUpperCase(); // 3 hex символов в верхнем регистре
 }
 
 // Вспомогательная функция для установки httpOnly cookie с данными игрока
@@ -204,6 +204,12 @@ app.post('/api/room/join', (req, res) => {
         res.status(500).json({ error: 'Не удалось присоединиться к комнате' });
     }
 });
+
+app.get('/api/room/players', authenticatePlayer, (req, res) => {
+    const manager = req.manager
+
+    res.json(manager.GameSession.players_list)
+})
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);
