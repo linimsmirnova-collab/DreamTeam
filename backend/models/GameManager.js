@@ -29,16 +29,16 @@ class GameManager {
     }
 
     // Создаёт игровую сессию
-    CreateGameSession (roomCode, creater, events, playersCount) {
-        this.#gameSession = new GameSession(roomCode, creater, events, playersCount);
+    async CreateGameSession (roomCode, creater, events, playersCount, project) {
+        this.#gameSession = new GameSession(roomCode, creater, events, playersCount, project);
         console.log(creater.nickname)
     }
-    GenerateNickname () {
-        // в будущем добавить проверку на уникальность
-        const nicknames = nicknamesData.nicknames;
-        const randomIndex = Math.floor(Math.random() * nicknames.length);
-        return nicknames[randomIndex];
-    }
+    // GenerateNickname () {
+    //     // в будущем добавить проверку на уникальность
+    //     const nicknames = nicknamesData.nicknames;
+    //     const randomIndex = Math.floor(Math.random() * nicknames.length);
+    //     return nicknames[randomIndex];
+    // }
     AddPlayerToGameSession (player) {
         this.#gameSession.players_list.push(player)
     }

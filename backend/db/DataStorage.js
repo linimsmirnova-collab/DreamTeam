@@ -21,13 +21,17 @@ class DataStorage {
         });
     }
 
-    getProjects() {
-        this.#DB.all(`SELECT * FROM projects`, [], (err, rows) => {
-            if (err) {
-                console.error(err.message);
-            } else {
-                return rows;
-            }
+    // выдаёт список всех тем проектов из БД
+    getProject() {
+        return new Promise((resolve, reject) => {
+            this.#DB.all(`SELECT * FROM projects ORDER BY RANDOM() LIMIT 1;`, (err, rows) => {
+                if (err) {
+                    console.error(err.message);
+                    reject(err); // пробрасываем ошибку дальше
+                } else {
+                    resolve(rows[0]); // возвращаем строки
+                }
+            });
         });
     }
 }

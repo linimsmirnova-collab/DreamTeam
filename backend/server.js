@@ -99,7 +99,7 @@ function authenticatePlayer(req, res, next) {
 // });
 
 // Эндпоинт создания комнаты
-app.post('/api/room/create', (req, res) => {
+app.post('/api/room/create', async (req, res) => {
     try {
         const { randomEvents, playersCount, nickname } = req.body;
 
@@ -116,10 +116,14 @@ app.post('/api/room/create', (req, res) => {
 
         const newPlayer = new Player(Player.nextId_next(), true, nickname);
 
+        const project = await db.getProject()
+
         // Создание игровой сессии (создатель будет создан автоматически)
-        manager.CreateGameSession(roomCode, newPlayer, randomEvents, playersCount);
+        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, playersCount, project)
 
         console.log(manager.GameSession.players_list);
+        console.log(manager.GameSession.project);
+
 
         // Получаем создателя, чтобы узнать его ID
         const creator = manager.GameSession.creater;
@@ -134,10 +138,11 @@ app.post('/api/room/create', (req, res) => {
         // Устанавливаем httpOnly cookie с ID создателя и кодом комнаты
         setPlayerSessionCookie(res, creator.uuid, roomCode);
 
-        // Отправляем клиенту код комнаты (и, возможно, никнейм создателя)
+        // Отправляем клиенту код комнаты (и, возможно, никнейм создателя), и объект проекта({id: , name: ,description: })
         res.status(201).json({
             roomId: roomCode,
-            nickname: creator.nickname
+            nickname: creator.nickname,
+            project: manager.GameSession.project
         });
 
     } catch (error) {

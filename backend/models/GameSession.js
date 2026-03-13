@@ -1,4 +1,5 @@
 const Player = require('./Player');
+const buffer = require("node:buffer");
 
 // Игровая сессия
 class GameSession {
@@ -11,6 +12,7 @@ class GameSession {
     players_count = GameSession.min_players;
     // round_count = 0;
     // current_round = 0;
+    project = null
     game_state = null;
 
     set roomCode(roomCode) {
@@ -33,12 +35,13 @@ class GameSession {
         return this.#random_events;
     }
 
-    constructor(roomCode, creater, randomEvents, players_count = GameSession.min_players) {
+    constructor(roomCode, creater, randomEvents, players_count = GameSession.min_players, project) {
         this.roomCode = roomCode;
         this.creater = creater;
         this.randomEvents = randomEvents;
         this.players_count = players_count;
         this.players_list.push(creater);
+        this.project = project;
     }
 }
 
