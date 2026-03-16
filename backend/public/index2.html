@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тест кнопки "Начать" | Бункер 42</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 900px; margin: 20px auto; padding: 20px; background: #fafafa; }
+        h1 { color: #333; border-bottom: 3px solid #ff69b4; padding-bottom: 10px; }
+        h2 { color: #555; margin-top: 0; }
+        .section { border: 1px solid #ddd; padding: 15px 20px; margin-bottom: 20px; border-radius: 8px; background: white; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .section.can-start { border-left: 4px solid #2196F3; }
+        .section.can-start.ready { border-left-color: #4CAF50; }
+        .section.can-start.blocked { border-left-color: #f44336; }
+        
+        label { display: block; margin: 10px 0 5px; font-weight: 500; }
+        input[type="text"], input[type="number"] { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; width: 200px; }
+        input[type="checkbox"] { transform: scale(1.2); margin-right: 5px; }
+        
+        button { padding: 10px 20px; font-size: 14px; cursor: pointer; border: none; border-radius: 4px; margin: 5px 5px 5px 0; transition: background 0.2s; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        
+        .btn-primary { background: #4CAF50; color: white; }
+        .btn-primary:hover:not(:disabled) { background: #45a049; }
+        
+        .btn-join { background: #2196F3; color: white; }
+        .btn-join:hover:not(:disabled) { background: #1976D2; }
+        
+        .btn-check { background: #ff9800; color: white; font-weight: bold; }
+        .btn-check:hover:not(:disabled) { background: #e68900; }
+        
+        .btn-reset { background: #9e9e9e; color: white; }
+        .btn-reset:hover { background: #757575; }
+        
+        pre { background: #f8f9fa; padding: 12px; border-radius: 4px; overflow-x: auto; font-size: 13px; border: 1px solid #eee; }
+        .success { background: #d4edda !important; border-color: #c3e6cb !important; }
+        .error { background: #f8d7da !important; border-color: #f5c6cb !important; }
+        
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: bold; margin: 5px 0; }
+        .status-yes { background: #4CAF50; color: white; }
+        .status-no { background: #f44336; color: white; }
+        .status-wait { background: #ff9800; color: white; }
+        
+        .player-count { font-size: 24px; font-weight: bold; color: #333; margin: 10px 0; }
+        .player-list { display: flex; flex-wrap: wrap; gap: 8px; margin: 10px 0; }
+        .player-badge { background: #e3f2fd; padding: 6px 12px; border-radius: 16px; font-size: 13px; border: 1px solid #bbdefb; }
+        .player-badge.creator { background: #fff3e0; border-color: #ffe0b2; font-weight: bold; }
+        
+        .game-params { background: #e8f5e9; padding: 12px; border-radius: 4px; margin-top: 10px; border-left: 3px solid #4CAF50; }
+        .game-params.hidden { display: none; }
+        
+        .cookie-info { background: #e3f2fd; padding: 12px; border-radius: 4px; margin-top: 20px; border-left: 3px solid #2196F3; }
+        .cookie-info pre { background: white; margin-top: 8px; }
+        
+        .hint { font-size: 12px; color: #666; font-style: italic; margin-top: 5px; }
+        
+        .divider { height: 1px; background: #eee; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Тест кнопки «Начать»</h1>
+    <p>Проверка логики: <strong>минимум 4 игрока</strong> для активации кнопки.</p>
+
+    <!-- Секция: Создание комнаты -->
+    <div class="section">
+        <h2>🏠 1. Создать комнату</h2>
+        <form id="createForm">
+            <label>
+                <input type="checkbox" id="randomEvents" name="randomEvents"> Случайные события
+            </label>
+            <label>
+                Целевое количество в финале (1-16):
+                <input type="number" id="targetPlayers" name="targetPlayers" min="1" max="16" value="3" required>
+            </label>
+            <button type="submit" class="btn-primary">✨ Создать комнату</button>
+            <button type="button" class="btn-reset" id="resetBtn">🔄 Сбросить тест</button>
+        </form>
+        <div id="createResult" class="hint">Ожидание...</div>
+        <div id="roomInfo" class="hint" style="margin-top:10px;"></div>
+    </div>
+
+    <!-- Секция: Присоединение игроков -->
+    <div class="section">
+        <h2>👥 2. Присоединить игроков</h2>
+        <p class="hint">Добавляйте игроков, чтобы проверить, когда кнопка станет активной.</p>
+        
+        <form id="joinForm">
+            <label>
+                Никнейм:
+                <input type="text" id="joinNickname" name="nickname" placeholder="Например: Кот_42" value="Игрок" required>
+            </label>
+            <button type="submit" class="btn-join" id="joinBtn" disabled>➕ Присоединить</button>
+        </form>
+        
+        <div class="divider"></div>
+        
+        <div>
+            <strong>Текущие игроки в комнате:</strong>
+            <div class="player-count" id="playerCountDisplay">0</div>
+            <div class="player-list" id="playerListDisplay"></div>
+        </div>
+    </div>
+
+    <!-- Секция: Проверка can-start -->
+    <div class="section can-start" id="canStartSection">
+        <h2>🚦 3. Проверка кнопки «Начать»</h2>
+        <p class="hint">Эндпоинт: <code>POST /api/room/can-start</code></p>
+        
+        <button id="checkStartBtn" class="btn-check" disabled>🔍 Проверить статус</button>
+        
+        <div id="canStartResult" style="margin-top: 15px;"></div>
+        
+        <div id="gameParamsBlock" class="game-params hidden">
+            <strong>🎯 Параметры игры (если можно начать):</strong>
+            <pre id="gameParamsDisplay"></pre>
+        </div>
+    </div>
+
+    <!-- Секция: Информация о сессии -->
+    <div class="cookie-info">
+        <h3>🍪 Текущая сессия (cookie):</h3>
+        <pre id="cookieDisplay">(нет данных)</pre>
+        <button onclick="updateCookieDisplay()" style="margin-top:8px; background:#607d8b; color:white;">🔄 Обновить</button>
+        <p class="hint" style="margin-top:8px;">
+            Cookie <code>playerSession</code> используется для аутентификации. 
+            Без неё запросы к <code>/can-start</code> вернут <code>401</code>.
+        </p>
+    </div>
+
+    <script>
+        // ===== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ =====
+        let currentRoomId = null;
+        let currentPlayerCount = 0;
+        let playersList = [];
+
+        // ===== УТИЛИТЫ =====
+        function updateCookieDisplay() {
+            const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+                const [name, value] = cookie.split('=');
+                if (name === 'playerSession') {
+                    try {
+                        acc = JSON.parse(decodeURIComponent(value));
+                    } catch { acc = value; }
+                }
+                return acc;
+            }, 'не найдена');
+            
+            document.getElementById('cookieDisplay').innerText = 
+                typeof cookies === 'object' ? JSON.stringify(cookies, null, 2) : cookies;
+        }
+
+        function showResult(elementId, data, isSuccess) {
+            const el = document.getElementById(elementId);
+            const statusClass = isSuccess ? 'success' : 'error';
+            const icon = isSuccess ? '✅' : '❌';
+            el.innerHTML = `<pre class="${statusClass}">${icon} ${JSON.stringify(data, null, 2)}</pre>`;
+        }
+
+        function updatePlayerDisplay(count, players) {
+            document.getElementById('playerCountDisplay').textContent = count;
+            const listEl = document.getElementById('playerListDisplay');
+            listEl.innerHTML = '';
+            
+            players.forEach(p => {
+                const badge = document.createElement('span');
+                badge.className = 'player-badge' + (p.be_creator ? ' creator' : '');
+                badge.textContent = p.nickname + (p.be_creator ? ' 👑' : '');
+                listEl.appendChild(badge);
+            });
+        }
+
+        function updateCanStartUI(canStart, reason, gameParams) {
+            const section = document.getElementById('canStartSection');
+            const resultEl = document.getElementById('canStartResult');
+            const paramsBlock = document.getElementById('gameParamsBlock');
+            const paramsDisplay = document.getElementById('gameParamsDisplay');
+            
+            // Обновляем стиль секции
+            section.classList.remove('ready', 'blocked');
+            section.classList.add(canStart ? 'ready' : 'blocked');
+            
+            // Статус-бейдж
+            const statusBadge = `<span class="status-badge ${canStart ? 'status-yes' : 'status-no'}">
+                ${canStart ? '✅ МОЖНО НАЧАТЬ' : '❌ ЗАБЛОКИРОВАНО'}
+            </span>`;
+            
+            // Текст причины
+            const reasonText = reason ? `<p><strong>Причина:</strong> ${reason}</p>` : '';
+            
+            // Отображение параметров игры
+            if (canStart && gameParams) {
+                paramsBlock.classList.remove('hidden');
+                paramsDisplay.textContent = JSON.stringify(gameParams, null, 2);
+            } else {
+                paramsBlock.classList.add('hidden');
+            }
+            
+            resultEl.innerHTML = `${statusBadge}${reasonText}`;
+        }
+
+        function resetTest() {
+            currentRoomId = null;
+            currentPlayerCount = 0;
+            playersList = [];
+            
+            document.getElementById('createResult').innerHTML = '';
+            document.getElementById('roomInfo').innerHTML = '';
+            document.getElementById('canStartResult').innerHTML = '';
+            document.getElementById('gameParamsBlock').classList.add('hidden');
+            document.getElementById('playerCountDisplay').textContent = '0';
+            document.getElementById('playerListDisplay').innerHTML = '';
+            
+            document.getElementById('joinBtn').disabled = true;
+            document.getElementById('checkStartBtn').disabled = true;
+            document.getElementById('joinNickname').value = 'Игрок';
+            
+            console.log('🔄 Тест сброшен');
+        }
+
+        // ===== ОБРАБОТЧИКИ СОБЫТИЙ =====
+        
+        // Создание комнаты
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const randomEvents = document.getElementById('randomEvents').checked;
+            const playersCount = parseInt(document.getElementById('targetPlayers').value, 10);
+            const nickname = "Creator_" + Math.floor(Math.random() * 1000);
+            
+            const resultEl = document.getElementById('createResult');
+            resultEl.innerHTML = '<em>Отправка запроса...</em>';
+            
+            try {
+                const res = await fetch('/api/room/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ randomEvents, playersCount, nickname }),
+                    credentials: 'include'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.roomId) {
+                    currentRoomId = data.roomId;
+                    currentPlayerCount = 1;
+                    playersList = [{ nickname, be_creator: true }];
+                    
+                    showResult('createResult', data, true);
+                    document.getElementById('roomInfo').innerHTML = 
+                        `<strong>🔑 Код комнаты:</strong> <code>${data.roomId}</code> | 
+                         <strong>🎯 Финал:</strong> ${playersCount} игроков`;
+                    
+                    document.getElementById('joinBtn').disabled = false;
+                    document.getElementById('checkStartBtn').disabled = false;
+                    
+                    updatePlayerDisplay(1, playersList);
+                    updateCookieDisplay();
+                    
+                    // Авто-проверка can-start после создания
+                    await checkCanStart();
+                    
+                } else {
+                    showResult('createResult', data, false);
+                }
+            } catch (err) {
+                showResult('createResult', { error: err.message }, false);
+            }
+        });
+
+        // Присоединение игрока
+        document.getElementById('joinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            if (!currentRoomId) {
+                alert('Сначала создайте комнату!');
+                return;
+            }
+            
+            const nickname = document.getElementById('joinNickname').value.trim() || 'Игрок_' + Date.now();
+            const resultEl = document.getElementById('createResult'); // Используем тот же блок для краткости
+            resultEl.innerHTML = '<em>Присоединение...</em>';
+            
+            try {
+                const res = await fetch('/api/room/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomCode: currentRoomId, nickname }),
+                    credentials: 'include'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok && data.success) {
+                    currentPlayerCount++;
+                    playersList.push({ nickname, be_creator: false });
+                    
+                    showResult('createResult', data, true);
+                    updatePlayerDisplay(currentPlayerCount, playersList);
+                    updateCookieDisplay();
+                    
+                    // Авто-проверка can-start после присоединения
+                    await checkCanStart();
+                    
+                    // Сброс ника для следующего игрока
+                    document.getElementById('joinNickname').value = 'Игрок_' + (currentPlayerCount + 1);
+                    
+                } else {
+                    showResult('createResult', data, false);
+                }
+            } catch (err) {
+                showResult('createResult', { error: err.message }, false);
+            }
+        });
+
+        // Проверка can-start
+        async function checkCanStart() {
+            if (!currentRoomId) return;
+            
+            const resultEl = document.getElementById('canStartResult');
+            resultEl.innerHTML = '<em>Проверка...</em>';
+            
+            try {
+                const res = await fetch('/api/room/can-start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                
+                const data = await res.json();
+                
+                if (res.ok) {
+                    updateCanStartUI(data.canStart, data.reason, data.gameParams);
+                    console.log('🎮 can-start:', data);
+                } else {
+                    showResult('canStartResult', data, false);
+                }
+            } catch (err) {
+                showResult('canStartResult', { error: err.message }, false);
+            }
+        }
+
+        document.getElementById('checkStartBtn').addEventListener('click', checkCanStart);
+        document.getElementById('resetBtn').addEventListener('click', resetTest);
+
+        // Инициализация
+        window.onload = function() {
+            updateCookieDisplay();
+            console.log('🎮 Тест кнопки "Начать" готов к работе!');
+        };
+    </script>
+</body>
+</html>

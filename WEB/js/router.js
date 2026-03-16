@@ -1,5 +1,5 @@
 // ===== РЕЖИМ РАБОТЫ =====
-const IS_TEST_MODE = true; // true - тестовый режим (без бэкенда), false - с бэкендом
+const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
 
 // ===== ХРАНИЛИЩЕ КОМНАТ (только для тестового режима) =====
 const rooms = {};
@@ -34,10 +34,20 @@ window.onload = function() {
 
 // Функция для загрузки HTML страницы
 function loadPage(pageName, container) {
+
+    console.log('loadPage вызвана:', pageName);
+    console.log('container:', container); 
+
+    if (!container) {
+        console.error('container не найден!');
+        return;
+    }
+    
     fetch(`/pages/${pageName}`)
 
         // Когда файл загрузился, читаем его как текст
         .then(response => response.text()) 
+        
         
         // Вставляем этот текст в контейнер
         .then(html => { 
@@ -191,7 +201,7 @@ function addPageHandlers(container) {
                     rooms[roomCode] = {
                         creator: nickname,
                         players: [nickname],
-                        maxPlayers: parseInt(playersCount),
+                        playersCount: parseInt(playersCount),///////////////
                         randomEvents: checkboxChecked,
                         createdAt: new Date().toISOString()
                     };
@@ -208,7 +218,7 @@ function addPageHandlers(container) {
                 } 
                 else {
                     // ===== РАБОЧИЙ РЕЖИМ (с сервером) =====
-                    /*
+                    
                     const roomData = {
                         nickname: nickname,
                         maxPlayers: parseInt(playersCount),
@@ -218,6 +228,7 @@ function addPageHandlers(container) {
                     fetch('/api/room/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',//////////////////
                         body: JSON.stringify(roomData)
                     })
                     .then(response => response.json())
@@ -235,7 +246,7 @@ function addPageHandlers(container) {
                         console.error('Ошибка:', error);
                         alert('Не удалось подключиться к серверу');
                     });
-                    */
+                    //*/
                 }
             }
             
@@ -293,7 +304,7 @@ function addPageHandlers(container) {
                 } 
                 else {
                     // ===== РАБОЧИЙ РЕЖИМ (с сервером) =====
-                    /*
+                    
                     const joinData = {
                         nickname: nickname,
                         roomCode: code
@@ -319,7 +330,7 @@ function addPageHandlers(container) {
                         console.error('Ошибка:', error);
                         alert('Не удалось подключиться к серверу');
                     });
-                    */
+                    //*/
                 }
             }
         };
@@ -391,7 +402,7 @@ function addPageHandlers(container) {
             }
         } else {
             // ===== РАБОЧИЙ РЕЖИМ (запрос к серверу) =====
-            /*
+            
             fetch(`/api/room/players?code=${roomCode}`)
                 .then(response => response.json())
                 .then(data => {
@@ -400,7 +411,7 @@ function addPageHandlers(container) {
                         console.log('Игроки в комнате:', data.players);
                     }
                 });
-            */
+            //*/
         }
     }
 }

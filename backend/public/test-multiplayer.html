@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тест мультиплеера | Бункер 42</title>
+    <style>
+        body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 20px; background: #fafafa; }
+        h1 { color: #333; border-bottom: 3px solid #ff69b4; padding-bottom: 10px; }
+        .container { display: flex; gap: 20px; }
+        .panel { flex: 1; border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: white; }
+        .panel.creator { border-left: 4px solid #4CAF50; }
+        .panel.player { border-left: 4px solid #2196F3; }
+        h2 { margin-top: 0; color: #555; }
+        label { display: block; margin: 10px 0 5px; font-weight: 500; }
+        input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
+        button { padding: 10px 20px; font-size: 14px; cursor: pointer; border: none; border-radius: 4px; margin: 5px 0; width: 100%; }
+        .btn-create { background: #4CAF50; color: white; }
+        .btn-join { background: #2196F3; color: white; }
+        .btn-check { background: #ff9800; color: white; font-weight: bold; }
+        .btn-check:disabled { background: #ccc; }
+        .log { background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 15px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { background: #e3f2fd; padding: 10px; border-radius: 4px; margin-bottom: 15px; border-left: 3px solid #2196F3; }
+        .room-code { font-size: 24px; font-weight: bold; color: #ff69b4; text-align: center; padding: 10px; background: #fce4ec; border-radius: 4px; margin: 10px 0; }
+        .status { padding: 8px; border-radius: 4px; margin: 10px 0; text-align: center; font-weight: bold; }
+        .status.ready { background: #d4edda; color: #155724; }
+        .status.wait { background: #fff3cd; color: #856404; }
+        .status.blocked { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <h1>🎮 Тест мультиплеера: Кнопка «Начать»</h1>
+    
+    <div class="info">
+        <strong>📋 Инструкция:</strong>
+        <ol>
+            <li><strong>Окно 1 (Создатель):</strong> Нажмите «Создать комнату», скопируйте код</li>
+            <li><strong>Окно 2, 3, 4 (Игроки):</strong> Откройте ЭТУ ЖЕ страницу в новых вкладках, вставьте код, нажмите «Присоединиться»</li>
+            <li><strong>Окно 1 (Создатель):</strong> Нажмите «Проверить статус» — должно быть <code>canStart: true</code></li>
+        </ol>
+    </div>
+
+    <div class="container">
+        <!-- ПАНЕЛЬ СОЗДАТЕЛЯ -->
+        <div class="panel creator">
+            <h2>👑 Панель создателя</h2>
+            <p class="info">Откройте эту страницу в <strong>первом окне</strong></p>
+            
+            <button class="btn-create" onclick="createRoom()">🏠 Создать комнату</button>
+            
+            <div id="creatorRoomInfo" style="display: none;">
+                <div class="room-code" id="roomCodeDisplay">---</div>
+                <p><strong>📋 Скопируйте этот код и откройте новые вкладки для игроков!</strong></p>
+                <button class="btn-check" id="checkStartBtn" onclick="checkCanStart()">🔍 Проверить статус</button>
+                <div id="canStartResult"></div>
+            </div>
+            
+            <div class="log" id="creatorLog"></div>
+        </div>
+
+        <!-- ПАНЕЛЬ ИГРОКА -->
+        <div class="panel player">
+            <h2>🎮 Панель игрока</h2>
+            <p class="info">Откройте эту страницу в <strong>новых вкладках</strong> (2, 3, 4)</p>
+            
+            <label>
+                Код комнаты:
+                <input type="text" id="joinRoomCode" placeholder="Например: A6D170">
+            </label>
+            <label>
+                Ваш никнейм:
+                <input type="text" id="joinNickname" placeholder="Player2" value="Player2">
+            </label>
+            <button class="btn-join" onclick="joinRoom()">🚪 Присоединиться</button>
+            
+            <div class="log" id="playerLog"></div>
+        </div>
+    </div>
+
+    <script>
+        // ===== ПАНЕЛЬ СОЗДАТЕЛЯ =====
+        let currentRoomId = null;
+
+        async function createRoom() {
+            const log = document.getElementById('creatorLog');
+            log.innerHTML = '<div class="step">🏠 Создание комнаты...</div>';
+
+            try {
+                const res = await fetch('/api/room/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ nickname: 'Creator', playersCount: 4, randomEvents: false })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.roomId) {
+                    currentRoomId = data.roomId;
+                    document.getElementById('roomCodeDisplay').textContent = data.roomId;
+                    document.getElementById('creatorRoomInfo').style.display = 'block';
+                    
+                    log.innerHTML += `<div class="success">✅ Комната создана: ${data.roomId}</div>`;
+                    log.innerHTML += `<div class="info">📋 Откройте 3 новых вкладки этой страницы и вставьте код выше!</div>`;
+                } else {
+                    log.innerHTML += `<div class="error">❌ Ошибка: ${data.error}</div>`;
+                }
+            } catch (err) {
+                log.innerHTML += `<div class="error">❌ Ошибка: ${err.message}</div>`;
+            }
+        }
+
+        async function checkCanStart() {
+            const log = document.getElementById('creatorLog');
+            const resultDiv = document.getElementById('canStartResult');
+            const btn = document.getElementById('checkStartBtn');
+            
+            btn.disabled = true;
+            resultDiv.innerHTML = '<div class="step">🔍 Проверка...</div>';
+
+            try {
+                const res = await fetch('/api/room/can-start', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (data.canStart && data.isCreator) {
+                    resultDiv.innerHTML = `
+                        <div class="status ready">🎉 УСПЕХ! canStart: ${data.canStart}</div>
+                        <div>👤 isCreator: ${data.isCreator}</div>
+                        <div>👥 Игроков: ${data.currentState.playersCount}</div>
+                        <div>🎯 Финал: ${data.gameParams?.targetTeamSize || '?'} игроков</div>
+                    `;
+                    log.innerHTML += `<div class="success">✅ Кнопку можно активировать!</div>`;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="status blocked">❌ canStart: ${data.canStart}</div>
+                        <div>⚠️ Причина: ${data.reason}</div>
+                        <div>👤 isCreator: ${data.isCreator}</div>
+                        <div>👥 Игроков: ${data.currentState.playersCount}</div>
+                    `;
+                    log.innerHTML += `<div class="error">❌ ${data.reason}</div>`;
+                }
+            } catch (err) {
+                resultDiv.innerHTML = `<div class="error">❌ Ошибка: ${err.message}</div>`;
+            }
+
+            btn.disabled = false;
+        }
+
+        // ===== ПАНЕЛЬ ИГРОКА =====
+        async function joinRoom() {
+            const log = document.getElementById('playerLog');
+            const roomCode = document.getElementById('joinRoomCode').value.trim().toUpperCase();
+            const nickname = document.getElementById('joinNickname').value.trim() || 'Player';
+
+            if (!roomCode) {
+                log.innerHTML = '<div class="error">❌ Введите код комнаты!</div>';
+                return;
+            }
+
+            log.innerHTML = `<div class="step">🚪 Присоединение к ${roomCode} как ${nickname}...</div>`;
+
+            try {
+                const res = await fetch('/api/room/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ roomCode, nickname })
+                });
+
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    log.innerHTML += `<div class="success">✅ Присоединился!</div>`;
+                    log.innerHTML += `<div>👤 Ник: ${data.nickname}</div>`;
+                    log.innerHTML += `<div>🏠 Комната: ${data.roomId}</div>`;
+                    log.innerHTML += `<div class="info">📋 Теперь вернитесь в окно создателя и нажмите «Проверить статус»!</div>`;
+                } else {
+                    log.innerHTML += `<div class="error">❌ Ошибка: ${data.error}</div>`;
+                }
+            } catch (err) {
+                log.innerHTML += `<div class="error">❌ Ошибка: ${err.message}</div>`;
+            }
+        }
+
+        // Автозаполнение ника для удобства
+        window.onload = function() {
+            const playerNum = Math.floor(Math.random() * 1000);
+            document.getElementById('joinNickname').value = `Player${playerNum}`;
+        };
+    </script>
+</body>
+</html>

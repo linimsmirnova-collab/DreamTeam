@@ -7,24 +7,35 @@ const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const path = require('path');
 const getLocalIP = require('get-local-ip');
-
 const GameManager = require('./models/GameManager');
 const DataStorage = require('./db/DataStorage');
 const Player = require('./models/Player');
 
+const gameMiddleware = require('./Middleware/gameMiddleware');// возможно ненадо
+const { calculateGameParams, canStartGame } = require('./Function');
+
 const app = express();
 const PORT = 3000;
+
+app.use(express.json());
+app.use(cookieParser());
 
 app.use(express.static(path.join(__dirname, 'public')));
 // app.use(cors({
 //     origin: 'http://localhost:8080',
 //     credentials: true
 // }));
-app.use(express.json());
-app.use(cookieParser());
 
 
-const db = new DataStorage('./db/dream_team.db')
+app.use('/pages', express.static(path.join(__dirname, '../WEB/pages')));/////////////////////////
+
+console.log(' __dirname:', __dirname);
+console.log('Путь к WEB:', path.join(__dirname, '../WEB/pages'));
+
+
+
+//const db = new DataStorage('./db/dream_team.db')
+const db = new DataStorage(path.join(__dirname, 'db/dream_team.db'));////////////////////////
 const activeManagers = new Map();
 
 const gameState = Object.freeze({
@@ -99,6 +110,7 @@ function authenticatePlayer(req, res, next) {
 // });
 
 // Эндпоинт создания комнаты
+const { validateGameStart } = require('./Function');
 app.post('/api/room/create', async (req, res) => {
     try {
         const { randomEvents, playersCount, nickname } = req.body;
@@ -222,7 +234,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log(`- Локально: http://localhost:${PORT}`);
     console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
 });
-
 // function getLocalIP() {
 //     const nets = require('os').networkInterfaces();
 //     for (const name of Object.keys(nets)) {
@@ -234,3 +245,66 @@ app.listen(PORT, '0.0.0.0', () => {
 //     }
 //     return '127.0.0.1';
 // }
+
+
+//тут эндпоинт can-start
+//authenticatePlayer подрезал
+app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
+    try {
+        const { player, manager, roomId } = req;
+        const session = manager.GameSession;
+        
+        // параметры из сессии соответственно
+        const currentPlayers = session.players_list.length;
+        const creatorId = session.creater?.uuid;
+        const targetPlayers = session.players_count; 
+        
+        // параметры для валидации
+        const validationParams = {
+            playerId: player.uuid,
+            creatorId: creatorId,
+            currentPlayers: currentPlayers,
+            targetPlayers: targetPlayers,
+            minPlayers: 4,  // можно вынести в конфиг
+            maxPlayers: 16  // можно вынести в конфиг
+        };
+        
+        const result = validateGameStart(validationParams);
+        
+        // информация для фронта
+        const response = {
+            success: true,
+            roomId: roomId,
+            canStart: result.canStart,
+            reason: result.reason,
+            isCreator: result.isCreator,
+            hasEnoughPlayers: result.hasEnoughPlayers,
+            // параметры игры (только если можно начать)
+            gameParams: result.gameParams ? {
+                rounds: result.gameParams.rounds,
+                targetTeamSize: result.gameParams.targetTeamSize,
+                originalTarget: result.gameParams.originalTarget,
+                eliminationCount: result.gameParams.eliminationCount,
+                isAdjusted: result.gameParams.isAdjusted,
+                missingPlayers: result.gameParams.missingPlayers,
+                extraPlayers: result.gameParams.extraPlayers
+            } : null,
+            // состояние комнаты
+            currentState: {
+                playersCount: currentPlayers,
+                targetCount: targetPlayers,
+                gameState: session.game_state
+            }
+        };
+        
+        res.status(200).json(response);
+        
+    } catch (error) {
+        console.error('Ошибка проверки can-start:', error);
+        res.status(500).json({ 
+            success: false, 
+            error: 'Не удалось проверить возможность старта',
+            canStart: false 
+        });
+    }
+});
