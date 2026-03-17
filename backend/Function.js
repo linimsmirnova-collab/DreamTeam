@@ -3,7 +3,6 @@
 //currentPlayers - текущее количество игроков
 //rounds - раунды
 //targetTeamSize - сколько останется в конце игры 
-//adjustedTarget - для регулировки чтобы не было больше текущих игроков
 
 function calculateGameParams({ 
     currentPlayers, 
@@ -28,12 +27,6 @@ function calculateGameParams({
     if (targetPlayers > currentPlayers) {
         finalTargetSize = currentPlayers;
     }
-    
-    // для финала
-    if (finalTargetSize > currentPlayers) {
-        finalTargetSize = currentPlayers;
-    }
-    
     if (finalTargetSize < 1) {
         finalTargetSize = 1;
     }
@@ -42,28 +35,9 @@ function calculateGameParams({
     const rounds = currentPlayers - finalTargetSize;
 
     return {
-        // основные параметры
+        // убрал ненужное ок ок ок
         rounds: rounds,
         targetTeamSize: finalTargetSize,
-        originalTarget: targetPlayers,
-        
-        // текущее состояние
-        currentPlayers: currentPlayers,
-        
-        // границы
-        minPlayers: minPlayers,
-        maxPlayers: maxPlayers,
-        
-        eliminationCount: rounds,
-        
-        // флаги 
-        enoughPlayers: enoughPlayers,
-        tooManyPlayers: tooManyPlayers,
-        isAdjusted: finalTargetSize !== targetPlayers,
-        
-        // сколько нужно доб/убр
-        missingPlayers: enoughPlayers ? 0 : minPlayers - currentPlayers,
-        extraPlayers: tooManyPlayers ? currentPlayers - maxPlayers : 0
     };
 }
 
@@ -76,8 +50,6 @@ function canStartGame({ playerId, creatorId, currentPlayers, minPlayers = 4 }) {
     
     return {
         canStart: isCreator && hasEnoughPlayers,
-        isCreator: isCreator,
-        hasEnoughPlayers: hasEnoughPlayers,
         reason: !isCreator ? 'Только создатель может начать игру' :
                 !hasEnoughPlayers ? `Нужно минимум ${minPlayers} игроков` :
                 null
@@ -87,21 +59,20 @@ function canStartGame({ playerId, creatorId, currentPlayers, minPlayers = 4 }) {
 // валидация для старта игры (проверки там)
 function validateGameStart({ playerId, creatorId, currentPlayers, targetPlayers, minPlayers = 4, maxPlayers = 16 }) {
     const startCheck = canStartGame({ playerId, creatorId, currentPlayers, minPlayers });
-    // если нельзя начать то информацию о блокировке
+
+    // если нельзя начать то прчина
     if (!startCheck.canStart) {
-        return {
-            ...startCheck,// оператор копирования свойств в другой для удобва не писать каждый раз + gameparams перезапись
-            gameParams: null
-        };
+        return startCheck;
     }
     
     // если можно начать то расчитываемые параметры
     const gameParams = calculateGameParams({ currentPlayers, targetPlayers, minPlayers, maxPlayers });
-    
+
+
     return {
-        ...startCheck,
-        gameParams: gameParams
-    };
+      ...startCheck,
+      ...gameParams
+    }
 }
 
 module.exports = {
