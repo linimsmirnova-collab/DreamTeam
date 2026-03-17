@@ -1,11 +1,14 @@
-# ===== НАСТРОЙКИ =====
+# ===== ТЕСТ СЕРВЕРА ПО КОДУ КОМНАТЫ =====
+# Используйте с расширением "REST Client" для VS Code
+# Запускайте запросы через "Send Request" (Ctrl+Alt+R)
+
 @baseUrl = http://localhost:3000
 @contentType = application/json
 
-# -------------------------------------------
-# 🔹 ШАГ 1: Создаём комнату + ОТЛАДКА
-# -------------------------------------------
-# @name step1_create
+###
+
+# 🔹 1. СОЗДАТЬ КОМНАТУ
+# @name createRoom
 POST {{baseUrl}}/api/room/create
 Content-Type: {{contentType}}
 
@@ -16,44 +19,111 @@ Content-Type: {{contentType}}
 }
 
 > {%
-    // Сохраняем roomId
-    const roomId = response.body.roomId;
-    client.global.set("testRoomId", roomId);
-    
-    // Логи для отладки
-    client.log("🏠 Комната создана: " + roomId);
-    client.log("🔍 testRoomId сохранён: " + client.global.get("testRoomId"));
+    // Сохраняем roomId для следующих запросов
+    client.global.set("testRoomCode", response.body.roomId);
+    client.log("🏠 Комната создана: " + response.body.roomId);
 %}
 
 ###
 
-# 🔹 ШАГ 2: Присоединение Игрока 2 + ОТЛАДКА
-# @name step3_join_player2
+# 🔹 2. ПРИСОЕДИНИТЬСЯ КАК ИГРОК 2
+# @name joinPlayer2
 POST {{baseUrl}}/api/room/join
 Content-Type: {{contentType}}
 
 {
-  "roomCode": "{{testRoomId}}",
+  "roomCode": "{{testRoomCode}}",
   "nickname": "Player2"
 }
 
 > {%
-    // Показываем, что реально отправляется
-    const body = JSON.parse(request.body);
-    client.log("🔍 Отправляю roomCode: '" + body.roomCode + "'");
-    
-    if (!body.roomCode || body.roomCode.includes('{{')) {
-        client.log("❌ ОШИБКА: переменная не подставилась!");
-    } else {
-        client.log("✅ Переменная подставлена верно");
+    client.log("✅ Player2 присоединился");
+%}
+
+###
+
+# 🔹 3. ПРИСОЕДИНИТЬСЯ КАК ИГРОК 3
+# @name joinPlayer3
+POST {{baseUrl}}/api/room/join
+Content-Type: {{contentType}}
+
+{
+  "roomCode": "{{testRoomCode}}",
+  "nickname": "Player3"
+}
+
+###
+
+# 🔹 4. ПРИСОЕДИНИТЬСЯ КАК ИГРОК 4
+# @name joinPlayer4
+POST {{baseUrl}}/api/room/join
+Content-Type: {{contentType}}
+
+{
+  "roomCode": "{{testRoomCode}}",
+  "nickname": "Player4"
+}
+
+###
+
+# 🔹 5. ПРОВЕРИТЬ CAN-START (от создателя)
+# Запустите этот запрос в ТОЙ ЖЕ сессии, где создавали комнату!
+# @name checkCanStart
+POST {{baseUrl}}/api/room/can-start
+Content-Type: {{contentType}}
+
+> {%
+    const d = response.body;
+    const status = d.canStart ? "🎉 МОЖНО НАЧАТЬ" : "❌ ЗАБЛОКИРОВАНО";
+    client.log(status);
+    client.log("Причина: " + (d.reason || "—"));
+    if (d.canStart) {
+        client.log("✅ Кнопку можно активировать!");
     }
 %}
 
 ###
 
-# 🔹 ШАГ 3: Проверка can-start
-# @name step_check
-POST {{baseUrl}}/api/room/can-start
+# 🔹 6. ПОЛУЧИТЬ СПИСОК ИГРОКОВ
+# @name getPlayers
+GET {{baseUrl}}/api/room/players
 Content-Type: {{contentType}}
+
+###
+
+# 🔹 7. ТЕСТ: Присоединиться с уже занятым ником
+# @name joinDuplicate
+POST {{baseUrl}}/api/room/join
+Content-Type: {{contentType}}
+
+{
+  "roomCode": "{{testRoomCode}}",
+  "nickname": "Player2"
+}
+
+###
+
+# 🔹 8. ТЕСТ: Присоединиться к несуществующей комнате
+# @name joinNotFound
+POST {{baseUrl}}/api/room/join
+Content-Type: {{contentType}}
+
+{
+  "roomCode": "XXXXXX",
+  "nickname": "Ghost"
+}
+
+###
+
+# 🔹 9. ТЕСТ: Создать комнату с недопустимым количеством игроков
+# @name createInvalid
+POST {{baseUrl}}/api/room/create
+Content-Type: {{contentType}}
+
+{
+  "nickname": "Test",
+  "playersCount": 2,
+  "randomEvents": false
+}
 
 ###

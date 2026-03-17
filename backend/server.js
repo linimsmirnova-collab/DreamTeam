@@ -259,6 +259,7 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         const currentPlayers = session.players_list.length;
         const creatorId = session.creater?.uuid;
        // const targetPlayers = session.players_count; 
+
         
         const { canStart, reason } = canStartGame({
             playerId: player.uuid,
@@ -280,8 +281,8 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         // информация для фронта
         res.status(200).json({
             success: true,          
-            canStart: result.canStart,
-            reason: result.reason,
+            canStart: canStart,
+            reason: reason,
             //ну и параметры если начать можн
             /*...(result.canStart && {
                 rounds: result.rounds,

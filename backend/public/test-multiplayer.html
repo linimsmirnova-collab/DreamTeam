@@ -2,171 +2,193 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Тест мультиплеера | Бункер 42</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 Тест сервера по коду комнаты</title>
     <style>
-        body { font-family: Arial; max-width: 900px; margin: 20px auto; padding: 20px; background: #fafafa; }
-        h1 { color: #333; border-bottom: 3px solid #ff69b4; padding-bottom: 10px; }
-        .container { display: flex; gap: 20px; }
-        .panel { flex: 1; border: 1px solid #ddd; padding: 20px; border-radius: 8px; background: white; }
-        .panel.creator { border-left: 4px solid #4CAF50; }
-        .panel.player { border-left: 4px solid #2196F3; }
-        h2 { margin-top: 0; color: #555; }
-        label { display: block; margin: 10px 0 5px; font-weight: 500; }
-        input { padding: 8px 12px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        button { padding: 10px 20px; font-size: 14px; cursor: pointer; border: none; border-radius: 4px; margin: 5px 0; width: 100%; }
-        .btn-create { background: #4CAF50; color: white; }
-        .btn-join { background: #2196F3; color: white; }
-        .btn-check { background: #ff9800; color: white; font-weight: bold; }
-        .btn-check:disabled { background: #ccc; }
-        .log { background: #f5f5f5; padding: 10px; border-radius: 4px; margin-top: 15px; font-family: monospace; font-size: 13px; max-height: 300px; overflow-y: auto; }
-        .success { color: green; }
-        .error { color: red; }
-        .info { background: #e3f2fd; padding: 10px; border-radius: 4px; margin-bottom: 15px; border-left: 3px solid #2196F3; }
-        .room-code { font-size: 24px; font-weight: bold; color: #ff69b4; text-align: center; padding: 10px; background: #fce4ec; border-radius: 4px; margin: 10px 0; }
-        .status { padding: 8px; border-radius: 4px; margin: 10px 0; text-align: center; font-weight: bold; }
-        .status.ready { background: #d4edda; color: #155724; }
-        .status.wait { background: #fff3cd; color: #856404; }
-        .status.blocked { background: #f8d7da; color: #721c24; }
+        * { box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; background: #f5f5f5; }
+        h1 { color: #333; border-bottom: 3px solid #667eea; padding-bottom: 10px; }
+        .card { background: white; border-radius: 12px; padding: 20px; margin: 15px 0; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .card h2 { margin-top: 0; color: #555; font-size: 18px; }
+        label { display: block; margin: 12px 0 6px; font-weight: 500; color: #444; }
+        input { width: 100%; padding: 10px 12px; border: 2px solid #ddd; border-radius: 6px; font-size: 14px; transition: border-color 0.2s; }
+        input:focus { outline: none; border-color: #667eea; }
+        button { background: #667eea; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; cursor: pointer; margin: 5px 5px 5px 0; transition: background 0.2s; }
+        button:hover { background: #5568d3; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        button.secondary { background: #6c757d; }
+        button.secondary:hover { background: #5a6268; }
+        button.success { background: #28a745; }
+        button.success:hover { background: #218838; }
+        button.danger { background: #dc3545; }
+        button.danger:hover { background: #c82333; }
+        .response { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 6px; font-family: 'Consolas', 'Monaco', monospace; font-size: 13px; overflow-x: auto; margin-top: 15px; white-space: pre-wrap; max-height: 300px; overflow-y: auto; }
+        .response.success { border-left: 4px solid #28a745; }
+        .response.error { border-left: 4px solid #dc3545; }
+        .response.info { border-left: 4px solid #17a2b8; }
+        .room-code { font-size: 28px; font-weight: bold; color: #667eea; text-align: center; padding: 15px; background: #f8f9ff; border-radius: 8px; margin: 10px 0; letter-spacing: 3px; }
+        .status-badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; }
+        .status-badge.true { background: #d4edda; color: #155724; }
+        .status-badge.false { background: #f8d7da; color: #721c24; }
+        .players-list { list-style: none; padding: 0; margin: 10px 0; }
+        .players-list li { padding: 8px 12px; background: #f8f9fa; margin: 5px 0; border-radius: 4px; display: flex; justify-content: space-between; }
+        .players-list li.creator { background: #e8f5e9; border-left: 3px solid #28a745; }
+        .flex { display: flex; gap: 10px; flex-wrap: wrap; }
+        .flex-column { display: flex; flex-direction: column; gap: 10px; }
+        @media (max-width: 600px) { .flex { flex-direction: column; } }
     </style>
 </head>
 <body>
-    <h1>🎮 Тест мультиплеера: Кнопка «Начать»</h1>
-    
-    <div class="info">
-        <strong>📋 Инструкция:</strong>
-        <ol>
-            <li><strong>Окно 1 (Создатель):</strong> Нажмите «Создать комнату», скопируйте код</li>
-            <li><strong>Окно 2, 3, 4 (Игроки):</strong> Откройте ЭТУ ЖЕ страницу в новых вкладках, вставьте код, нажмите «Присоединиться»</li>
-            <li><strong>Окно 1 (Создатель):</strong> Нажмите «Проверить статус» — должно быть <code>canStart: true</code></li>
-        </ol>
+    <h1>🧪 Тест сервера «Бункер 42»</h1>
+    <p>Проверка эндпоинтов по коду комнаты</p>
+
+    <!-- СОЗДАНИЕ КОМНАТЫ -->
+    <div class="card">
+        <h2>🏠 1. Создать комнату</h2>
+        <div class="flex-column">
+            <label>Никнейм создателя:
+                <input type="text" id="createNickname" value="Creator" placeholder="Ваш ник">
+            </label>
+            <label>Количество игроков (4-16):
+                <input type="number" id="playersCount" value="4" min="4" max="16">
+            </label>
+            <label>
+                <input type="checkbox" id="randomEvents" checked> Случайные события
+            </label>
+            <div class="flex">
+                <button class="success" onclick="createRoom()">🚀 Создать</button>
+                <button class="secondary" onclick="clearCreateLog()">🗑 Очистить</button>
+            </div>
+        </div>
+        <div id="createResponse" class="response info">(ожидание)</div>
     </div>
 
-    <div class="container">
-        <!-- ПАНЕЛЬ СОЗДАТЕЛЯ -->
-        <div class="panel creator">
-            <h2>👑 Панель создателя</h2>
-            <p class="info">Откройте эту страницу в <strong>первом окне</strong></p>
-            
-            <button class="btn-create" onclick="createRoom()">🏠 Создать комнату</button>
-            
-            <div id="creatorRoomInfo" style="display: none;">
-                <div class="room-code" id="roomCodeDisplay">---</div>
-                <p><strong>📋 Скопируйте этот код и откройте новые вкладки для игроков!</strong></p>
-                <button class="btn-check" id="checkStartBtn" onclick="checkCanStart()">🔍 Проверить статус</button>
-                <div id="canStartResult"></div>
+    <!-- ПРИСОЕДИНЕНИЕ -->
+    <div class="card">
+        <h2>🚪 2. Присоединиться к комнате</h2>
+        <div class="flex-column">
+            <label>Код комнаты:
+                <input type="text" id="joinRoomCode" placeholder="Например: A6D170" maxlength="6" style="text-transform: uppercase; letter-spacing: 2px;">
+            </label>
+            <label>Ваш никнейм:
+                <input type="text" id="joinNickname" value="Player2" placeholder="Player2">
+            </label>
+            <div class="flex">
+                <button onclick="joinRoom()">🔗 Присоединиться</button>
+                <button class="secondary" onclick="clearJoinLog()">🗑 Очистить</button>
             </div>
-            
-            <div class="log" id="creatorLog"></div>
         </div>
+        <div id="joinResponse" class="response info">(ожидание)</div>
+    </div>
 
-        <!-- ПАНЕЛЬ ИГРОКА -->
-        <div class="panel player">
-            <h2>🎮 Панель игрока</h2>
-            <p class="info">Откройте эту страницу в <strong>новых вкладках</strong> (2, 3, 4)</p>
-            
-            <label>
-                Код комнаты:
-                <input type="text" id="joinRoomCode" placeholder="Например: A6D170">
-            </label>
-            <label>
-                Ваш никнейм:
-                <input type="text" id="joinNickname" placeholder="Player2" value="Player2">
-            </label>
-            <button class="btn-join" onclick="joinRoom()">🚪 Присоединиться</button>
-            
-            <div class="log" id="playerLog"></div>
+    <!-- ПРОВЕРКА CAN-START -->
+    <div class="card">
+        <h2>✅ 3. Проверить возможность старта</h2>
+        <p style="font-size: 14px; color: #666; margin-bottom: 15px;">
+            Проверка: может ли текущий игрок начать игру (только создатель + минимум 4 игрока)
+        </p>
+        <div class="flex">
+            <button onclick="checkCanStart()">🔍 Проверить статус</button>
+            <button class="secondary" onclick="clearCanStartLog()">🗑 Очистить</button>
         </div>
+        <div id="canStartResponse" class="response info">(ожидание)</div>
+    </div>
+
+    <!-- СПИСОК ИГРОКОВ -->
+    <div class="card">
+        <h2>👥 4. Список игроков в комнате</h2>
+        <div class="flex">
+            <button onclick="getPlayers()">📋 Получить список</button>
+            <button class="secondary" onclick="clearPlayersLog()">🗑 Очистить</button>
+        </div>
+        <ul id="playersList" class="players-list"></ul>
+        <div id="playersResponse" class="response info" style="display:none;"></div>
+    </div>
+
+    <!-- ИНФОРМАЦИЯ О СЕССИИ -->
+    <div class="card">
+        <h2>🍪 Текущая сессия (cookie)</h2>
+        <p style="font-size: 13px; color: #666;">
+            Cookie httpOnly не доступны через JS, но запросы с <code>credentials: 'include'</code> 
+            автоматически их отправляют.
+        </p>
+        <div class="flex">
+            <button onclick="testAuth()">🔐 Проверить авторизацию</button>
+            <button class="danger" onclick="clearSession()">🚪 Выйти (очистить)</button>
+        </div>
+        <div id="authResponse" class="response info">(не проверено)</div>
     </div>
 
     <script>
-        // ===== ПАНЕЛЬ СОЗДАТЕЛЯ =====
-        let currentRoomId = null;
+        const API = 'http://localhost:3000/api/room';
 
+        // ===== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ =====
+        function showResponse(elementId, data, type = 'info') {
+            const el = document.getElementById(elementId);
+            el.className = `response ${type}`;
+            el.textContent = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+        }
+
+        function clearLog(elementId) {
+            document.getElementById(elementId).textContent = '(ожидание)';
+            document.getElementById(elementId).className = 'response info';
+        }
+
+        function clearCreateLog() { clearLog('createResponse'); }
+        function clearJoinLog() { clearLog('joinResponse'); }
+        function clearCanStartLog() { clearLog('canStartResponse'); }
+        function clearPlayersLog() { 
+            document.getElementById('playersList').innerHTML = '';
+            document.getElementById('playersResponse').style.display = 'none';
+        }
+
+        // ===== 1. СОЗДАНИЕ КОМНАТЫ =====
         async function createRoom() {
-            const log = document.getElementById('creatorLog');
-            log.innerHTML = '<div class="step">🏠 Создание комнаты...</div>';
+            const nickname = document.getElementById('createNickname').value.trim() || 'Creator';
+            const playersCount = parseInt(document.getElementById('playersCount').value) || 4;
+            const randomEvents = document.getElementById('randomEvents').checked;
+
+            showResponse('createResponse', '🔄 Создание комнаты...', 'info');
 
             try {
-                const res = await fetch('/api/room/create', {
+                const res = await fetch(`${API}/create`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ nickname: 'Creator', playersCount: 4, randomEvents: false })
+                    body: JSON.stringify({ nickname, playersCount, randomEvents })
                 });
 
                 const data = await res.json();
 
-                if (res.ok && data.roomId) {
-                    currentRoomId = data.roomId;
-                    document.getElementById('roomCodeDisplay').textContent = data.roomId;
-                    document.getElementById('creatorRoomInfo').style.display = 'block';
-                    
-                    log.innerHTML += `<div class="success">✅ Комната создана: ${data.roomId}</div>`;
-                    log.innerHTML += `<div class="info">📋 Откройте 3 новых вкладки этой страницы и вставьте код выше!</div>`;
+                if (res.ok) {
+                    // Автозаполнение кода комнаты для присоединения
+                    document.getElementById('joinRoomCode').value = data.roomId;
+                    showResponse('createResponse', {
+                        status: `${res.status} ${res.statusText}`,
+                        ...data
+                    }, 'success');
                 } else {
-                    log.innerHTML += `<div class="error">❌ Ошибка: ${data.error}</div>`;
+                    showResponse('createResponse', { error: data.error, status: res.status }, 'error');
                 }
             } catch (err) {
-                log.innerHTML += `<div class="error">❌ Ошибка: ${err.message}</div>`;
+                showResponse('createResponse', { error: err.message }, 'error');
             }
         }
 
-        async function checkCanStart() {
-            const log = document.getElementById('creatorLog');
-            const resultDiv = document.getElementById('canStartResult');
-            const btn = document.getElementById('checkStartBtn');
-            
-            btn.disabled = true;
-            resultDiv.innerHTML = '<div class="step">🔍 Проверка...</div>';
-
-            try {
-                const res = await fetch('/api/room/can-start', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include'
-                });
-
-                const data = await res.json();
-
-                if (data.canStart && data.isCreator) {
-                    resultDiv.innerHTML = `
-                        <div class="status ready">🎉 УСПЕХ! canStart: ${data.canStart}</div>
-                        <div>👤 isCreator: ${data.isCreator}</div>
-                        <div>👥 Игроков: ${data.currentState.playersCount}</div>
-                        <div>🎯 Финал: ${data.gameParams?.targetTeamSize || '?'} игроков</div>
-                    `;
-                    log.innerHTML += `<div class="success">✅ Кнопку можно активировать!</div>`;
-                } else {
-                    resultDiv.innerHTML = `
-                        <div class="status blocked">❌ canStart: ${data.canStart}</div>
-                        <div>⚠️ Причина: ${data.reason}</div>
-                        <div>👤 isCreator: ${data.isCreator}</div>
-                        <div>👥 Игроков: ${data.currentState.playersCount}</div>
-                    `;
-                    log.innerHTML += `<div class="error">❌ ${data.reason}</div>`;
-                }
-            } catch (err) {
-                resultDiv.innerHTML = `<div class="error">❌ Ошибка: ${err.message}</div>`;
-            }
-
-            btn.disabled = false;
-        }
-
-        // ===== ПАНЕЛЬ ИГРОКА =====
+        // ===== 2. ПРИСОЕДИНЕНИЕ =====
         async function joinRoom() {
-            const log = document.getElementById('playerLog');
             const roomCode = document.getElementById('joinRoomCode').value.trim().toUpperCase();
             const nickname = document.getElementById('joinNickname').value.trim() || 'Player';
 
             if (!roomCode) {
-                log.innerHTML = '<div class="error">❌ Введите код комнаты!</div>';
+                showResponse('joinResponse', '❌ Введите код комнаты', 'error');
                 return;
             }
 
-            log.innerHTML = `<div class="step">🚪 Присоединение к ${roomCode} как ${nickname}...</div>`;
+            showResponse('joinResponse', `🔄 Присоединение к ${roomCode}...`, 'info');
 
             try {
-                const res = await fetch('/api/room/join', {
+                const res = await fetch(`${API}/join`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
@@ -175,23 +197,125 @@
 
                 const data = await res.json();
 
-                if (res.ok && data.success) {
-                    log.innerHTML += `<div class="success">✅ Присоединился!</div>`;
-                    log.innerHTML += `<div>👤 Ник: ${data.nickname}</div>`;
-                    log.innerHTML += `<div>🏠 Комната: ${data.roomId}</div>`;
-                    log.innerHTML += `<div class="info">📋 Теперь вернитесь в окно создателя и нажмите «Проверить статус»!</div>`;
+                if (res.ok) {
+                    showResponse('joinResponse', {
+                        status: `${res.status} ${res.statusText}`,
+                        ...data
+                    }, 'success');
                 } else {
-                    log.innerHTML += `<div class="error">❌ Ошибка: ${data.error}</div>`;
+                    showResponse('joinResponse', { error: data.error, status: res.status }, 'error');
                 }
             } catch (err) {
-                log.innerHTML += `<div class="error">❌ Ошибка: ${err.message}</div>`;
+                showResponse('joinResponse', { error: err.message }, 'error');
             }
         }
 
-        // Автозаполнение ника для удобства
+        // ===== 3. ПРОВЕРКА CAN-START =====
+        async function checkCanStart() {
+            showResponse('canStartResponse', '🔄 Проверка...', 'info');
+
+            try {
+                const res = await fetch(`${API}/can-start`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    const badge = data.canStart 
+                        ? '<span class="status-badge true">✅ МОЖНО НАЧАТЬ</span>'
+                        : '<span class="status-badge false">❌ ЗАБЛОКИРОВАНО</span>';
+                    
+                    showResponse('canStartResponse', `${badge}\n\n${JSON.stringify(data, null, 2)}`, 
+                        data.canStart ? 'success' : 'error');
+                } else {
+                    showResponse('canStartResponse', { error: data.error, status: res.status }, 'error');
+                }
+            } catch (err) {
+                showResponse('canStartResponse', { error: err.message }, 'error');
+            }
+        }
+
+        // ===== 4. СПИСОК ИГРОКОВ =====
+        async function getPlayers() {
+            const listEl = document.getElementById('playersList');
+            const responseEl = document.getElementById('playersResponse');
+            
+            listEl.innerHTML = '<li>🔄 Загрузка...</li>';
+            responseEl.style.display = 'none';
+
+            try {
+                const res = await fetch(`${API}/players`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    if (Array.isArray(data) && data.length > 0) {
+                        listEl.innerHTML = data.map(p => `
+                            <li class="${p.be_creator ? 'creator' : ''}">
+                                <span>${p.nickname} ${p.be_creator ? '👑' : ''}</span>
+                                <small style="color:#666">${p.uuid.slice(0,8)}...</small>
+                            </li>
+                        `).join('');
+                    } else {
+                        listEl.innerHTML = '<li style="color:#666">Нет игроков</li>';
+                    }
+                } else {
+                    listEl.innerHTML = '';
+                    responseEl.style.display = 'block';
+                    responseEl.className = 'response error';
+                    responseEl.textContent = `Ошибка: ${data.error}`;
+                }
+            } catch (err) {
+                listEl.innerHTML = '';
+                responseEl.style.display = 'block';
+                responseEl.className = 'response error';
+                responseEl.textContent = `Ошибка: ${err.message}`;
+            }
+        }
+
+        // ===== ПРОВЕРКА АВТОРИЗАЦИИ =====
+        async function testAuth() {
+            showResponse('authResponse', '🔄 Проверка cookie...', 'info');
+
+            try {
+                const res = await fetch(`${API}/players`, {
+                    method: 'GET',
+                    credentials: 'include'
+                });
+
+                if (res.ok) {
+                    showResponse('authResponse', '✅ Авторизован! Запрос успешен.', 'success');
+                } else if (res.status === 401) {
+                    showResponse('authResponse', '❌ Не авторизован (нет cookie)', 'error');
+                } else if (res.status === 404) {
+                    showResponse('authResponse', '❌ Комната не найдена', 'error');
+                } else {
+                    const data = await res.json();
+                    showResponse('authResponse', `⚠️ Статус ${res.status}: ${data.error}`, 'error');
+                }
+            } catch (err) {
+                showResponse('authResponse', `❌ Ошибка: ${err.message}`, 'error');
+            }
+        }
+
+        // ===== ОЧИСТКА СЕССИИ =====
+        function clearSession() {
+            // httpOnly cookie нельзя удалить через JS, но можно попробовать
+            document.cookie = 'playerSession=; Max-Age=0; path=/; domain=' + window.location.hostname;
+            showResponse('authResponse', '🧹 Cookie очищен (если возможно). Обновите страницу.', 'info');
+        }
+
+        // ===== ИНИЦИАЛИЗАЦИЯ =====
         window.onload = function() {
-            const playerNum = Math.floor(Math.random() * 1000);
-            document.getElementById('joinNickname').value = `Player${playerNum}`;
+            // Автозаполнение ника с рандомным числом для удобства
+            const rand = Math.floor(Math.random() * 900) + 100;
+            document.getElementById('joinNickname').value = `Player${rand}`;
         };
     </script>
 </body>
