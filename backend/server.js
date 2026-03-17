@@ -260,26 +260,26 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         const targetPlayers = session.players_count; 
         
         // параметры для валидации
-        const result = validationParams = {
+        const validationParams = {
             playerId: player.uuid,
             creatorId: creatorId,
             currentPlayers: currentPlayers,
             targetPlayers: targetPlayers,
-            minPlayers: 4,  // можно вынести в конфиг
-            maxPlayers: 16  // можно вынести в конфиг
+            minPlayers: 4,
+            maxPlayers: 16
         };
-                
+        const result = validateGameStart(validationParams);       
         // информация для фронта
-        const response = {
-            success: true,
+        res.status(200).json({
+            success: true,          
             canStart: result.canStart,
             reason: result.reason,
-            // параметры игры (только если можно начать)
-            gameParams: result.gameParams ? {
-                rounds: result.gameParams.rounds,
-                targetTeamSize: result.gameParams.targetTeamSize,
-            } : null,
-        };
+            //ну и параметры если начать можн
+            ...(result.canStart && {
+                rounds: result.rounds,
+                targetTeamSize: result.targetTeamSize
+            })
+        });
         
         res.status(200).json(response);
         
