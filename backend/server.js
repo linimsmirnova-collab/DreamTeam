@@ -111,6 +111,7 @@ function authenticatePlayer(req, res, next) {
 
 // Эндпоинт создания комнаты
 const { validateGameStart } = require('./Function');
+const { min_players } = require('./models/GameSession');
 app.post('/api/room/create', async (req, res) => {
     try {
         const { randomEvents, playersCount, nickname } = req.body;
@@ -257,10 +258,17 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         // параметры из сессии соответственно
         const currentPlayers = session.players_list.length;
         const creatorId = session.creater?.uuid;
-        const targetPlayers = session.players_count; 
+       // const targetPlayers = session.players_count; 
         
+        const { canStart, reason } = canStartGame({
+            playerId: player.uuid,
+            creatorId: creatorId,
+            currentPlayers: currentPlayers,
+            minPlayers: 4
+        })
+
         // параметры для валидации
-        const validationParams = {
+       /* const validationParams = {
             playerId: player.uuid,
             creatorId: creatorId,
             currentPlayers: currentPlayers,
@@ -268,21 +276,19 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
             minPlayers: 4,
             maxPlayers: 16
         };
-        const result = validateGameStart(validationParams);       
+        const result = validateGameStart(validationParams);     */  
         // информация для фронта
         res.status(200).json({
             success: true,          
             canStart: result.canStart,
             reason: result.reason,
             //ну и параметры если начать можн
-            ...(result.canStart && {
+            /*...(result.canStart && {
                 rounds: result.rounds,
                 targetTeamSize: result.targetTeamSize
-            })
+            })*/
         });
-        
-        res.status(200).json(response);
-        
+
     } catch (error) {
         console.error('Ошибка проверки can-start:', error);
         res.status(500).json({ 
