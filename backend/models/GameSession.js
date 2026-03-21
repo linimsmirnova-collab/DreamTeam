@@ -9,8 +9,9 @@ class GameSession {
     static max_players = 16;
     static min_players = 4;
     #random_events = false;
-    players_count = GameSession.min_players;
-    // round_count = 0;
+    players_count = 0;
+    players_final_count = 0
+    rounds_count = 0;
     // current_round = 0;
     project = null
     game_state = null;
@@ -35,13 +36,15 @@ class GameSession {
         return this.#random_events;
     }
 
-    constructor(roomCode, creater, randomEvents, players_count = GameSession.min_players, project) {
+    constructor(roomCode, creater, randomEvents, players_count, final_players_count, rounds, project) {
         this.roomCode = roomCode;
         this.creater = creater;
         this.randomEvents = randomEvents;
         this.players_count = players_count;
         this.players_list.push(creater);
         this.project = project;
+        this.players_final_count = final_players_count;
+        this.rounds_count = rounds;
     }
 }
 

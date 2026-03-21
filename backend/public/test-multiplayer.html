@@ -145,7 +145,7 @@
         // ===== 1. СОЗДАНИЕ КОМНАТЫ =====
         async function createRoom() {
             const nickname = document.getElementById('createNickname').value.trim() || 'Creator';
-            const playersCount = parseInt(document.getElementById('playersCount').value) || 4;
+            const maxPlayers = parseInt(document.getElementById('playersCount').value) || 4;
             const randomEvents = document.getElementById('randomEvents').checked;
 
             showResponse('createResponse', '🔄 Создание комнаты...', 'info');
@@ -155,7 +155,7 @@
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     credentials: 'include',
-                    body: JSON.stringify({ nickname, playersCount, randomEvents })
+                    body: JSON.stringify({ nickname, maxPlayers, randomEvents })
                 });
 
                 const data = await res.json();

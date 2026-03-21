@@ -29,8 +29,8 @@ class GameManager {
     }
 
     // Создаёт игровую сессию
-    async CreateGameSession (roomCode, creater, events, playersCount, project) {
-        this.#gameSession = new GameSession(roomCode, creater, events, playersCount, project);
+    async CreateGameSession (roomCode, creater, events, playersCount, final_players_count, rounds, project) {
+        this.#gameSession = new GameSession(roomCode, creater, events, playersCount, final_players_count, rounds, project);
         console.log(creater.nickname)
     }
     // GenerateNickname () {

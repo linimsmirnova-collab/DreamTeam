@@ -79,7 +79,7 @@
         document.getElementById('createForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const randomEvents = document.getElementById('randomEvents').checked;
-            const playersCount = parseInt(document.getElementById('playersCount').value, 10);
+            const maxPlayers = parseInt(document.getElementById('playersCount').value, 10);
             const nickname = "Выхухохоль"
 
             const responseDiv = document.getElementById('createResult');
@@ -89,7 +89,7 @@
                 const res = await fetch('/api/room/create', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ randomEvents, playersCount, nickname }),
+                    body: JSON.stringify({ randomEvents, maxPlayers, nickname }),
                     credentials: 'include'
                 });
                 const data = await res.json();
