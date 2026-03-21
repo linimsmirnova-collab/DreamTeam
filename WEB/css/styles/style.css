@@ -194,7 +194,7 @@ body {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  background: url("../images/x.png");
+  background: url("../../images/x.png");
   background-size: contain;
   background-position: center;
 }
@@ -750,6 +750,255 @@ span {
   font-size: 20px;
   line-height: 24px;
   text-align: center;
-  color: #9B3D63;
+  color: #FFFFFF;
   background: transparent;
+}
+
+.profile-header {
+  position: absolute;
+  width: 389px;
+  height: 85px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+}
+
+.profile-title {
+  position: absolute;
+  width: 285px;
+  height: 31px;
+  left: 12px;
+  top: 6px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #7F375A;
+}
+
+.profile-subtitle {
+  position: absolute;
+  width: 370px;
+  height: 44px;
+  left: 12px;
+  top: 37px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 19px;
+  display: flex;
+  align-items: center;
+  color: #7F375A;
+}
+
+.profile-nick-field {
+  position: absolute;
+  width: 360px;
+  height: 65px;
+  left: 17px;
+  top: 107px;
+}
+
+.profile-nick-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+  box-sizing: border-box;
+}
+
+.profile-nick-text {
+  position: absolute;
+  width: 316px;
+  height: 31px;
+  left: 20px;
+  top: 45%;
+  transform: translateY(-50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 31px;
+  text-align: left;
+  color: #FE5499;
+  background: transparent;
+  pointer-events: none;
+}
+
+.profile-card {
+  position: absolute;
+  width: 172px;
+  height: 130px;
+}
+.profile-card .profile-card-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+  box-sizing: border-box;
+}
+.profile-card .profile-card-label {
+  position: absolute;
+  width: 143px;
+  height: 29px;
+  left: 50%;
+  top: 12px;
+  transform: translateX(-50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #FE5499;
+  background: transparent;
+  pointer-events: none;
+}
+.profile-card .profile-card-value {
+  position: absolute;
+  width: 143px;
+  height: 69px;
+  left: 50%;
+  bottom: 12px;
+  transform: translateX(-50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 19px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #FFFFFF;
+  background: transparent;
+  pointer-events: none;
+  padding: 5px;
+  box-sizing: border-box;
+  word-break: break-word;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+.profile-footer {
+  position: absolute;
+  width: 389px;
+  height: 85px;
+  left: 0px;
+  top: 767px;
+  background: #FFCBE5;
+}
+
+.profile-icon {
+  position: absolute;
+  width: 77px;
+  height: 77px;
+  top: 771px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.icon-left {
+  left: 19px;
+}
+
+.icon-center {
+  left: 158px;
+}
+
+.icon-right {
+  left: 297px;
+}
+
+.profile-turn {
+  position: absolute;
+  width: 158px;
+  height: 49px;
+  left: 50%;
+  top: 718px;
+  cursor: pointer;
+  transform: translateX(-50%);
+}
+.profile-turn .profile-turn-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #FFFFFF;
+  border: 2px solid #FFCBE5;
+  border-radius: 50px;
+  box-sizing: border-box;
+}
+.profile-turn .profile-turn-text {
+  position: absolute;
+  width: 132px;
+  height: 30px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #FE5499;
+  background: transparent;
+  pointer-events: none;
+}
+
+.profile-timer {
+  position: absolute;
+  width: 94px;
+  height: 65px;
+  left: 289px;
+  top: 702px;
+}
+.profile-timer .profile-timer-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #F17BAB;
+  opacity: 0.75;
+  border-radius: 50px;
+  box-sizing: border-box;
+  border: 2px solid #7F375A;
+}
+.profile-timer .profile-timer-text {
+  position: absolute;
+  width: 64px;
+  height: 34px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 28px;
+  line-height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: #FFFFFF;
+  background: transparent;
+  pointer-events: none;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
 }/*# sourceMappingURL=style.css.map */

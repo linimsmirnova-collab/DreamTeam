@@ -21,10 +21,10 @@ app.use(express.json());
 app.use(cookieParser());
 
 app.use(express.static(path.join(__dirname, 'public')));
-// app.use(cors({
-//     origin: 'http://localhost:8080',
-//     credentials: true
-// }));
+app.use(cors({
+     origin: 'http://localhost:5500', //добавила адрес фронтенда
+     credentials: true
+}));
 
 
 app.use('/pages', express.static(path.join(__dirname, '../WEB/pages')));/////////////////////////
@@ -50,12 +50,24 @@ function generateRoomId() {
 }
 
 // Вспомогательная функция для установки httpOnly cookie с данными игрока
+/*
 function setPlayerSessionCookie(res, playerId, roomId) {
     res.cookie('playerSession', JSON.stringify({ playerId, roomId }), {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production', // в разработке false
         sameSite: 'lax',
         maxAge: 24 * 60 * 60 * 1000 // 24 часа
+    });
+    console.log(`cookie отправлен румкод: ${roomId}, игрок айди ${playerId}`);
+}
+*/
+
+function setPlayerSessionCookie(res, playerId, roomId) {
+    res.cookie('playerSession', JSON.stringify({ playerId, roomId }), {
+        httpOnly: true,
+        secure: false,  // принудительно false для разработки
+        //sameSite: 'none',
+        maxAge: 24 * 60 * 60 * 1000
     });
     console.log(`cookie отправлен румкод: ${roomId}, игрок айди ${playerId}`);
 }
@@ -114,10 +126,10 @@ const { validateGameStart } = require('./Function');
 const { min_players } = require('./models/GameSession');
 app.post('/api/room/create', async (req, res) => {
     try {
-        const { randomEvents, playersCount, nickname } = req.body;
+        const { randomEvents, maxPlayers, nickname } = req.body; //подправила на maxPlayers
 
         // Простейшие проверки
-        if (playersCount < 4 || playersCount > 16) {
+        if (maxPlayers < 4 || maxPlayers > 16) {
             return res.status(400).json({ error: 'Количество игроков должно быть от 4 до 16' });
         }
 
@@ -132,10 +144,11 @@ app.post('/api/room/create', async (req, res) => {
         const project = await db.getProject()
 
         // Создание игровой сессии (создатель будет создан автоматически)
-        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, playersCount, project)
+        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, project)
 
         console.log(manager.GameSession.players_list);
         console.log(manager.GameSession.project);
+        console.log('Создаётся комната с количеством игроков:', maxPlayers);//добавила
 
 
         // Получаем создателя, чтобы узнать его ID
@@ -155,7 +168,8 @@ app.post('/api/room/create', async (req, res) => {
         res.status(201).json({
             roomId: roomCode,
             nickname: creator.nickname,
-            project: manager.GameSession.project
+            project: manager.GameSession.project,
+            maxPlayers: maxPlayers
         });
 
     } catch (error) {
@@ -214,7 +228,8 @@ app.post('/api/room/join', (req, res) => {
         res.status(200).json({
             success: true,
             nickname: newPlayer.nickname,
-            roomId: roomCode
+            roomId: roomCode,
+            maxPlayers: session.players_count //добавила
         });
 
     } catch (error) {
@@ -225,9 +240,12 @@ app.post('/api/room/join', (req, res) => {
 
 // Эндпоинт выдачи списка игроков для лобби
 app.get('/api/room/players', authenticatePlayer, (req, res) => {
-    const manager = req.manager
+    const manager = req.manager;
 
-    res.json(manager.GameSession.players_list)
+    res.json({
+        players: manager.GameSession.players_list,
+        maxPlayers: manager.GameSession.players_count  //добавила
+    });
 })
 
 app.listen(PORT, '0.0.0.0', () => {

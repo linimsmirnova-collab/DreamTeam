@@ -201,7 +201,8 @@ function addPageHandlers(container) {
                     rooms[roomCode] = {
                         creator: nickname,
                         players: [nickname],
-                        playersCount: parseInt(playersCount),///////////////
+                        playersCount: parseInt(playersCount),
+                        maxPlayers: parseInt(playersCount),
                         randomEvents: checkboxChecked,
                         createdAt: new Date().toISOString()
                     };
@@ -213,6 +214,7 @@ function addPageHandlers(container) {
                     
                     sessionStorage.setItem('currentRoomCode', roomCode);
                     sessionStorage.setItem('currentPlayer', nickname);
+                    sessionStorage.setItem('maxPlayers', playersCount);
                     
                     loadPage('player-list.html', container);
                 } 
@@ -225,18 +227,21 @@ function addPageHandlers(container) {
                         randomEvents: checkboxChecked
                     };
 
-                    fetch('/api/room/create', {
+                    fetch('http://localhost:3000/api/room/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',//////////////////
+                        credentials: 'include',
                         body: JSON.stringify(roomData)
                     })
                     .then(response => response.json())
                     .then(data => {
-                        if (data.success) {
-                            alert('Комната создана! Код комнаты: ' + data.roomCode);
-                            sessionStorage.setItem('currentRoomCode', data.roomCode);
-                            sessionStorage.setItem('currentPlayer', nickname);
+                        // Бэк возвращает { roomId, nickname, project }
+                        if (data.roomId) {
+                            alert('Комната создана! Код комнаты: ' + data.roomId);
+                            sessionStorage.setItem('currentRoomCode', data.roomId);
+                            sessionStorage.setItem('currentPlayer', data.nickname);
+                            sessionStorage.setItem('maxPlayers', data.maxPlayers);
+                            sessionStorage.setItem('project', JSON.stringify(data.project)); // сохраняем проект
                             loadPage('player-list.html', container);
                         } else {
                             alert('Ошибка: ' + (data.error || 'Не удалось создать комнату'));
@@ -246,7 +251,6 @@ function addPageHandlers(container) {
                         console.error('Ошибка:', error);
                         alert('Не удалось подключиться к серверу');
                     });
-                    //*/
                 }
             }
             
@@ -310,17 +314,20 @@ function addPageHandlers(container) {
                         roomCode: code
                     };
 
-                    fetch('/api/room/join', {
+                    fetch('http://localhost:3000/api/room/join', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify(joinData)
                     })
                     .then(response => response.json())
                     .then(data => {
+                        // Бэк возвращает { true, nickname, roomId, maxPlayers }
                         if (data.success) {
                             alert('Вы успешно вошли в комнату!');
-                            sessionStorage.setItem('currentRoomCode', code);
-                            sessionStorage.setItem('currentPlayer', nickname);
+                            sessionStorage.setItem('currentRoomCode', data.roomId);
+                            sessionStorage.setItem('currentPlayer', data.nickname);
+                            sessionStorage.setItem('maxPlayers', data.maxPlayers);
                             loadPage('player-list.html', container);
                         } else {
                             alert('Ошибка: ' + (data.error || 'Не удалось войти в комнату'));
@@ -330,7 +337,6 @@ function addPageHandlers(container) {
                         console.error('Ошибка:', error);
                         alert('Не удалось подключиться к серверу');
                     });
-                    //*/
                 }
             }
         };
@@ -403,15 +409,186 @@ function addPageHandlers(container) {
         } else {
             // ===== РАБОЧИЙ РЕЖИМ (запрос к серверу) =====
             
-            fetch(`/api/room/players?code=${roomCode}`)
-                .then(response => response.json())
-                .then(data => {
-                    if (data.success) {
-                        // Здесь будет отображение игроков с сервера
-                        console.log('Игроки в комнате:', data.players);
+            console.log('Запрашиваем игроков для комнаты:', roomCode);
+    
+            if (!roomCode) {
+                console.error('roomCode не найден в sessionStorage');
+                return;
+            }
+
+            // Убираем старый интервал, если был
+            if (window.playersInterval) clearInterval(window.playersInterval);
+
+            // Функция загрузки игроков
+            function loadPlayers() {
+                const currentRoomCode = sessionStorage.getItem('currentRoomCode');
+                const currentPlayer = sessionStorage.getItem('currentPlayer');
+        
+                if (!currentRoomCode) return;
+
+                // Отображаем код комнаты сразу
+                const roomCodeDisplay = container.querySelector('.room-code-display');
+                if (roomCodeDisplay) {
+                    roomCodeDisplay.textContent = `КОД КОМНАТЫ: ${roomCode}`;
+                }
+
+                fetch(`http://localhost:3000/api/room/players?code=${roomCode}`, {
+                    credentials: 'include',
+                    headers: {
+                    'Content-Type': 'application/json'
                     }
+                })
+                .then(response => {
+                    console.log('Статус ответа для players:', response.status);
+                    if (response.status === 401) {
+                        throw new Error('Не авторизован (ошибка 401)');
+                    }
+                    if (!response.ok) {
+                        throw new Error(`HTTP ошибка ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Данные от сервера (players):', data);
+
+                    // Возвращает объект { players: [...], maxPlayers: ... }
+                    if (!data.players || !Array.isArray(data.players)) {
+                        console.error('Сервер вернул неверный формат:', data);
+                        return;
+                    }
+    
+                    const players = data.players;
+                    const serverMaxPlayers = data.maxPlayers;
+    
+                    // Получаем максимальное количество игроков (сначала из ответа сервера, потом из sessionStorage)
+                    const maxPlayers = serverMaxPlayers || parseInt(sessionStorage.getItem('maxPlayers')) || 6;
+    
+                    // Сохраняем в sessionStorage
+                    sessionStorage.setItem('maxPlayers', maxPlayers);
+    
+                    // Обновляем счетчик
+                    const votingCount = container.querySelector('.voting-count');
+                    if (votingCount) {
+                        votingCount.textContent = `${players.length} из ${maxPlayers}`;
+                    }
+
+                    // Отображаем игроков
+                    const playersList = container.querySelector('.players-list');
+                    if (playersList) {
+                        playersList.innerHTML = '';
+
+                        // Добавляем всех реальных игроков
+                        players.forEach(player => {
+                            const playerItem = document.createElement('div');
+                            playerItem.className = 'player-item' + (player.nickname === currentPlayer ? ' current-player' : '');
+                            playerItem.innerHTML = `
+                                <div class="player-badge"></div>
+                                <div class="player-name">${player.nickname}</div>
+                            `;
+                            playersList.appendChild(playerItem);
+                        });
+
+                        // Добавляем пустые слоты
+                        for (let i = players.length; i < maxPlayers; i++) {
+                            const emptySlot = document.createElement('div');
+                            emptySlot.className = 'player-item empty-slot';
+                            emptySlot.innerHTML = `
+                                <div class="player-badge"></div>
+                                <div class="player-name">...</div>
+                            `;
+                            playersList.appendChild(emptySlot);
+                        }
+        
+                        // ===== УПРАВЛЕНИЕ КНОПКОЙ "НАЧАТЬ" (с проверкой can-start) =====
+                        const startBtn = container.querySelector('.player-list-start');
+                        const waitingMessage = container.querySelector('.waiting-message');
+
+                        // Определяем, является ли текущий игрок создателем
+                        const isCreator = players.some(player => player.nickname === currentPlayer && player.be_creator === true);
+
+                        if (isCreator) {
+                            // ===== СОЗДАТЕЛЬ — показываем кнопку =====
+                            if (startBtn) {
+                                startBtn.style.display = 'block';
+    
+                                function checkCanStart() {
+                                    fetch('http://localhost:3000/api/room/can-start', {
+                                        method: 'POST',
+                                        credentials: 'include',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ roomCode: roomCode })
+                                    })
+                                    .then(response => response.json())
+                                    .then(canStartData => {
+                                        console.log('can-start ответ:', canStartData);
+            
+                                        if (canStartData.canStart) {
+                                            startBtn.style.opacity = '1';
+                                            startBtn.style.pointerEvents = 'auto';
+
+                                            // Меняем фон кнопки
+                                            const startBg = startBtn.querySelector('.start-background');
+                                            if (startBg) {
+                                                startBg.style.background = '#F17BAB';
+                                                startBg.style.border = '2px solid #7F375A';  
+                                            }
+                
+                                            // Меняем цвет текста и добавляем обводку
+                                            const startText = startBtn.querySelector('.start-text');
+                                            if (startText) {
+                                                startText.style.color = '#FFFFFF';
+                                                startText.style.textShadow = `
+                                                    1px 0 0 #7F375A,
+                                                    -1px 0 0 #7F375A,
+                                                    0 1px 0 #7F375A,
+                                                    0 -1px 0 #7F375A,
+                                                    1px 1px 0 #7F375A,
+                                                    -1px -1px 0 #7F375A,
+                                                    1px -1px 0 #7F375A,
+                                                    -1px 1px 0 #7F375A`;
+                                            }
+
+                                            startBtn.onclick = function() {
+                                                alert('Игра начинается!');
+                                                loadPage('profile.html', container);
+                                            };
+                                        } else {
+                                            startBtn.style.opacity = '0.5';
+                                            startBtn.style.pointerEvents = 'none';
+                                            const startBg = startBtn.querySelector('.start-background');
+                                            if (startBg) startBg.style.background = '#DADADA';
+                                            if (canStartData.reason) startBtn.title = canStartData.reason;
+                                        }
+                                    })
+                                    .catch(error => {
+                                        console.error('Ошибка проверки can-start:', error);
+                                        startBtn.style.opacity = '0.5';
+                                        startBtn.style.pointerEvents = 'none';
+                                    });
+                                }
+    
+                                checkCanStart();
+                                if (window.canStartInterval) clearInterval(window.canStartInterval);
+                                window.canStartInterval = setInterval(checkCanStart, 3000);
+                            }
+                            if (waitingMessage) waitingMessage.style.display = 'none';
+                        } else {
+                            // ===== НЕ СОЗДАТЕЛЬ — скрываем кнопку, показываем уведомление =====
+                            if (startBtn) startBtn.style.display = 'none';
+                            if (waitingMessage) waitingMessage.style.display = 'block';
+                        }
+                    }
+                })
+        
+                .catch(error => {
+                console.error('Ошибка при получении списка игроков:', error);
                 });
-            //*/
-        }
+            } 
+            // Загружаем сразу
+            loadPlayers();
+    
+            // Автообновление каждые 2 секунды
+            window.playersInterval = setInterval(loadPlayers, 2000);      
+        }  
     }
 }
