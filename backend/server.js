@@ -248,24 +248,6 @@ app.get('/api/room/players', authenticatePlayer, (req, res) => {
     });
 })
 
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Сервер запущен:`);
-    console.log(`- Локально: http://localhost:${PORT}`);
-    console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
-});
-// function getLocalIP() {
-//     const nets = require('os').networkInterfaces();
-//     for (const name of Object.keys(nets)) {
-//         for (const net of nets[name]) {
-//             if (net.family === 'IPv4' && !net.internal) {
-//                 return net.address;
-//             }
-//         }
-//     }
-//     return '127.0.0.1';
-// }
-
-
 //тут эндпоинт can-start
 //authenticatePlayer подрезал
 app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
@@ -283,7 +265,7 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
             playerId: player.uuid,
             creatorId: creatorId,
             currentPlayers: currentPlayers,
-            minPlayers: 4
+            minPlayers: session.players_count,
         })
 
         // параметры для валидации
@@ -317,3 +299,20 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         });
     }
 });
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Сервер запущен:`);
+    console.log(`- Локально: http://localhost:${PORT}`);
+    console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
+});
+// function getLocalIP() {
+//     const nets = require('os').networkInterfaces();
+//     for (const name of Object.keys(nets)) {
+//         for (const net of nets[name]) {
+//             if (net.family === 'IPv4' && !net.internal) {
+//                 return net.address;
+//             }
+//         }
+//     }
+//     return '127.0.0.1';
+// }

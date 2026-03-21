@@ -46,12 +46,12 @@ function canStartGame({ playerId, creatorId, currentPlayers, minPlayers = 4 }) {
     const isCreator = playerId === creatorId;
     
     // колво
-    const hasEnoughPlayers = currentPlayers >= minPlayers;
+    const hasEnoughPlayers = currentPlayers === minPlayers;
     
     return {
         canStart: isCreator && hasEnoughPlayers,
         reason: !isCreator ? 'Только создатель может начать игру' :
-                !hasEnoughPlayers ? `Нужно минимум ${minPlayers} игроков` :
+                !hasEnoughPlayers ? `Нужно ${minPlayers} игроков` :
                 null
     };
 }
