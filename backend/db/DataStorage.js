@@ -1,4 +1,5 @@
 const sqlite3 = require('sqlite3');
+const Card = require('../models/Card');
 
 // взаимодействие с БД
 class DataStorage {
@@ -37,9 +38,15 @@ class DataStorage {
     // будет выдавать подборку карт для игрока
     getPlayerCards(){
         return new Promise((resolve, reject) => {
-            // временная заглушка, так как не понятное тз = результат хз
-            console.log("был запрос карт игрока у БД")
-            resolve("абоба")
+            this.#DB.all('SELECT id, cat_card AS cardType, text AS name FROM all_cards', (err, rows) => {
+                if (err) {
+                    console.error('Ошибка получения карт из БД:', err.message);
+                    reject(err);
+                    return;
+                }
+                const cards = rows.map(row => new Card(row.id, row.cardType, row.name));
+                resolve(cards);
+            });
         })
     }
 }

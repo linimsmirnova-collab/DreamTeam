@@ -1,5 +1,4 @@
 // Карта
-
 class Card {
     id = null
     cardType = null
@@ -12,4 +11,12 @@ class Card {
     open() {
         this.#isOpen = true
     }
+
+    constructor(id, cardType, name) {
+        this.id = id;
+        this.cardType = cardType;
+        this.name = name;
+    }
 }
+
+module.exports = Card;

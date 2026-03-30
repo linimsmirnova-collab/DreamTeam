@@ -15,6 +15,7 @@ class GameSession {
     // current_round = 0;
     project = null
     game_state = null;
+    usedFeatureIds = new Set();
 
     set roomCode(roomCode) {
         this.#room_code = roomCode;

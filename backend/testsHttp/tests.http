@@ -11,8 +11,11 @@ POST http://localhost:3000/api/room/join
 Content-Type: application/json
 
 {
-  "roomCode": "C40017",
+  "roomCode": "79A390",
   "nickname": "Player2"
 }
 ###
 GET http://localhost:3000/api/room/players
+###
+
+GET http://localhost:3000/api/game/my-cards

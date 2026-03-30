@@ -10,6 +10,7 @@ const getLocalIP = require('get-local-ip');
 const GameManager = require('./models/GameManager');
 const DataStorage = require('./db/DataStorage');
 const Player = require('./models/Player');
+const Card = require('./models/Card');
 
 const { calculateGameParams, canStartGame } = require('./serverFunctions');
 
@@ -289,9 +290,105 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
 
 app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
     const manager = req.manager;
+    const player = req.player;
+    const session = manager.GameSession;
 
+    // Если карты уже есть – возвращаем их
+    if (player.hand && player.hand.length > 0) {
+        return res.json({ hand: player.hand });
+    }
 
-})
+    try {
+        // Получаем все карты из базы данных
+        const allCards = await db.getPlayerCards(); // массив объектов Card
+        if (!allCards || allCards.length === 0) {
+            res.status(500).json({ error: 'Нет карт в базе данных' });
+        }
+
+        // Группируем по cardType (1–6)
+        const cardsByType = {};
+        for (let i = 1; i <= 6; i++) cardsByType[i] = [];
+        allCards.forEach(card => {
+            if (cardsByType[card.cardType]) {
+                cardsByType[card.cardType].push(card);
+            }
+        });
+
+        // Для типа 5 (особенностей) ведём учёт использованных
+        if (!session.usedFeatureIds) session.usedFeatureIds = new Set();
+
+        // Функция получения доступных карт (с учётом used только для типа 5)
+        const getAvailable = (type) => {
+            let available = cardsByType[type];
+            if (type === 5) {
+                available = available.filter(c => !session.usedFeatureIds.has(c.id));
+            }
+            return available;
+        };
+
+        // Шаг 1: выбираем роль (тип 1)
+        const availableRoles = getAvailable(1);
+        if (availableRoles.length === 0) {
+            return res.status(500).json({ error: 'Нет доступных ролей' });
+        }
+        const randomRole = availableRoles[Math.floor(Math.random() * availableRoles.length)];
+        const roleName = randomRole.name;
+
+        // Шаг 2: выбираем особенность (тип 5), совместимую с ролью
+        const availableFeatures = getAvailable(5).filter(feature => {
+            const colonIndex = feature.name.indexOf(':');
+            if (colonIndex === -1) return false;
+            const prefix = feature.name.substring(0, colonIndex).trim();
+            return prefix === 'Общая' || prefix === roleName;
+        });
+        if (availableFeatures.length === 0) {
+            return res.status(500).json({ error: 'Нет подходящей особенности для выбранной роли' });
+        }
+        const randomFeature = availableFeatures[Math.floor(Math.random() * availableFeatures.length)];
+
+        // Обрезаем текст особенности (оставляем описание после двоеточия)
+        const colonIdx = randomFeature.name.indexOf(':');
+        const featureDesc = colonIdx !== -1 ? randomFeature.name.substring(colonIdx + 1).trim() : randomFeature.name;
+        const featureCard = new Card(randomFeature.id, randomFeature.cardType, featureDesc);
+
+        // Помечаем особенность как использованную (только для типа 5)
+        session.usedFeatureIds.add(randomFeature.id);
+
+        // Шаг 3: выбираем остальные типы (2,3,4,6) – без учёта уникальности
+        const otherTypes = [2, 3, 4, 6];
+        const selectedOthers = [];
+        for (const type of otherTypes) {
+            const available = getAvailable(type);
+            if (available.length === 0) {
+                return res.status(500).json({ error: `Недостаточно карт типа ${type}` });
+            }
+            const randomCard = available[Math.floor(Math.random() * available.length)];
+            selectedOthers.push(randomCard);
+        }
+
+        // Собираем все карты
+        const selectedCards = [randomRole, ...selectedOthers, featureCard];
+
+        // Сортируем по типу (1,2,3,4,5,6) для удобства
+        selectedCards.sort((a, b) => a.cardType - b.cardType);
+
+        // Сохраняем в профиль игрока
+        player.hand = selectedCards;
+
+        // Обновляем игрока в сессии
+        const playerIndex = session.players_list.findIndex(p => p.uuid === player.uuid);
+        if (playerIndex !== -1) {
+            session.players_list[playerIndex] = player;
+        } else {
+            session.players_list.push(player);
+        }
+
+        res.json({ hand: selectedCards });
+    } catch (error) {
+        console.error('Ошибка при выдаче карт:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);
