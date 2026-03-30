@@ -34,7 +34,7 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, '..', 'WEB')));
 
 //const db = new DataStorage('./db/dream_team.db')
-const db = new DataStorage(path.join(__dirname, 'db/dream_team.db'));
+const db = new DataStorage(path.join(__dirname, 'db/dream_team_new.db'));
 const activeManagers = new Map();
 
 const gameState = Object.freeze({
@@ -286,6 +286,12 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
         });
     }
 });
+
+app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
+    const manager = req.manager;
+
+
+})
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);

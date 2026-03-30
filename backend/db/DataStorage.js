@@ -34,6 +34,14 @@ class DataStorage {
             });
         });
     }
+    // будет выдавать подборку карт для игрока
+    getPlayerCards(){
+        return new Promise((resolve, reject) => {
+            // временная заглушка, так как не понятное тз = результат хз
+            console.log("был запрос карт игрока у БД")
+            resolve("абоба")
+        })
+    }
 }
 
 module.exports = DataStorage;

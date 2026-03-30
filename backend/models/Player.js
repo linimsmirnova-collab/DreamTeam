@@ -6,6 +6,10 @@ class Player {
     nickname = ''
     be_creator = false
     active = true
+    hand = []
+    openCards = []
+    isVoted = false
+    votedOnPlayer = null
 
     constructor (uuid, be_creator, nick) {
         this.uuid = uuid

@@ -1,7 +1,6 @@
 const GameSession = require('./GameSession');
 const DataStorage = require('../db/DataStorage');
 const Player = require('./Player');
-const nicknamesData = require('./nicknames.json');
 
 // Игровой менеджер
 class GameManager {
@@ -33,12 +32,7 @@ class GameManager {
         this.#gameSession = new GameSession(roomCode, creater, events, playersCount, final_players_count, rounds, project);
         console.log(creater.nickname)
     }
-    // GenerateNickname () {
-    //     // в будущем добавить проверку на уникальность
-    //     const nicknames = nicknamesData.nicknames;
-    //     const randomIndex = Math.floor(Math.random() * nicknames.length);
-    //     return nicknames[randomIndex];
-    // }
+
     AddPlayerToGameSession (player) {
         this.#gameSession.players_list.push(player)
     }
