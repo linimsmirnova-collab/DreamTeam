@@ -27,9 +27,15 @@ function generateRoomCode() {
 window.onload = function() {
     
     const container = document.querySelector('.container');
-    
-    // Загружаем главную страницу при старте
-    loadPage('main-page-content.html', container);
+    const roomCode = sessionStorage.getItem('currentRoomCode');
+    const currentPlayer = sessionStorage.getItem('currentPlayer');
+
+    // проверка на то что игрок уже является членом комнаты, если да, то загружается список игроков, если нет то стартовая страница
+    if (roomCode && currentPlayer) {
+        loadPage('player-list.html', container);
+    } else {
+        loadPage('main-page-content.html', container);
+    }
 }
 
 // Функция для загрузки HTML страницы
