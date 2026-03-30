@@ -16,22 +16,22 @@ const { calculateGameParams, canStartGame } = require('./serverFunctions');
 const app = express();
 const PORT = 3000;
 
-app.use(cors({
-    origin: 'http://localhost:5500', //добавила адрес фронтенда
-    credentials: true
-}));
+// app.use(cors({
+//     origin: 'http://localhost:5500', //добавила адрес фронтенда
+//     credentials: true
+// }));
 app.use(express.json());
 app.use(cookieParser());
 
 //app.use(express.static(path.join(__dirname, 'public')));
 
-
-
-
 //app.use('/pages', express.static(path.join(__dirname, '../WEB/pages')));
 
 // console.log(' __dirname:', __dirname);
 // console.log('Путь к WEB:', path.join(__dirname, '../WEB/pages'));
+
+// Раздача статики из папки WEB
+app.use(express.static(path.join(__dirname, '..', 'WEB')));
 
 //const db = new DataStorage('./db/dream_team.db')
 const db = new DataStorage(path.join(__dirname, 'db/dream_team.db'));
@@ -119,6 +119,11 @@ function authenticatePlayer(req, res, next) {
 //         roomId: req.roomId
 //     });
 // });
+
+// эндпоинт для отображения стартовой страницы в корневой ссылке
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, '..', 'WEB', 'pages', 'main-page.html'));
+});
 
 // Эндпоинт создания комнаты
 app.post('/api/room/create', async (req, res) => {
