@@ -2,517 +2,360 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>DreamTeam – Тест игрового сценария</title>
-    <!-- Подключаем socket.io клиент -->
-    <script src="/socket.io/socket.io.js"></script>
+    <title>DreamTeam — Полный тест с картами игроков</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-            user-select: none;
-        }
-        body {
-            background: #f5f5f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            font-family: 'Segoe UI', 'Inria Serif', sans-serif;
-        }
-        /* Имитируем экран мобильного телефона */
-        .phone {
-            width: 393px;
-            height: 852px;
-            background: white;
-            border-radius: 32px;
-            overflow: hidden;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-        }
-        /* Верхняя полоса (розовая) */
-        .status-bar {
-            background: #FFCBE5;
-            height: 85px;
-            padding: 12px 16px;
-        }
-        .status-bar h1 {
-            font-size: 20px;
-            color: #7F375A;
-            font-weight: normal;
-        }
-        .status-bar p {
-            font-size: 14px;
-            color: #9B3D63;
-        }
-        /* Основной контент */
-        .content {
-            flex: 1;
-            padding: 20px 16px;
-            overflow-y: auto;
-            display: flex;
-            flex-direction: column;
-            gap: 20px;
-        }
-        /* Карточки действий */
-        .card {
-            background: #fff;
-            border-radius: 24px;
-            border: 1px solid #FFCBE5;
-            padding: 16px;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
-        }
-        .card h3 {
-            color: #7F375A;
-            margin-bottom: 12px;
-            font-size: 18px;
-        }
-        input, button {
-            width: 100%;
-            padding: 12px;
-            margin: 8px 0;
-            border-radius: 40px;
-            border: 1px solid #F17BAB;
-            font-size: 16px;
-            outline: none;
-        }
-        button {
-            background: #F17BAB;
-            color: white;
-            font-weight: bold;
-            border: none;
-            cursor: pointer;
-            transition: 0.2s;
-        }
-        button:active {
-            transform: scale(0.97);
-        }
-        button.secondary {
-            background: #FFCBE5;
-            color: #7F375A;
-        }
-        .info {
-            background: #FFCBE5;
-            border-radius: 16px;
-            padding: 12px;
-            font-size: 14px;
-            color: #7F375A;
-        }
-        .player-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        .player-item {
-            background: #FFF0F5;
-            padding: 10px;
-            border-radius: 40px;
-            display: flex;
-            justify-content: space-between;
-            font-weight: bold;
-        }
-        .badge {
-            background: #F17BAB;
-            color: white;
-            border-radius: 20px;
-            padding: 2px 10px;
-            font-size: 12px;
-        }
-        .hidden {
-            display: none;
-        }
-        .log {
-            font-size: 12px;
-            color: #555;
-            border-top: 1px solid #eee;
-            margin-top: 12px;
-            padding-top: 8px;
-        }
-        .error {
-            color: #d32f2f;
-            background: #ffebee;
-            padding: 8px;
-            border-radius: 20px;
-        }
+        * { box-sizing: border-box; }
+        body { font-family: system-ui; background: #f0f2f5; margin: 0; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .screen { display: none; padding: 24px; }
+        .screen.active { display: block; }
+        h2 { margin-top: 0; color: #7F375A; }
+        .info-panel { background: #FFCBE5; border-radius: 20px; padding: 12px 16px; margin-bottom: 20px; color: #7F375A; }
+        button { background: #F17BAB; border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 40px; cursor: pointer; margin: 4px 6px 4px 0; }
+        button.secondary { background: #FFCBE5; color: #7F375A; }
+        input, select { padding: 10px 14px; border-radius: 40px; border: 1px solid #F17BAB; margin: 8px 0; width: 100%; }
+        .players-list { list-style: none; padding: 0; margin: 12px 0; background: #FFF0F5; border-radius: 24px; padding: 12px; }
+        .players-list li { padding: 8px 12px; border-bottom: 1px solid #FFCBE5; display: flex; justify-content: space-between; }
+        .game-grid { display: flex; gap: 24px; flex-wrap: wrap; }
+        .my-cards-section { flex: 2; min-width: 280px; }
+        .players-revealed { flex: 1; min-width: 250px; background: #FFF0F5; border-radius: 24px; padding: 16px; }
+        .player-reveal { margin-bottom: 16px; border-bottom: 1px solid #FFCBE5; padding-bottom: 8px; }
+        .player-reveal strong { color: #7F375A; }
+        .revealed-cards { font-size: 12px; margin-top: 6px; color: #555; }
+        .cards-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
+        .card { background: #FFF0F5; border-radius: 20px; border: 1px solid #F17BAB; width: 160px; padding: 10px; }
+        .card.closed { opacity: 0.7; background: #e9e9e9; }
+        .card strong { display: block; color: #9B3D63; margin-bottom: 6px; font-size: 14px; }
+        .card button { width: 100%; margin-top: 8px; background: #7F375A; font-size: 12px; }
+        .turn-indicator { background: #F17BAB; color: white; padding: 12px; border-radius: 60px; text-align: center; font-weight: bold; margin: 16px 0; }
+        .log { background: #f8f9fa; border-radius: 20px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; margin-top: 20px; }
+        .flex-row { display: flex; gap: 12px; flex-wrap: wrap; }
     </style>
+    <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
-<div class="phone">
-    <div class="status-bar">
-        <h1>DreamTeam</h1>
-        <p>IT-бункер | Поиск команды</p>
+<div class="container">
+    <div id="startScreen" class="screen active">
+        <h2>🎮 DreamTeam — Тест с просмотром карт игроков</h2>
+        <div class="info-panel">Создайте или войдите в комнату → старт → вскрывайте карты → смотрите, кто что открыл</div>
+        <input type="text" id="nicknameInput" placeholder="Ваш никнейм" value="ТестИгрок">
+        <div class="flex-row">
+            <button id="createRoomBtn">✨ Создать комнату</button>
+            <button id="showJoinBtn" class="secondary">🔍 Присоединиться</button>
+        </div>
+        <div id="joinBlock" style="display: none; margin-top: 12px;">
+            <input type="text" id="roomCodeJoin" placeholder="Код комнаты (6 символов)">
+            <button id="doJoinBtn">Присоединиться</button>
+        </div>
     </div>
-    <div class="content" id="appContent">
-        <!-- Здесь будет динамический контент -->
+
+    <div id="lobbyScreen" class="screen">
+        <h2>🏠 Комната: <span id="lobbyRoomCode">---</span></h2>
+        <div class="info-panel" id="lobbyStatus">Загрузка...</div>
+        <ul class="players-list" id="playersList"></ul>
+        <button id="startGameBtn" style="display: none;">▶ Начать игру</button>
+        <button id="leaveLobbyBtn" class="secondary">🚪 Выйти из комнаты</button>
+    </div>
+
+    <div id="gameScreen" class="screen">
+        <h2>🎲 Игровой процесс</h2>
+        <div class="info-panel">
+            <div>Комната: <strong id="gameRoomCode"></strong> | Ваш ник: <strong id="gameNickname"></strong></div>
+            <div id="turnDisplay" class="turn-indicator">⏳ Определение хода...</div>
+        </div>
+        <div class="game-grid">
+            <div class="my-cards-section">
+                <h3>📇 Ваши карты</h3>
+                <div id="cardsContainer" class="cards-grid"></div>
+                <h3>✅ Ваши вскрытые карты</h3>
+                <ul id="openCardsList"></ul>
+            </div>
+            <div class="players-revealed">
+                <h3>👥 Вскрытые карты игроков</h3>
+                <div id="playersRevealedContainer"></div>
+            </div>
+        </div>
+        <div class="log" id="eventLog"></div>
+        <button id="leaveGameBtn" class="secondary">◀ Выйти в лобби</button>
     </div>
 </div>
 
 <script>
-    // -------------------- Глобальные переменные --------------------
-    let socket = null;                // WebSocket соединение
-    let currentRoomCode = null;
-    let currentPlayerNick = null;
-    let currentPlayerUuid = null;
+    let socket = null;
+    let currentRoomCode = null, currentNickname = null, currentPlayerUuid = null;
     let isCreator = false;
-    let playersInterval = null;
-    let canStartInterval = null;
+    let myHand = [], myOpenCards = [];
+    let allPlayers = [];           // список игроков {uuid, nickname}
+    let revealedCardsMap = new Map(); // ключ: uuid игрока, значение: массив вскрытых карт
+    let lobbyInterval = null, turnInterval = null;
 
-    // DOM-элементы
-    const appDiv = document.getElementById('appContent');
+    const startScreen = document.getElementById('startScreen');
+    const lobbyScreen = document.getElementById('lobbyScreen');
+    const gameScreen = document.getElementById('gameScreen');
 
-    // -------------------- Вспомогательные функции --------------------
-    function showScreen(screenName) {
-        switch(screenName) {
-            case 'main':
-                renderMainScreen();
-                break;
-            case 'create':
-                renderCreateRoom();
-                break;
-            case 'join':
-                renderJoinRoom();
-                break;
-            case 'lobby':
-                renderLobby();
-                break;
-            case 'profile':
-                renderProfile();
-                break;
-            default:
-                renderMainScreen();
-        }
+    function showScreen(name) {
+        startScreen.classList.remove('active');
+        lobbyScreen.classList.remove('active');
+        gameScreen.classList.remove('active');
+        if (name === 'start') startScreen.classList.add('active');
+        if (name === 'lobby') lobbyScreen.classList.add('active');
+        if (name === 'game') gameScreen.classList.add('active');
     }
 
-    // API запрос с обработкой ошибок
-    async function apiRequest(url, method = 'GET', body = null) {
-        const options = {
-            method,
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' }
-        };
-        if (body) options.body = JSON.stringify(body);
-        const response = await fetch(url, options);
-        const data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || `Ошибка ${response.status}`);
-        }
-        return data;
-    }
-
-    // Регистрация в WebSocket комнате
-    function registerWebSocket() {
-        if (!socket || !socket.connected) {
-            console.warn('WebSocket не подключен');
-            return;
-        }
-        if (currentRoomCode && currentPlayerUuid) {
-            socket.emit('register', { playerUuid: currentPlayerUuid, roomCode: currentRoomCode });
-            addLog(`🔌 Зарегистрированы в комнате ${currentRoomCode} как ${currentPlayerNick}`);
-        } else {
-            addLog(`⚠️ Невозможно зарегистрироваться: нет roomCode или uuid`);
-        }
-    }
-
-    // Подключение WebSocket
-    function connectWebSocket() {
-        if (socket && socket.connected) return;
-        socket = io({ withCredentials: true });
-        socket.on('connect', () => {
-            addLog(`WebSocket подключен (id: ${socket.id})`);
-            registerWebSocket();
-        });
-        socket.on('game-start', (data) => {
-            addLog(`ПОЛУЧЕНО game-start: ${data.message}`);
-            // Переход на страницу профиля (имитация)
-            showScreen('profile');
-        });
-        socket.on('disconnect', () => {
-            addLog(`WebSocket отключен`);
-        });
-    }
-
-    // Логирование (для отладки)
     function addLog(msg) {
-        const logDiv = document.getElementById('liveLog');
+        const logDiv = document.getElementById('eventLog');
         if (logDiv) {
             const p = document.createElement('div');
             p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
             logDiv.appendChild(p);
             logDiv.scrollTop = logDiv.scrollHeight;
-        } else {
-            console.log(msg);
         }
     }
 
-    // Получить список игроков и обновить лобби
-    async function refreshPlayers() {
+    async function apiRequest(url, method = 'GET', body = null) {
+        const options = { method, credentials: 'include', headers: { 'Content-Type': 'application/json' } };
+        if (body) options.body = JSON.stringify(body);
+        const response = await fetch(url, options);
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || `HTTP ${response.status}`);
+            return data;
+        } else {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return null;
+        }
+    }
+
+    function connectWebSocket() {
+        if (socket && socket.connected) return;
+        socket = io({ withCredentials: true });
+        socket.on('connect', () => {
+            addLog(`🔌 WebSocket подключён`);
+            if (currentRoomCode && currentPlayerUuid) {
+                socket.emit('register', { playerUuid: currentPlayerUuid, roomCode: currentRoomCode });
+            }
+        });
+        socket.on('game-start', async (data) => {
+            addLog(`🚀 ${data.message}`);
+            await startGameplay();
+        });
+        socket.on('reveal-card', (data) => {
+            addLog(`📢 ${data.player.nickname} вскрыл карту: "${data.openCard.name}"`);
+            // обновляем карты этого игрока
+            if (!revealedCardsMap.has(data.player.uuid)) revealedCardsMap.set(data.player.uuid, []);
+            revealedCardsMap.get(data.player.uuid).push(data.openCard);
+            // если это наш игрок, обновляем локально
+            if (data.player.uuid === currentPlayerUuid) {
+                myOpenCards.push(data.openCard);
+                renderMyCards();
+                renderOpenCardsList();
+            }
+            renderPlayersRevealed();
+            checkTurn();
+        });
+        socket.on('disconnect', () => addLog('❌ WebSocket отключён'));
+    }
+
+    // Загрузка списка игроков (для игрового экрана)
+    async function loadPlayersList() {
+        if (!currentRoomCode) return [];
+        const data = await apiRequest(`/api/room/players?code=${currentRoomCode}`);
+        return data.players || [];
+    }
+
+    // Инициализация игрового экрана
+    async function startGameplay() {
+        if (lobbyInterval) clearInterval(lobbyInterval);
+        showScreen('game');
+        document.getElementById('gameRoomCode').innerText = currentRoomCode;
+        document.getElementById('gameNickname').innerText = currentNickname;
+
+        // Загружаем список игроков
+        allPlayers = await loadPlayersList();
+        // Очищаем карты вскрытий
+        revealedCardsMap.clear();
+        allPlayers.forEach(p => revealedCardsMap.set(p.uuid, []));
+        // Загружаем свои карты
+        const data = await apiRequest('/api/game/my-cards', 'GET');
+        myHand = data.hand || [];
+        myOpenCards = [];
+        renderMyCards();
+        renderOpenCardsList();
+        renderPlayersRevealed();
+
+        if (turnInterval) clearInterval(turnInterval);
+        turnInterval = setInterval(() => checkTurn(), 2000);
+        checkTurn();
+    }
+
+    function renderMyCards() {
+        const container = document.getElementById('cardsContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        myHand.forEach((card, idx) => {
+            const isOpen = myOpenCards.some(oc => oc.id === card.id);
+            const div = document.createElement('div');
+            div.className = 'card' + (isOpen ? '' : ' closed');
+            div.innerHTML = `
+                <strong>${getTypeName(card.cardType)}</strong>
+                <div>${card.name}</div>
+                ${!isOpen ? `<button data-idx="${idx}">🔓 Вскрыть</button>` : '<span>✅ Открыта</span>'}
+            `;
+            container.appendChild(div);
+        });
+        document.querySelectorAll('#cardsContainer button[data-idx]').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const idx = parseInt(btn.dataset.idx);
+                if (isNaN(idx)) return;
+                try {
+                    const response = await fetch('/api/game/reveal-card', {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ cat_card: idx + 1 })
+                    });
+                    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                    addLog(`Вы вскрыли карту "${myHand[idx].name}"`);
+                } catch (err) {
+                    alert(`Ошибка вскрытия: ${err.message}`);
+                }
+            });
+        });
+    }
+
+    function renderOpenCardsList() {
+        const list = document.getElementById('openCardsList');
+        if (list) list.innerHTML = myOpenCards.map(c => `<li>${c.name} (${getTypeName(c.cardType)})</li>`).join('');
+    }
+
+    function renderPlayersRevealed() {
+        const container = document.getElementById('playersRevealedContainer');
+        if (!container) return;
+        container.innerHTML = '';
+        for (let player of allPlayers) {
+            const cards = revealedCardsMap.get(player.uuid) || [];
+            const div = document.createElement('div');
+            div.className = 'player-reveal';
+            div.innerHTML = `
+                <strong>${player.nickname}${player.uuid === currentPlayerUuid ? ' (Вы)' : ''}</strong>
+                <div class="revealed-cards">
+                    ${cards.length === 0 ? 'Пока не вскрывал(а)' : cards.map(c => `${c.name} (${getTypeName(c.cardType)})`).join(', ')}
+                </div>
+            `;
+            container.appendChild(div);
+        }
+    }
+
+    function getTypeName(type) {
+        const map = {1:'Роль',2:'Стаж',3:'Черта',4:'Soft skill',5:'Особенность',6:'Языки/среды'};
+        return map[type] || 'Карта';
+    }
+
+    async function checkTurn() {
+        try {
+            const data = await apiRequest('/api/game/moved_player', 'GET');
+            const turnDiv = document.getElementById('turnDisplay');
+            if (!turnDiv) return;
+            if (data && data.uuid === currentPlayerUuid) {
+                turnDiv.innerHTML = '🔥 ВАШ ХОД! Выберите карту для вскрытия.';
+                turnDiv.style.background = '#F17BAB';
+            } else if (data) {
+                turnDiv.innerHTML = `⏳ Сейчас ходит: ${data.nickname}`;
+                turnDiv.style.background = '#FFCBE5';
+            } else {
+                turnDiv.innerHTML = '⏳ Ожидание хода...';
+            }
+        } catch (err) { console.warn(err); }
+    }
+
+    async function refreshLobby() {
         if (!currentRoomCode) return;
         try {
             const data = await apiRequest(`/api/room/players?code=${currentRoomCode}`);
             const players = data.players || [];
             const maxPlayers = data.maxPlayers || 4;
-
-            // Сохраняем свой uuid, если ещё не знаем (по нику)
-            const me = players.find(p => p.nickname === currentPlayerNick);
+            const me = players.find(p => p.nickname === currentNickname);
             if (me && !currentPlayerUuid) {
                 currentPlayerUuid = me.uuid;
-                registerWebSocket(); // повторная регистрация с uuid
+                if (socket?.connected) socket.emit('register', { playerUuid: currentPlayerUuid, roomCode: currentRoomCode });
             }
-            // Обновляем отображение в лобби
-            const listContainer = document.getElementById('playersList');
-            const countSpan = document.getElementById('playersCount');
-            if (listContainer) {
-                listContainer.innerHTML = '';
-                players.forEach(p => {
-                    const div = document.createElement('div');
-                    div.className = 'player-item';
-                    div.innerHTML = `<span>${p.nickname}</span>${p.nickname === currentPlayerNick ? '<span class="badge">Вы</span>' : ''}`;
-                    listContainer.appendChild(div);
-                });
-                // пустые слоты
-                for (let i = players.length; i < maxPlayers; i++) {
-                    const empty = document.createElement('div');
-                    empty.className = 'player-item';
-                    empty.innerHTML = '<span>...</span><span class="badge">ожидание</span>';
-                    listContainer.appendChild(empty);
-                }
-                if (countSpan) countSpan.innerText = `${players.length} / ${maxPlayers}`;
+            isCreator = players.some(p => p.nickname === currentNickname && p.be_creator);
+            const listEl = document.getElementById('playersList');
+            if (listEl) {
+                listEl.innerHTML = players.map(p => `<li>${p.nickname} ${p.nickname === currentNickname ? '(Вы)' : ''} ${p.be_creator ? '👑' : ''}</li>`).join('');
+                for (let i = players.length; i < maxPlayers; i++) listEl.innerHTML += `<li>...</li>`;
             }
-            // Обновляем кнопку старта для создателя
             const startBtn = document.getElementById('startGameBtn');
-            if (startBtn) {
-                const isCreatorFlag = players.some(p => p.nickname === currentPlayerNick && p.be_creator === true);
-                isCreator = isCreatorFlag;
-                if (isCreatorFlag) {
-                    startBtn.classList.remove('hidden');
-                    // Проверяем can-start
-                    try {
-                        const canData = await apiRequest('/api/room/can-start', 'POST', { roomCode: currentRoomCode });
-                        if (canData.canStart) {
-                            startBtn.disabled = false;
-                            startBtn.style.opacity = '1';
-                        } else {
-                            startBtn.disabled = true;
-                            startBtn.style.opacity = '0.5';
-                            startBtn.title = canData.reason || 'Не все игроки готовы';
-                        }
-                    } catch(e) { startBtn.disabled = true; }
-                } else {
-                    startBtn.classList.add('hidden');
-                }
-            }
-        } catch(err) {
-            console.error(err);
-            addLog(`Ошибка обновления игроков: ${err.message}`);
-        }
+            if (startBtn) startBtn.style.display = (isCreator && players.length >= 2) ? 'inline-block' : 'none';
+            document.getElementById('lobbyRoomCode').innerText = currentRoomCode;
+            document.getElementById('lobbyStatus').innerHTML = `Игроков: ${players.length} / ${maxPlayers}`;
+        } catch (err) { console.error(err); }
     }
 
-    // --- Старт игры (только создатель) ---
-    async function startGame() {
-        if (!isCreator) {
-            alert('Только создатель может начать игру');
-            return;
-        }
+    // Обработчики кнопок
+    document.getElementById('createRoomBtn').onclick = async () => {
+        const nickname = document.getElementById('nicknameInput').value.trim();
+        if (!nickname) return alert('Введите ник');
+        try {
+            const data = await apiRequest('/api/room/create', 'POST', { nickname, maxPlayers: 4, randomEvents: false });
+            currentRoomCode = data.roomId;
+            currentNickname = data.nickname;
+            currentPlayerUuid = data.playerId;
+            isCreator = true;
+            connectWebSocket();
+            showScreen('lobby');
+            if (lobbyInterval) clearInterval(lobbyInterval);
+            lobbyInterval = setInterval(refreshLobby, 2000);
+            refreshLobby();
+        } catch (err) { alert('Ошибка: ' + err.message); }
+    };
+
+    document.getElementById('showJoinBtn').onclick = () => {
+        const block = document.getElementById('joinBlock');
+        block.style.display = block.style.display === 'none' ? 'block' : 'none';
+    };
+
+    document.getElementById('doJoinBtn').onclick = async () => {
+        const roomCode = document.getElementById('roomCodeJoin').value.trim().toUpperCase();
+        const nickname = document.getElementById('nicknameInput').value.trim();
+        if (!roomCode || roomCode.length !== 6) return alert('Код 6 символов');
+        if (!nickname) return alert('Введите ник');
+        try {
+            const data = await apiRequest('/api/room/join', 'POST', { roomCode, nickname });
+            currentRoomCode = data.roomId;
+            currentNickname = data.nickname;
+            currentPlayerUuid = data.playerId;
+            isCreator = false;
+            connectWebSocket();
+            showScreen('lobby');
+            if (lobbyInterval) clearInterval(lobbyInterval);
+            lobbyInterval = setInterval(refreshLobby, 2000);
+            refreshLobby();
+        } catch (err) { alert('Ошибка: ' + err.message); }
+    };
+
+    document.getElementById('startGameBtn').onclick = async () => {
+        if (!isCreator) return alert('Только создатель');
         try {
             await apiRequest('/api/game/start', 'POST');
-            addLog('✅ Запрос на старт отправлен');
-        } catch(err) {
-            alert('Ошибка старта: ' + err.message);
-        }
+            addLog('Запрос на старт отправлен');
+        } catch (err) { alert('Ошибка старта: ' + err.message); }
+    };
+
+    function leaveRoom() {
+        if (lobbyInterval) clearInterval(lobbyInterval);
+        if (turnInterval) clearInterval(turnInterval);
+        if (socket) socket.disconnect();
+        socket = null;
+        currentRoomCode = null;
+        currentPlayerUuid = null;
+        showScreen('start');
+        document.getElementById('joinBlock').style.display = 'none';
+        document.getElementById('roomCodeJoin').value = '';
     }
-
-    // --- Получение карт (my-cards) и переход в профиль ---
-    async function fetchMyCards() {
-        try {
-            const data = await apiRequest('/api/game/my-cards', 'GET');
-            if (data.hand) {
-                // сохраняем карты в localStorage для отображения в профиле
-                localStorage.setItem('myHand', JSON.stringify(data.hand));
-                return data.hand;
-            }
-        } catch(err) {
-            addLog(`Ошибка получения карт: ${err.message}`);
-        }
-        return [];
-    }
-
-    // --- Отображение профиля с картами ---
-    async function renderProfile() {
-        const cards = await fetchMyCards();
-        appDiv.innerHTML = `
-            <div class="card">
-                <h3>👤 ${currentPlayerNick}</h3>
-                <p>Код комнаты: <b>${currentRoomCode}</b></p>
-            </div>
-            <div class="card">
-                <h3>📇 Ваши карты</h3>
-                <div id="cardsContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
-            </div>
-            <div class="info" id="liveLog" style="max-height: 150px; overflow-y: auto;"></div>
-            <button class="secondary" id="backToLobby">Назад в лобби</button>
-        `;
-        const container = document.getElementById('cardsContainer');
-        if (cards && cards.length) {
-            cards.forEach(card => {
-                const cardDiv = document.createElement('div');
-                cardDiv.style.background = '#FFF0F5';
-                cardDiv.style.borderRadius = '16px';
-                cardDiv.style.padding = '12px';
-                cardDiv.innerHTML = `<b>${getTypeName(card.cardType)}</b><br>${card.name}`;
-                container.appendChild(cardDiv);
-            });
-        } else {
-            container.innerHTML = '<p>Нет карт (запросите my-cards)</p>';
-        }
-        document.getElementById('backToLobby').onclick = () => {
-            showScreen('lobby');
-        };
-        // Добавляем лог
-        addLog(`Профиль открыт. Карт: ${cards.length}`);
-    }
-
-    function getTypeName(type) {
-        const types = {1:'Роль',2:'Стаж',3:'Черта',4:'Soft skill',5:'Особенность',6:'Языки/среды'};
-        return types[type] || 'Карта';
-    }
-
-    // --- Лобби (список игроков) ---
-    function renderLobby() {
-        appDiv.innerHTML = `
-            <div class="card">
-                <h3>🏠 Комната: ${currentRoomCode}</h3>
-                <p>Игроки: <span id="playersCount">0</span></p>
-                <div id="playersList" class="player-list"></div>
-            </div>
-            <div class="card">
-                <button id="startGameBtn" class="hidden" style="background:#F17BAB;">▶ Начать игру</button>
-                <button id="refreshBtn" class="secondary">🔄 Обновить</button>
-                <button id="myCardsTestBtn" class="secondary">📇 Получить карты (профиль)</button>
-                <button id="leaveBtn" style="background:#ccc; color:#333;">🚪 Выйти</button>
-            </div>
-            <div class="info" id="liveLog" style="max-height: 150px; overflow-y: auto;"></div>
-        `;
-        // Запускаем автообновление
-        if (playersInterval) clearInterval(playersInterval);
-        playersInterval = setInterval(() => refreshPlayers(), 2000);
-        refreshPlayers();
-
-        document.getElementById('refreshBtn').onclick = () => refreshPlayers();
-        document.getElementById('myCardsTestBtn').onclick = async () => {
-            await fetchMyCards();
-            showScreen('profile');
-        };
-        document.getElementById('startGameBtn').onclick = () => startGame();
-        document.getElementById('leaveBtn').onclick = () => {
-            if (confirm('Выйти из комнаты?')) {
-                sessionStorage.clear();
-                if (playersInterval) clearInterval(playersInterval);
-                if (canStartInterval) clearInterval(canStartInterval);
-                if (socket) socket.disconnect();
-                currentRoomCode = null;
-                currentPlayerUuid = null;
-                showScreen('main');
-            }
-        };
-        // Подключаем WebSocket, если ещё нет
-        if (!socket || !socket.connected) connectWebSocket();
-        else registerWebSocket();
-    }
-
-    // --- Создание комнаты ---
-    function renderCreateRoom() {
-        appDiv.innerHTML = `
-            <div class="card">
-                <h3>Создание комнаты</h3>
-                <input type="text" id="nickname" placeholder="Ваш ник" value="Создатель${Math.floor(Math.random()*1000)}">
-                <div style="display: flex; gap: 8px; align-items: center;">
-                    <input type="number" id="maxPlayers" min="4" max="16" value="4">
-                    <label><input type="checkbox" id="randomEvents"> Случайные события</label>
-                </div>
-                <button id="doCreate">✅ Создать комнату</button>
-                <button id="backMain" class="secondary">◀ Назад</button>
-            </div>
-            <div class="info" id="liveLog"></div>
-        `;
-        document.getElementById('doCreate').onclick = async () => {
-            const nickname = document.getElementById('nickname').value.trim();
-            const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
-            const randomEvents = document.getElementById('randomEvents').checked;
-            if (!nickname) return alert('Введите ник');
-            try {
-                const data = await apiRequest('/api/room/create', 'POST', { nickname, maxPlayers, randomEvents });
-                currentRoomCode = data.roomId;
-                currentPlayerNick = data.nickname;
-                currentPlayerUuid = data.playerId; // сервер должен возвращать playerId
-                isCreator = true;
-                addLog(`Комната создана! Код: ${currentRoomCode}`);
-                // Подключаем WebSocket и регистрируемся
-                connectWebSocket();
-                showScreen('lobby');
-            } catch(err) {
-                alert('Ошибка: ' + err.message);
-            }
-        };
-        document.getElementById('backMain').onclick = () => showScreen('main');
-    }
-
-    // --- Присоединение к комнате ---
-    function renderJoinRoom() {
-        appDiv.innerHTML = `
-            <div class="card">
-                <h3>Вход в комнату</h3>
-                <input type="text" id="roomCode" placeholder="Код комнаты (6 символов)">
-                <input type="text" id="nickname" placeholder="Ваш ник" value="Игрок${Math.floor(Math.random()*1000)}">
-                <button id="doJoin">🔗 Присоединиться</button>
-                <button id="backMain" class="secondary">◀ Назад</button>
-            </div>
-            <div class="info" id="liveLog"></div>
-        `;
-        document.getElementById('doJoin').onclick = async () => {
-            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
-            const nickname = document.getElementById('nickname').value.trim();
-            if (!roomCode || roomCode.length !== 6) return alert('Код комнаты должен быть 6 символов');
-            if (!nickname) return alert('Введите ник');
-            try {
-                const data = await apiRequest('/api/room/join', 'POST', { roomCode, nickname });
-                currentRoomCode = data.roomId;
-                currentPlayerNick = data.nickname;
-                currentPlayerUuid = data.playerId; // нужно, чтобы сервер возвращал playerId
-                isCreator = false;
-                addLog(`Присоединились к комнате ${currentRoomCode}`);
-                connectWebSocket();
-                showScreen('lobby');
-            } catch(err) {
-                alert('Ошибка: ' + err.message);
-            }
-        };
-        document.getElementById('backMain').onclick = () => showScreen('main');
-    }
-
-    // --- Главное меню ---
-    function renderMainScreen() {
-        appDiv.innerHTML = `
-            <div class="card">
-                <h3>🎮 DreamTeam</h3>
-                <p>Бункер в IT-стиле</p>
-                <button id="createRoomBtn">✨ Создать комнату</button>
-                <button id="joinRoomBtn" class="secondary">🔍 Присоединиться</button>
-            </div>
-            <div class="info" id="liveLog"></div>
-        `;
-        document.getElementById('createRoomBtn').onclick = () => showScreen('create');
-        document.getElementById('joinRoomBtn').onclick = () => showScreen('join');
-        // Очистка старых интервалов
-        if (playersInterval) clearInterval(playersInterval);
-        if (canStartInterval) clearInterval(canStartInterval);
-    }
-
-    // Инициализация
-    showScreen('main');
+    document.getElementById('leaveLobbyBtn').onclick = leaveRoom;
+    document.getElementById('leaveGameBtn').onclick = leaveRoom;
 </script>
 </body>
 </html>

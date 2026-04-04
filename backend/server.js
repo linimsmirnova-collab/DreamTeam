@@ -17,7 +17,9 @@ const {
     canStartGame,
     generateRoomId,
     setPlayerSessionCookie,
+    selectPlayerMove,
 } = require('./serverFunctions');
+const player = require("./models/Player");
 
 const app = express();
 const PORT = 3000;
@@ -147,7 +149,8 @@ app.post('/api/room/create', async (req, res) => {
             roomId: roomCode,
             nickname: creator.nickname,
             project: manager.GameSession.project,
-            maxPlayers: maxPlayers
+            maxPlayers: maxPlayers,
+            playerId: creator.uuid,
         });
 
     } catch (error) {
@@ -207,7 +210,8 @@ app.post('/api/room/join', (req, res) => {
             success: true,
             nickname: newPlayer.nickname,
             roomId: roomCode,
-            maxPlayers: session.players_count //добавила
+            maxPlayers: session.players_count, //добавила
+            playerId: newPlayer.uuid,
         });
 
     } catch (error) {
@@ -364,6 +368,19 @@ app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
     }
 });
 
+// Энпоинт выдающий вскрывающегося игрока
+app.get('/api/game/moved_player', authenticatePlayer, async (req, res) => {
+    const manager = req.manager;
+    const session = manager.GameSession;
+    try {
+        const movePlayer = selectPlayerMove(session)
+        res.json(movePlayer);
+    } catch (error) {
+        console.error('Ошибка при получении голосующего игрока:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+})
+
 // изпользование websocket с помощью socket io
 const server = http.createServer(app);
 const io = socketIo(server, {
@@ -421,6 +438,30 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
 
     res.json({ success: true });
 });
+
+// Эндпоинт вскрытия карты, в body получает код карты для вскрытия(cat_card)
+app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
+    const player = req.player;
+    const roomCode = req.roomId;
+    let {cat_card} = req.body;
+
+    cat_card -= 1; // приведение к удобному индексу для обращения к массиву
+
+    try {
+        const openCard = player.hand[cat_card]
+        openCard.open()
+        player.openCards.push(openCard);
+
+        io.to(roomCode).emit('reveal-card', {
+            player: player,
+            openCard: openCard,
+        });
+        res.sendStatus(200);
+    } catch (error) {
+        console.log("Ошибка при вскрытии карты", error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+})
 
 // app.listen(PORT, '0.0.0.0', () => {
 //     console.log(`Сервер запущен:`);

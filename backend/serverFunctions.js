@@ -53,11 +53,29 @@ function setPlayerSessionCookie(res, playerId, roomId) {
     console.log(`cookie отправлен румкод: ${roomId}, игрок айди ${playerId}`);
 }
 
+// Генерирует случайное событие
 function generateRandomEvent() {
     const filePath = path.join(__dirname, 'events.json'); // поправьте путь, если нужно
     const events = JSON.parse(fs.readFileSync(filePath, 'utf8'));
     const randomIndex = Math.floor(Math.random() * events.length);
     return events[randomIndex];
+}
+
+// Возращает игрока который должен походить
+function selectPlayerMove(session) {
+    if (!session.players_list || session.players_list.length === 0) return null;
+
+    // Находим минимальное количество открытых карт среди всех игроков
+    let minOpenCards = Infinity;
+    for (const player of session.players_list) {
+        const count = player.openCards ? player.openCards.length : 0;
+        if (count < minOpenCards) {
+            minOpenCards = count;
+        }
+    }
+
+    // Возвращаем первого игрока, у которого количество открытых карт равно минимальному
+    return session.players_list.find(player => (player.openCards ? player.openCards.length : 0) === minOpenCards) || null;
 }
 
 
@@ -67,4 +85,5 @@ module.exports = {
     generateRoomId,
     setPlayerSessionCookie,
     generateRandomEvent,
+    selectPlayerMove,
 };
