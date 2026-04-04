@@ -430,6 +430,7 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
 
     // Меняем состояние игры
     session.game_state = 'active';
+    session.current_round = 1;
 
     // Отправляем событие всем в комнате
     io.to(session.roomCode).emit('game-start', {

@@ -12,7 +12,7 @@ class GameSession {
     players_count = 0;
     players_final_count = 0
     rounds_count = 0;
-    // current_round = 0;
+    current_round = 0;
     project = null
     game_state = null;
     usedFeatureIds = new Set();
