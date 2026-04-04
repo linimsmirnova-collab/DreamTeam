@@ -222,17 +222,16 @@
         if (socket && socket.connected) return;
         socket = io({ withCredentials: true });
         socket.on('connect', () => {
-            addLog(`✅ WebSocket подключен (id: ${socket.id})`);
+            addLog(`WebSocket подключен (id: ${socket.id})`);
             registerWebSocket();
         });
         socket.on('game-start', (data) => {
-            addLog(`🚀 ПОЛУЧЕНО game-start: ${data.message}`);
-            alert('Игра начинается! Переход в профиль');
+            addLog(`ПОЛУЧЕНО game-start: ${data.message}`);
             // Переход на страницу профиля (имитация)
             showScreen('profile');
         });
         socket.on('disconnect', () => {
-            addLog(`❌ WebSocket отключен`);
+            addLog(`WebSocket отключен`);
         });
     }
 
