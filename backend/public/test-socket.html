@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>DreamTeam – Тест игрового сценария</title>
+    <!-- Подключаем socket.io клиент -->
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #f5f5f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', 'Inria Serif', sans-serif;
+        }
+        /* Имитируем экран мобильного телефона */
+        .phone {
+            width: 393px;
+            height: 852px;
+            background: white;
+            border-radius: 32px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        /* Верхняя полоса (розовая) */
+        .status-bar {
+            background: #FFCBE5;
+            height: 85px;
+            padding: 12px 16px;
+        }
+        .status-bar h1 {
+            font-size: 20px;
+            color: #7F375A;
+            font-weight: normal;
+        }
+        .status-bar p {
+            font-size: 14px;
+            color: #9B3D63;
+        }
+        /* Основной контент */
+        .content {
+            flex: 1;
+            padding: 20px 16px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        /* Карточки действий */
+        .card {
+            background: #fff;
+            border-radius: 24px;
+            border: 1px solid #FFCBE5;
+            padding: 16px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .card h3 {
+            color: #7F375A;
+            margin-bottom: 12px;
+            font-size: 18px;
+        }
+        input, button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 40px;
+            border: 1px solid #F17BAB;
+            font-size: 16px;
+            outline: none;
+        }
+        button {
+            background: #F17BAB;
+            color: white;
+            font-weight: bold;
+            border: none;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:active {
+            transform: scale(0.97);
+        }
+        button.secondary {
+            background: #FFCBE5;
+            color: #7F375A;
+        }
+        .info {
+            background: #FFCBE5;
+            border-radius: 16px;
+            padding: 12px;
+            font-size: 14px;
+            color: #7F375A;
+        }
+        .player-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-top: 8px;
+        }
+        .player-item {
+            background: #FFF0F5;
+            padding: 10px;
+            border-radius: 40px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: bold;
+        }
+        .badge {
+            background: #F17BAB;
+            color: white;
+            border-radius: 20px;
+            padding: 2px 10px;
+            font-size: 12px;
+        }
+        .hidden {
+            display: none;
+        }
+        .log {
+            font-size: 12px;
+            color: #555;
+            border-top: 1px solid #eee;
+            margin-top: 12px;
+            padding-top: 8px;
+        }
+        .error {
+            color: #d32f2f;
+            background: #ffebee;
+            padding: 8px;
+            border-radius: 20px;
+        }
+    </style>
+</head>
+<body>
+<div class="phone">
+    <div class="status-bar">
+        <h1>DreamTeam</h1>
+        <p>IT-бункер | Поиск команды</p>
+    </div>
+    <div class="content" id="appContent">
+        <!-- Здесь будет динамический контент -->
+    </div>
+</div>
+
+<script>
+    // -------------------- Глобальные переменные --------------------
+    let socket = null;                // WebSocket соединение
+    let currentRoomCode = null;
+    let currentPlayerNick = null;
+    let currentPlayerUuid = null;
+    let isCreator = false;
+    let playersInterval = null;
+    let canStartInterval = null;
+
+    // DOM-элементы
+    const appDiv = document.getElementById('appContent');
+
+    // -------------------- Вспомогательные функции --------------------
+    function showScreen(screenName) {
+        switch(screenName) {
+            case 'main':
+                renderMainScreen();
+                break;
+            case 'create':
+                renderCreateRoom();
+                break;
+            case 'join':
+                renderJoinRoom();
+                break;
+            case 'lobby':
+                renderLobby();
+                break;
+            case 'profile':
+                renderProfile();
+                break;
+            default:
+                renderMainScreen();
+        }
+    }
+
+    // API запрос с обработкой ошибок
+    async function apiRequest(url, method = 'GET', body = null) {
+        const options = {
+            method,
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        };
+        if (body) options.body = JSON.stringify(body);
+        const response = await fetch(url, options);
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || `Ошибка ${response.status}`);
+        }
+        return data;
+    }
+
+    // Регистрация в WebSocket комнате
+    function registerWebSocket() {
+        if (!socket || !socket.connected) {
+            console.warn('WebSocket не подключен');
+            return;
+        }
+        if (currentRoomCode && currentPlayerUuid) {
+            socket.emit('register', { playerUuid: currentPlayerUuid, roomCode: currentRoomCode });
+            addLog(`🔌 Зарегистрированы в комнате ${currentRoomCode} как ${currentPlayerNick}`);
+        } else {
+            addLog(`⚠️ Невозможно зарегистрироваться: нет roomCode или uuid`);
+        }
+    }
+
+    // Подключение WebSocket
+    function connectWebSocket() {
+        if (socket && socket.connected) return;
+        socket = io({ withCredentials: true });
+        socket.on('connect', () => {
+            addLog(`✅ WebSocket подключен (id: ${socket.id})`);
+            registerWebSocket();
+        });
+        socket.on('game-start', (data) => {
+            addLog(`🚀 ПОЛУЧЕНО game-start: ${data.message}`);
+            alert('Игра начинается! Переход в профиль');
+            // Переход на страницу профиля (имитация)
+            showScreen('profile');
+        });
+        socket.on('disconnect', () => {
+            addLog(`❌ WebSocket отключен`);
+        });
+    }
+
+    // Логирование (для отладки)
+    function addLog(msg) {
+        const logDiv = document.getElementById('liveLog');
+        if (logDiv) {
+            const p = document.createElement('div');
+            p.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            logDiv.appendChild(p);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        } else {
+            console.log(msg);
+        }
+    }
+
+    // Получить список игроков и обновить лобби
+    async function refreshPlayers() {
+        if (!currentRoomCode) return;
+        try {
+            const data = await apiRequest(`/api/room/players?code=${currentRoomCode}`);
+            const players = data.players || [];
+            const maxPlayers = data.maxPlayers || 4;
+
+            // Сохраняем свой uuid, если ещё не знаем (по нику)
+            const me = players.find(p => p.nickname === currentPlayerNick);
+            if (me && !currentPlayerUuid) {
+                currentPlayerUuid = me.uuid;
+                registerWebSocket(); // повторная регистрация с uuid
+            }
+            // Обновляем отображение в лобби
+            const listContainer = document.getElementById('playersList');
+            const countSpan = document.getElementById('playersCount');
+            if (listContainer) {
+                listContainer.innerHTML = '';
+                players.forEach(p => {
+                    const div = document.createElement('div');
+                    div.className = 'player-item';
+                    div.innerHTML = `<span>${p.nickname}</span>${p.nickname === currentPlayerNick ? '<span class="badge">Вы</span>' : ''}`;
+                    listContainer.appendChild(div);
+                });
+                // пустые слоты
+                for (let i = players.length; i < maxPlayers; i++) {
+                    const empty = document.createElement('div');
+                    empty.className = 'player-item';
+                    empty.innerHTML = '<span>...</span><span class="badge">ожидание</span>';
+                    listContainer.appendChild(empty);
+                }
+                if (countSpan) countSpan.innerText = `${players.length} / ${maxPlayers}`;
+            }
+            // Обновляем кнопку старта для создателя
+            const startBtn = document.getElementById('startGameBtn');
+            if (startBtn) {
+                const isCreatorFlag = players.some(p => p.nickname === currentPlayerNick && p.be_creator === true);
+                isCreator = isCreatorFlag;
+                if (isCreatorFlag) {
+                    startBtn.classList.remove('hidden');
+                    // Проверяем can-start
+                    try {
+                        const canData = await apiRequest('/api/room/can-start', 'POST', { roomCode: currentRoomCode });
+                        if (canData.canStart) {
+                            startBtn.disabled = false;
+                            startBtn.style.opacity = '1';
+                        } else {
+                            startBtn.disabled = true;
+                            startBtn.style.opacity = '0.5';
+                            startBtn.title = canData.reason || 'Не все игроки готовы';
+                        }
+                    } catch(e) { startBtn.disabled = true; }
+                } else {
+                    startBtn.classList.add('hidden');
+                }
+            }
+        } catch(err) {
+            console.error(err);
+            addLog(`Ошибка обновления игроков: ${err.message}`);
+        }
+    }
+
+    // --- Старт игры (только создатель) ---
+    async function startGame() {
+        if (!isCreator) {
+            alert('Только создатель может начать игру');
+            return;
+        }
+        try {
+            await apiRequest('/api/game/start', 'POST');
+            addLog('✅ Запрос на старт отправлен');
+        } catch(err) {
+            alert('Ошибка старта: ' + err.message);
+        }
+    }
+
+    // --- Получение карт (my-cards) и переход в профиль ---
+    async function fetchMyCards() {
+        try {
+            const data = await apiRequest('/api/game/my-cards', 'GET');
+            if (data.hand) {
+                // сохраняем карты в localStorage для отображения в профиле
+                localStorage.setItem('myHand', JSON.stringify(data.hand));
+                return data.hand;
+            }
+        } catch(err) {
+            addLog(`Ошибка получения карт: ${err.message}`);
+        }
+        return [];
+    }
+
+    // --- Отображение профиля с картами ---
+    async function renderProfile() {
+        const cards = await fetchMyCards();
+        appDiv.innerHTML = `
+            <div class="card">
+                <h3>👤 ${currentPlayerNick}</h3>
+                <p>Код комнаты: <b>${currentRoomCode}</b></p>
+            </div>
+            <div class="card">
+                <h3>📇 Ваши карты</h3>
+                <div id="cardsContainer" style="display: flex; flex-direction: column; gap: 12px;"></div>
+            </div>
+            <div class="info" id="liveLog" style="max-height: 150px; overflow-y: auto;"></div>
+            <button class="secondary" id="backToLobby">Назад в лобби</button>
+        `;
+        const container = document.getElementById('cardsContainer');
+        if (cards && cards.length) {
+            cards.forEach(card => {
+                const cardDiv = document.createElement('div');
+                cardDiv.style.background = '#FFF0F5';
+                cardDiv.style.borderRadius = '16px';
+                cardDiv.style.padding = '12px';
+                cardDiv.innerHTML = `<b>${getTypeName(card.cardType)}</b><br>${card.name}`;
+                container.appendChild(cardDiv);
+            });
+        } else {
+            container.innerHTML = '<p>Нет карт (запросите my-cards)</p>';
+        }
+        document.getElementById('backToLobby').onclick = () => {
+            showScreen('lobby');
+        };
+        // Добавляем лог
+        addLog(`Профиль открыт. Карт: ${cards.length}`);
+    }
+
+    function getTypeName(type) {
+        const types = {1:'Роль',2:'Стаж',3:'Черта',4:'Soft skill',5:'Особенность',6:'Языки/среды'};
+        return types[type] || 'Карта';
+    }
+
+    // --- Лобби (список игроков) ---
+    function renderLobby() {
+        appDiv.innerHTML = `
+            <div class="card">
+                <h3>🏠 Комната: ${currentRoomCode}</h3>
+                <p>Игроки: <span id="playersCount">0</span></p>
+                <div id="playersList" class="player-list"></div>
+            </div>
+            <div class="card">
+                <button id="startGameBtn" class="hidden" style="background:#F17BAB;">▶ Начать игру</button>
+                <button id="refreshBtn" class="secondary">🔄 Обновить</button>
+                <button id="myCardsTestBtn" class="secondary">📇 Получить карты (профиль)</button>
+                <button id="leaveBtn" style="background:#ccc; color:#333;">🚪 Выйти</button>
+            </div>
+            <div class="info" id="liveLog" style="max-height: 150px; overflow-y: auto;"></div>
+        `;
+        // Запускаем автообновление
+        if (playersInterval) clearInterval(playersInterval);
+        playersInterval = setInterval(() => refreshPlayers(), 2000);
+        refreshPlayers();
+
+        document.getElementById('refreshBtn').onclick = () => refreshPlayers();
+        document.getElementById('myCardsTestBtn').onclick = async () => {
+            await fetchMyCards();
+            showScreen('profile');
+        };
+        document.getElementById('startGameBtn').onclick = () => startGame();
+        document.getElementById('leaveBtn').onclick = () => {
+            if (confirm('Выйти из комнаты?')) {
+                sessionStorage.clear();
+                if (playersInterval) clearInterval(playersInterval);
+                if (canStartInterval) clearInterval(canStartInterval);
+                if (socket) socket.disconnect();
+                currentRoomCode = null;
+                currentPlayerUuid = null;
+                showScreen('main');
+            }
+        };
+        // Подключаем WebSocket, если ещё нет
+        if (!socket || !socket.connected) connectWebSocket();
+        else registerWebSocket();
+    }
+
+    // --- Создание комнаты ---
+    function renderCreateRoom() {
+        appDiv.innerHTML = `
+            <div class="card">
+                <h3>Создание комнаты</h3>
+                <input type="text" id="nickname" placeholder="Ваш ник" value="Создатель${Math.floor(Math.random()*1000)}">
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <input type="number" id="maxPlayers" min="4" max="16" value="4">
+                    <label><input type="checkbox" id="randomEvents"> Случайные события</label>
+                </div>
+                <button id="doCreate">✅ Создать комнату</button>
+                <button id="backMain" class="secondary">◀ Назад</button>
+            </div>
+            <div class="info" id="liveLog"></div>
+        `;
+        document.getElementById('doCreate').onclick = async () => {
+            const nickname = document.getElementById('nickname').value.trim();
+            const maxPlayers = parseInt(document.getElementById('maxPlayers').value);
+            const randomEvents = document.getElementById('randomEvents').checked;
+            if (!nickname) return alert('Введите ник');
+            try {
+                const data = await apiRequest('/api/room/create', 'POST', { nickname, maxPlayers, randomEvents });
+                currentRoomCode = data.roomId;
+                currentPlayerNick = data.nickname;
+                currentPlayerUuid = data.playerId; // сервер должен возвращать playerId
+                isCreator = true;
+                addLog(`Комната создана! Код: ${currentRoomCode}`);
+                // Подключаем WebSocket и регистрируемся
+                connectWebSocket();
+                showScreen('lobby');
+            } catch(err) {
+                alert('Ошибка: ' + err.message);
+            }
+        };
+        document.getElementById('backMain').onclick = () => showScreen('main');
+    }
+
+    // --- Присоединение к комнате ---
+    function renderJoinRoom() {
+        appDiv.innerHTML = `
+            <div class="card">
+                <h3>Вход в комнату</h3>
+                <input type="text" id="roomCode" placeholder="Код комнаты (6 символов)">
+                <input type="text" id="nickname" placeholder="Ваш ник" value="Игрок${Math.floor(Math.random()*1000)}">
+                <button id="doJoin">🔗 Присоединиться</button>
+                <button id="backMain" class="secondary">◀ Назад</button>
+            </div>
+            <div class="info" id="liveLog"></div>
+        `;
+        document.getElementById('doJoin').onclick = async () => {
+            const roomCode = document.getElementById('roomCode').value.trim().toUpperCase();
+            const nickname = document.getElementById('nickname').value.trim();
+            if (!roomCode || roomCode.length !== 6) return alert('Код комнаты должен быть 6 символов');
+            if (!nickname) return alert('Введите ник');
+            try {
+                const data = await apiRequest('/api/room/join', 'POST', { roomCode, nickname });
+                currentRoomCode = data.roomId;
+                currentPlayerNick = data.nickname;
+                currentPlayerUuid = data.playerId; // нужно, чтобы сервер возвращал playerId
+                isCreator = false;
+                addLog(`Присоединились к комнате ${currentRoomCode}`);
+                connectWebSocket();
+                showScreen('lobby');
+            } catch(err) {
+                alert('Ошибка: ' + err.message);
+            }
+        };
+        document.getElementById('backMain').onclick = () => showScreen('main');
+    }
+
+    // --- Главное меню ---
+    function renderMainScreen() {
+        appDiv.innerHTML = `
+            <div class="card">
+                <h3>🎮 DreamTeam</h3>
+                <p>Бункер в IT-стиле</p>
+                <button id="createRoomBtn">✨ Создать комнату</button>
+                <button id="joinRoomBtn" class="secondary">🔍 Присоединиться</button>
+            </div>
+            <div class="info" id="liveLog"></div>
+        `;
+        document.getElementById('createRoomBtn').onclick = () => showScreen('create');
+        document.getElementById('joinRoomBtn').onclick = () => showScreen('join');
+        // Очистка старых интервалов
+        if (playersInterval) clearInterval(playersInterval);
+        if (canStartInterval) clearInterval(canStartInterval);
+    }
+
+    // Инициализация
+    showScreen('main');
+</script>
+</body>
+</html>

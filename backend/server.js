@@ -2,9 +2,9 @@
 const express = require('express');
 const http = require('http');
 const cors = require('cors');
-const crypto = require('crypto');
 const cookieParser = require('cookie-parser');
 const path = require('path');
+const socketIo = require('socket.io');
 
 const getLocalIP = require('get-local-ip');
 const GameManager = require('./models/GameManager');
@@ -12,7 +12,12 @@ const DataStorage = require('./db/DataStorage');
 const Player = require('./models/Player');
 const Card = require('./models/Card');
 
-const { calculateGameParams, canStartGame } = require('./serverFunctions');
+const {
+    calculateGameParams,
+    canStartGame,
+    generateRoomId,
+    setPlayerSessionCookie,
+} = require('./serverFunctions');
 
 const app = express();
 const PORT = 3000;
@@ -24,15 +29,11 @@ const PORT = 3000;
 app.use(express.json());
 app.use(cookieParser());
 
-//app.use(express.static(path.join(__dirname, 'public')));
-
-//app.use('/pages', express.static(path.join(__dirname, '../WEB/pages')));
-
-// console.log(' __dirname:', __dirname);
-// console.log('Путь к WEB:', path.join(__dirname, '../WEB/pages'));
-
 // Раздача статики из папки WEB
 app.use(express.static(path.join(__dirname, '..', 'WEB')));
+
+// Раздача тестовых файлов html из папки public
+app.use(express.static(path.join(__dirname, 'public')));
 
 //const db = new DataStorage('./db/dream_team.db')
 const db = new DataStorage(path.join(__dirname, 'db/dream_team_new.db'));
@@ -43,34 +44,6 @@ const gameState = Object.freeze({
     active: 'active',
     completed: 'completed'
 })
-
-function generateRoomId() {
-    // в будущем добавить проверку на уникальность
-    return crypto.randomBytes(3).toString('hex').toUpperCase(); // 6 hex символов в верхнем регистре
-}
-
-// Вспомогательная функция для установки httpOnly cookie с данными игрока
-/*
-function setPlayerSessionCookie(res, playerId, roomId) {
-    res.cookie('playerSession', JSON.stringify({ playerId, roomId }), {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production', // в разработке false
-        sameSite: 'lax',
-        maxAge: 24 * 60 * 60 * 1000 // 24 часа
-    });
-    console.log(`cookie отправлен румкод: ${roomId}, игрок айди ${playerId}`);
-}
-*/
-
-function setPlayerSessionCookie(res, playerId, roomId) {
-    res.cookie('playerSession', JSON.stringify({ playerId, roomId }), {
-        httpOnly: true,
-        secure: false,  // принудительно false для разработки
-        //sameSite: 'none',
-        maxAge: 24 * 60 * 60 * 1000
-    });
-    console.log(`cookie отправлен румкод: ${roomId}, игрок айди ${playerId}`);
-}
 
 // Middleware для аутентификации через cookie
 function authenticatePlayer(req, res, next) {
@@ -148,7 +121,7 @@ app.post('/api/room/create', async (req, res) => {
 
         const {rounds, final_players_count} = calculateGameParams(maxPlayers)
 
-        // Создание игровой сессии (создатель будет создан автоматически)
+        // Создание игровой сессии
         await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, final_players_count, rounds, project)
 
         console.log(manager.GameSession.players_list);
@@ -186,7 +159,7 @@ app.post('/api/room/create', async (req, res) => {
 // Эндпоинт присоединения к комнате
 app.post('/api/room/join', (req, res) => {
     try {
-        const { roomCode, nickname } = req.body; // ожидаем поле roomCode (можно и roomId)
+        const { roomCode, nickname } = req.body; // ожидаем поле roomCode
 
         if (!roomCode) {
             return res.status(400).json({ error: 'Не указан код комнаты' });
@@ -215,7 +188,7 @@ app.post('/api/room/join', (req, res) => {
             return res.status(400).json({ error: 'Комната заполнена' });
         }
 
-        // Создаём нового игрока (не создатель)
+        // Создаём нового игрока
         const newPlayer = new Player(Player.nextId_next(), false, nickname);
 
         // Добавляем игрока в сессию
@@ -288,6 +261,7 @@ app.post('/api/room/can-start', authenticatePlayer, (req, res) => {
     }
 });
 
+// Эндпоинт выдающий игроку список его карт
 app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
     const manager = req.manager;
     const player = req.player;
@@ -390,7 +364,71 @@ app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
     }
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+// изпользование websocket с помощью socket io
+const server = http.createServer(app);
+const io = socketIo(server, {
+    cors: {
+        origin: '*', // для теста разрешаем все источники
+        credentials: true
+    }
+});
+
+// Хранилище соответствия socket.id -> { playerUuid, roomCode }
+const socketMap = new Map();
+
+// создавние соединения с игроком с привязкой к коду комнаты
+io.on('connection', (socket) => {
+    console.log(`New socket connected: ${socket.id}`);
+
+    // Клиент должен отправить событие 'register' с данными игрока
+    socket.on('register', (data) => {
+        const { playerUuid, roomCode } = data;
+        if (!playerUuid || !roomCode) {
+            console.error('Ошибка регистрации: не хватает данных');
+            return;
+        }
+        socketMap.set(socket.id, { playerUuid, roomCode });
+        socket.join(roomCode);
+        console.log(`Socket ${socket.id} registered to room ${roomCode} (player ${playerUuid})`);
+    });
+
+    socket.on('disconnect', () => {
+        const info = socketMap.get(socket.id);
+        if (info) {
+            console.log(`Socket ${socket.id} disconnected from room ${info.roomCode}`);
+            socketMap.delete(socket.id);
+        }
+    });
+});
+
+// Эндпоинт для старта игры
+app.post('/api/game/start', authenticatePlayer, async (req, res) => {
+    const { player, manager } = req;
+    const session = manager.GameSession;
+
+    // Проверяем, что игра ещё не началась
+    if (session.game_state !== 'waiting') {
+        return res.status(400). json({ error: 'Игра уже началась или завершена' });
+    }
+
+    // Меняем состояние игры
+    session.game_state = 'active';
+
+    // Отправляем событие всем в комнате
+    io.to(session.roomCode).emit('game-start', {
+        message: 'Игра началась! Переход на страницу профиля.'
+    });
+
+    res.json({ success: true });
+});
+
+// app.listen(PORT, '0.0.0.0', () => {
+//     console.log(`Сервер запущен:`);
+//     console.log(`- Локально: http://localhost:${PORT}`);
+//     console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
+// });
+
+server.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);
     console.log(`- Локально: http://localhost:${PORT}`);
     console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
