@@ -233,7 +233,7 @@ function addPageHandlers(container) {
                         randomEvents: checkboxChecked
                     };
 
-                    fetch('http://localhost:3000/api/room/create', {
+                    fetch('/api/room/create', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
@@ -320,7 +320,7 @@ function addPageHandlers(container) {
                         roomCode: code
                     };
 
-                    fetch('http://localhost:3000/api/room/join', {
+                    fetch('/api/room/join', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
@@ -438,7 +438,7 @@ function addPageHandlers(container) {
                     roomCodeDisplay.textContent = `КОД КОМНАТЫ: ${roomCode}`;
                 }
 
-                fetch(`http://localhost:3000/api/room/players?code=${roomCode}`, {
+                fetch(`/api/room/players?code=${roomCode}`, {
                     credentials: 'include',
                     headers: {
                     'Content-Type': 'application/json'
@@ -518,7 +518,7 @@ function addPageHandlers(container) {
                                 startBtn.style.display = 'block';
     
                                 function checkCanStart() {
-                                    fetch('http://localhost:3000/api/room/can-start', {
+                                    fetch('/api/room/can-start', {
                                         method: 'POST',
                                         credentials: 'include',
                                         headers: { 'Content-Type': 'application/json' },
