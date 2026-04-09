@@ -34,8 +34,8 @@ app.use(cookieParser());
 // Раздача статики из папки WEB
 app.use(express.static(path.join(__dirname, '..', 'WEB')));
 
-// Раздача тестовых файлов html из папки public
-app.use(express.static(path.join(__dirname, 'public')));
+// // Раздача тестовых файлов html из папки public
+// app.use(express.static(path.join(__dirname, 'public')));
 
 //const db = new DataStorage('./db/dream_team.db')
 const db = new DataStorage(path.join(__dirname, 'db/dream_team_new.db'));
