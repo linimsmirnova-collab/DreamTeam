@@ -1,0 +1,54 @@
+@baseUrl = http://localhost:3000
+
+###
+
+# 🔹 1. Создание комнаты
+POST {{baseUrl}}/api/room/create
+Content-Type: application/json
+
+{
+  "nickname": "Creator",
+  "playersCount": 4,
+  "randomEvents": false
+}
+
+###
+
+# 🔹 2. Присоединение Игрока 2 (вставьте roomId вручную!)
+POST {{baseUrl}}/api/room/join
+Content-Type: application/json
+
+{
+  "roomCode": "4014AC",
+  "nickname": "Player2"
+}
+
+###
+
+# 🔹 3. Присоединение Игрока 3
+POST {{baseUrl}}/api/room/join
+Content-Type: application/json
+
+{
+  "roomCode": "4014AC",
+  "nickname": "Player3"
+}
+
+###
+
+# 🔹 4. Присоединение Игрока 4
+POST {{baseUrl}}/api/room/join
+Content-Type: application/json
+
+{
+  "roomCode": "4014AC",
+  "nickname": "Player4"
+}
+
+###
+
+# 🔹 5. Проверка can-start (должно быть TRUE!)
+POST {{baseUrl}}/api/room/can-start
+Content-Type: application/json
+
+###

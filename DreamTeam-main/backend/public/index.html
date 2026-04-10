@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Тестирование бэкенда комнат</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 800px; margin: 20px auto; padding: 20px; }
+        .section { border: 1px solid #ccc; padding: 15px; margin-bottom: 20px; border-radius: 8px; }
+        label { display: block; margin: 10px 0 5px; }
+        input, button { padding: 8px; font-size: 16px; }
+        button { margin-top: 10px; cursor: pointer; background: #4CAF50; color: white; border: none; border-radius: 4px; }
+        button:hover { background: #45a049; }
+        pre { background: #f4f4f4; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        .cookie-info { background: #e7f3ff; padding: 10px; border-radius: 4px; margin-top: 20px; }
+        .test-button { background: #ff9800; }
+        .test-button:hover { background: #e68900; }
+    </style>
+</head>
+<body>
+    <h1>Тестирование API комнат (лобби)</h1>
+    
+    <div class="section">
+        <h2>Создать комнату</h2>
+        <form id="createForm">
+            <label>
+                <input type="checkbox" id="randomEvents" name="randomEvents"> Случайные события
+            </label>
+            <label>
+                Количество игроков (4-16):
+                <input type="number" id="playersCount" name="playersCount" min="4" max="16" value="4" required>
+            </label>
+            <button type="submit">Создать комнату</button>
+        </form>
+        <div id="createResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Присоединиться к комнате</h2>
+        <form id="joinForm">
+            <label>
+                Код комнаты:
+                <input type="text" id="roomCode" name="roomCode" placeholder="Например: a1b2c3d4e5" required>
+            </label>
+            <button type="submit">Присоединиться</button>
+        </form>
+        <div id="joinResult"></div>
+    </div>
+
+    <div class="section">
+        <h2>Проверка авторизации</h2>
+        <button id="testAuthButton" class="test-button">Проверить себя (тестовый запрос)</button>
+        <div id="testResult"></div>
+    </div>
+
+    <div class="cookie-info">
+        <h3>Текущая cookie (playerSession):</h3>
+        <pre id="cookieDisplay">(нет данных)</pre>
+        <button onclick="updateCookieDisplay()">Обновить информацию о cookie</button>
+    </div>
+
+    <script>
+        function updateCookieDisplay() {
+            const cookies = document.cookie.split('; ').reduce((acc, cookie) => {
+                const [name, value] = cookie.split('=');
+                if (name === 'playerSession') {
+                    try {
+                        acc = JSON.parse(decodeURIComponent(value));
+                    } catch {
+                        acc = value;
+                    }
+                }
+                return acc;
+            }, 'не найдена');
+            document.getElementById('cookieDisplay').innerText = typeof cookies === 'object' 
+                ? JSON.stringify(cookies, null, 2) 
+                : cookies;
+        }
+
+        document.getElementById('createForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const randomEvents = document.getElementById('randomEvents').checked;
+            const maxPlayers = parseInt(document.getElementById('playersCount').value, 10);
+            const nickname = "Выхухохоль"
+
+            const responseDiv = document.getElementById('createResult');
+            responseDiv.innerHTML = 'Отправка запроса...';
+
+            try {
+                const res = await fetch('/api/room/create', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ randomEvents, maxPlayers, nickname }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    responseDiv.innerHTML = `<pre style="background: #d4edda;">✅ Успех:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Ошибка ${res.status}:\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                updateCookieDisplay();
+            } catch (err) {
+                responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Сетевая ошибка: ${err.message}</pre>`;
+            }
+        });
+
+        document.getElementById('joinForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const roomCode = document.getElementById('roomCode').value.trim();
+            const nickname = "Выхухохоль2"
+
+            const responseDiv = document.getElementById('joinResult');
+            responseDiv.innerHTML = 'Отправка запроса...';
+
+            try {
+                const res = await fetch('/api/room/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ roomCode, nickname }),
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    responseDiv.innerHTML = `<pre style="background: #d4edda;">✅ Успех:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Ошибка ${res.status}:\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+                updateCookieDisplay();
+            } catch (err) {
+                responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Сетевая ошибка: ${err.message}</pre>`;
+            }
+        });
+
+        document.getElementById('testAuthButton').addEventListener('click', async () => {
+            const responseDiv = document.getElementById('testResult');
+            responseDiv.innerHTML = 'Отправка запроса...';
+
+            try {
+                const res = await fetch('/api/room/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include'
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    responseDiv.innerHTML = `<pre style="background: #d4edda;">✅ Успех:\n${JSON.stringify(data, null, 2)}</pre>`;
+                } else {
+                    responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Ошибка ${res.status}:\n${JSON.stringify(data, null, 2)}</pre>`;
+                }
+            } catch (err) {
+                responseDiv.innerHTML = `<pre style="background: #f8d7da;">❌ Сетевая ошибка: ${err.message}</pre>`;
+            }
+        });
+
+        window.onload = updateCookieDisplay;
+    </script>
+</body>
+</html>

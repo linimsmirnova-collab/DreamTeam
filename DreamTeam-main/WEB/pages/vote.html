@@ -1,0 +1,91 @@
+<link rel="stylesheet" href="../css/styles/style.css"> <!--потом убрать строку-->
+
+<!-- Верхняя розовая полоса -->
+<div class="vote-header"></div>
+<div class="vote-title">Раунд 1</div>
+<div class="vote-subtitle">Выберите игрока, который по вашему мнению не подходит для текущего проекта</div>
+
+<!-- Блок "Проголосовало:" -->
+<div class="vote-count-label">Проголосовало:</div>
+
+<!-- Статистика голосования -->
+<div class="vote-stats">
+    <div class="vote-stats-badge"></div>
+    <div class="vote-stats-count">1 из 6</div>
+</div>
+
+<!-- Список игроков для голосования -->
+<div class="vote-players-list">
+    <div class="vote-player-item" data-player-id="1">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">МойНик</div>
+    </div>
+    <div class="vote-player-item" data-player-id="2">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">РандомНик1</div>
+        <div class="vote-player-icon" style="background: url('../images/x.png')"></div>
+    </div>
+    <div class="vote-player-item" data-player-id="3">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">РандомНик2</div>
+        <div class="vote-player-icon" style="background: url('../images/x.png')"></div>
+    </div>
+    <div class="vote-player-item" data-player-id="4">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">РандомНик3</div>
+        <div class="vote-player-icon" style="background: url('../images/x.png')"></div>
+    </div>
+    <div class="vote-player-item" data-player-id="5">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">РандомНик4</div>
+        <div class="vote-player-icon" style="background: url('../images/x.png')"></div>
+    </div>
+    <div class="vote-player-item" data-player-id="6">
+        <div class="vote-player-badge"></div>
+        <div class="vote-player-name">РандомНик5</div>
+        <div class="vote-player-icon" style="background: url('../images/x.png')"></div>
+    </div>
+</div>
+
+ <!-- Кнопка SKIP (пропустить) -->
+<div class="vote-skip">
+    <div class="vote-skip-badge"></div>
+    <div class="vote-skip-text">skip</div>
+</div>
+
+<!-- "Голосование" -->
+<div class="vote-turn">
+    <div class="vote-turn-badge"></div>
+    <div class="vote-turn-text">Голосование</div>
+</div>
+
+<!-- Таймер -->
+<div class="vote-timer">
+    <div class="vote-timer-badge"></div>
+    <div class="vote-timer-text">1:03</div>
+</div>
+
+<!-- Нижняя розовая панель -->
+<div class="vote-footer"></div>
+
+<!-- Иконки (аватарки) -->
+<div class="vote-icon icon-left" style="background: url('../images/kickout.png')"></div>
+<div class="vote-icon icon-center" style="background: url('../images/users.png')"></div>
+<div class="vote-icon icon-right" style="background: url('../images/me.png')"></div>
+
+<!-- Модальное окно подтверждения -->
+<div class="vote-modal" style="display: none;">
+    <div class="vote-modal-content">
+        <div class="vote-modal-question">Вы действительно хотите выгнать игрока "НИК"?</div>
+        <div class="vote-modal-buttons">
+            <button class="vote-modal-no">Нет</button>
+            <button class="vote-modal-yes">Да</button>
+        </div>
+    </div>
+</div>
+
+<!-- Выгнанный игрок -->
+<div class="vote-player-item kicked" style="display: none;">
+    <div class="vote-player-badge"></div>
+    <div class="vote-player-name">ВыгнанныйИгрок</div>
+</div>

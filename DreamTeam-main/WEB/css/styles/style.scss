@@ -1,0 +1,2613 @@
+// Шрифт Inria Serif
+@import url('https://fonts.googleapis.com/css2?family=Inria+Serif&display=swap');
+
+// Убираем лишние отступы
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+// Настройки для всей страницы
+body {
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 16px;
+    background-color: #f5f5f5;
+}
+
+// Контейнер-рамка телефона
+.container {
+    position: relative;
+    width: 393px;
+    height: 852px;
+    background: #FFFFFF;
+    border: 2px solid #9B3D63;
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "СТАРТ" (main-page)
+// ============================================
+
+// Розовый фон для кнопок
+.pink-background {
+    position: absolute;
+    width: 389px;
+    height: 214px;
+    left: 0px;
+    top: 319px;
+    background: #FFCBE5;
+}
+
+// Кнопка "Создать комнату"
+.btn.primary {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 46px;
+    top: 346px;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+
+    // Обводка текста
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,   
+        -1px -1px 0 #7F375A, 
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Кнопка "Присоединиться"
+.btn.secondary {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 46px;
+    top: 440px;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,   
+        -1px -1px 0 #7F375A, 
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Кнопка "Выход"
+.btn.logout {
+    position: absolute;
+    width: 142px;
+    height: 55px;
+    left: 13px;
+    top: 785px;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #9B3D63
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "СОЗДАНИЕ КОМНАТЫ" (create-room)
+// ============================================
+
+// Верхняя розовая полоса
+.create-room-header {
+    position: absolute;
+    width: 389px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Текст "Создание комнаты"
+.create-room-title {
+    position: absolute;
+    width: 292px;
+    height: 31px;
+    left: 12px;
+    top: 6px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+}
+
+// Текст "Никнейм"
+.create-room-nickname-label {
+    position: absolute;
+    width: 370px;
+    height: 44px;
+    left: 12px;
+    top: 37px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 29px;
+    color: #7F375A;
+}
+
+// Поле для ника (рандомный ник)
+.create-room-random-nick {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 47px;
+    top: 145px;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст "РандомНик" внутри поля
+.random-nick-text {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 50%; // центрируем по горизонтали
+    top: 50%;  // центрируем по вертикали
+    transform: translate(-50%, -50%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FE5499;
+}
+
+// Чекбокс "Случайные события" (контейнер)
+.create-room-random-events {
+    position: absolute;
+    width: 275px;
+    height: 65px;
+    left: 47px;
+    top: 230px;
+}
+
+// Контейнер для чекбокса (квадрат)
+.checkbox-container {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    left: 0px;
+    top: 7px;
+}
+
+// Сам чекбокс
+.checkbox {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    appearance: none; //Убирает стандартный вид элемента (галочка)
+    cursor: pointer; //Курсор превращается в "руку" при наведении 
+}
+
+//Когда чекбокс отмечен
+.checkbox:checked {
+    background: #FFCBE5;
+}
+
+// Картинка X через псевдоэлемент
+.checkbox:checked::after {
+    content: '';
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: url('../../images/x.png');
+    background-size: contain; //Масштабирует картинку
+    background-position: center; //Картинка по центру
+}
+
+// Текст "Случайные события"
+.checkbox-label {
+    position: absolute;
+    width: 207px;
+    height: 65px;
+    left: 68px;
+    top: 0px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 65px;
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #FE5499;
+}
+
+// Контролы количества игроков (контейнер)
+.create-room-players-control {
+    position: absolute;
+    width: 207px;
+    height: 110px;
+    left: 93px;
+    top: 371px;
+    display: flex; //Элементы в ряд
+    justify-content: space-between; //Равномерное распределение элементов
+    align-items: center; //Выравнивание по центру
+}
+
+// Кнопки минус и плюс
+.minus-btn, .plus-btn {
+    width: 37px;
+    height: 37px;
+
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 36px;
+    line-height: 37px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    color: #FFFFFF;
+    
+    border: none; //Убираем рамку кнопки
+    background: transparent; //Прозрачный фон
+    cursor: pointer;
+    
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,   
+        -1px -1px 0 #7F375A, 
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Эффект при наведении на кнопки
+.minus-btn:hover, .plus-btn:hover {
+    color: #F17BAB;  // меняем цвет текста
+}
+
+// Контейнер для отображения количества игроков
+.players-count {
+    width: 50px;
+    height: 50px;
+    left: calc(50% - 50px/2 - 0.5px);
+    top: 371px;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+// Цифра количества игроков
+span {
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 400;
+        font-size: 20px;
+        color: #FFFFFF;
+        
+        // Обводка вокруг цифры
+        text-shadow:
+            1px 0 0 #7F375A,
+            -1px 0 0 #7F375A,
+            0 1px 0 #7F375A,
+            0 -1px 0 #7F375A,
+            1px 1px 0 #7F375A,
+            -1px -1px 0 #7F375A,
+            1px -1px 0 #7F375A,
+            -1px 1px 0 #7F375A;
+    }
+
+// Текст "Количество игроков" (контейнер)
+.create-room-players {
+    position: absolute;
+    width: 220px;
+    height: 65px;
+    left: calc(50% - 220px/2);
+    top: 450px;
+}
+
+// Текст "Количество игроков"
+.players-label {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0; 
+    top:0;             
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FE5499;
+}
+
+// Кнопка "Подтвердить"
+.create-room-confirm {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 46px;
+    top: 584px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+// Фон кнопки "Подтвердить"
+.confirm-background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст кнопки "Подтвердить"
+.confirm-text {
+    position: absolute;
+    width: 205px;
+    height: 31px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 31px;
+    text-align: center;
+    color: #FFFFFF;
+    border: none;
+    background: transparent;
+    
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+
+}
+
+// Кнопка "Назад"
+.create-room-back {
+    position: absolute;
+    width: 142px;
+    height: 55px;
+    left: 12px;
+    top: 785px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+// Фон кнопки "Назад"
+.back-background {
+    position: absolute;
+    width: 100%;     
+    height: 100%;
+    left: 0;         
+    top: 0;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст кнопки "Назад"
+.back-text {
+    position: absolute;
+    width: 103px;
+    height: 31px;
+    left: 50%;
+    top: 50%; 
+    transform: translate(-50%, -50%); 
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 31px;
+    text-align: center;
+    color: #9B3D63;
+    background: transparent;
+    pointer-events: none; //Текст не мешает нажатию на кнопку
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "ВХОД В КОМНАТУ" (join-room)
+// ============================================
+
+// Верхняя розовая полоса
+.join-room-header {
+    position: absolute;
+    width: 389px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок "Присоединение к комнате"
+.join-room-title {
+    position: absolute;
+    width: 292px;
+    height: 31px;
+    left: 12px;
+    top: 6px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+    pointer-events: none; // Текст не реагирует на клики
+}
+
+// Подзаголовок "Никнейм и Код комнаты"
+.join-room-subtitle {
+    position: absolute;
+    width: 370px;
+    height: 44px;
+    left: 12px;
+    top: 37px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 29px;
+    color: #7F375A;
+    pointer-events: none;
+}
+
+// Поле для ника (контейнер)
+.join-room-nick-field {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 47px;
+    top: 145px;
+}
+
+// Рамка поля для ника
+.join-room-nick-input {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст "РандомНик" внутри поля
+.join-room-nick-text {
+    position: absolute;
+    width: 205px;
+    height: 31px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FE5499;
+    pointer-events: none;
+}
+
+// Поле для кода комнаты (контейнер)
+.join-room-code-field {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 47px;
+    top: 220px;
+}
+
+// Поле ввода кода комнаты
+.join-room-code-input {
+    width: 100%;
+    height: 100%;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+    font-family: 'Inria Serif';
+    font-size: 20px;
+    text-align: center;
+    color: #FE5499;
+    background: transparent;
+    padding: 0 15px;
+    outline: none;
+    
+    &::placeholder {
+        color: #FE5499;
+        opacity: 0.7; // Полупрозрачный
+    }
+    
+    &:focus {
+        border-color: #F17BAB; // Меняем цвет рамки
+    }
+}
+
+// Кнопка "Подтвердить"
+.join-room-confirm {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 48px;
+    top: 533px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+// Фон кнопки "Подтвердить"
+.join-room-confirm-bg {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст кнопки "Подтвердить"
+.join-room-confirm-text {
+    position: absolute;
+    width: 205px;
+    height: 31px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;  
+    font-size: 20px;
+    text-align: center;
+    color: #FFFFFF;
+    border: none;
+    background: transparent;
+    
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Кнопка "Назад"
+.join-room-back {
+    position: absolute;
+    width: 142px;
+    height: 55px;
+    left: 13px;
+    top: 785px;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+// Фон кнопки "Назад"
+.join-room-back-bg {
+    position: absolute;
+    width: 100%;     
+    height: 100%;
+    left: 0;         
+    top: 0;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+// Текст кнопки "Назад"
+.join-room-back-text {
+    position: absolute;
+    width: 103px;
+    height: 31px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 31px;
+    text-align: center;
+    color: #9B3D63;
+    background: transparent;
+    pointer-events: none;
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "СПИСОК ИГРОКОВ" (player-list)
+// ============================================
+
+// Верхняя розовая полоса
+.player-list-header {
+    position: absolute;
+    width: 389px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// КОД КОМНАТЫ
+.room-code-display {
+    position: absolute;
+    width: 285px;
+    height: 31px;
+    left: 12px;
+    top: 27px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+}
+
+// Текст "Подключилось:"
+.connected-text {
+    position: absolute;
+    width: 170px;
+    height: 31px;
+    left: 106px;
+    top: 116px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    pointer-events: none;
+
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+// Статистика голосования (контейнер)
+.voting-stats {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 276px;
+    top: 95px;
+}
+
+// Розовая рамка для статистики
+.voting-badge {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+}
+
+// Текст статистики ("5 из 6")
+.voting-count {
+    position: absolute;
+    width: 60px;
+    height: 24px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    background: transparent;
+    pointer-events: none;
+
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Контейнер для списка игроков
+.players-list {
+    position: absolute;
+    width: 345px;
+    left: 17px;
+    top: 204px;
+    bottom: 120px; /* Отступ для кнопок внизу */
+    overflow-x: hidden; /* Убираем горизонтальный скролл */
+    overflow-y: auto; /* Включаем скролл */
+    display: flex;
+    flex-direction: column;
+    gap: 10px; // расстояние между игроками
+    padding-right: 8px; /* Немного отступа для скролла */
+
+    /* Красивая стилизация скролла */
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+    
+    &::-webkit-scrollbar-track {
+        background: #FFCBE5;
+        border-radius: 2px;
+    }
+    
+    &::-webkit-scrollbar-thumb {
+        background: #F17BAB;
+        border-radius: 2px;
+    }
+    
+    &::-webkit-scrollbar-thumb:hover {
+        background: #7F375A;
+    }
+}
+
+// Элемент списка игроков
+.player-item {
+    position: relative;
+    width: 100%;
+    height: 65px;
+    max-width: 345px; /* Ограничиваем максимальную ширину */
+    flex-shrink: 0; /* Чтобы элементы не сжимались */
+    
+    // Рамка для игрока
+    .player-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+    }
+    
+    // Имя игрока
+    .player-name {
+        position: absolute;
+        width: 90%;
+        max-width: 316px;
+        height: 31px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+        white-space: nowrap;  //Текст в одну строку (не переносится)
+    }
+}
+
+// Пустой слот
+.player-item.empty-slot {
+    .player-badge {
+        background: #DADADA; 
+    }
+    .player-name {
+        color: #FE5499;
+    }
+}
+
+// Кнопка "Начать"
+.player-list-start {
+    position: absolute;
+    width: 142px;
+    height: 55px;
+    left: 239px;
+    top: 785px;  
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    bottom: 40px; /* Фиксируем снизу */
+}
+
+.start-background {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #DADADA;
+    border: 2px solid #7F375A;
+    border-radius: 5px;
+}
+
+.start-text {
+    position: absolute;
+    width: 103px;
+    height: 31px;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    background: transparent;
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "ПРОФИЛЬ" (profile)
+// ============================================
+
+// Верхняя розовая полоса
+.profile-header {
+    position: absolute;
+    width: 389px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок "Ваши характеристики"
+.profile-title {
+    position: absolute;
+    width: 285px;
+    height: 31px;
+    left: 12px;
+    top: 6px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+}
+
+// Подзаголовок
+.profile-subtitle {
+    position: absolute;
+    width: 370px;
+    height: 44px;
+    left: 12px;
+    top: 37px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 19px;
+    display: flex;
+    align-items: center;
+    color: #7F375A;
+}
+
+// Поле с ником пользователя
+.profile-nick-field {
+    position: absolute;
+    width: 360px;
+    height: 65px;
+    left: 17px;
+    top: 107px;
+}
+
+// Рамка для ника
+.profile-nick-badge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+}
+
+// Текст ника
+.profile-nick-text {
+    position: absolute;
+    width: 316px;
+    height: 31px;
+    left: 20px;
+    top: 45%;
+    transform: translateY(-50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 31px;
+    text-align: left; //прижат к левому краю
+    color: #FE5499;
+    background: transparent;
+    pointer-events: none;
+}
+
+// Карточка характеристик (общая)
+.profile-card {
+    position: absolute;
+    width: 172px;
+    height: 130px;
+    
+    // Рамка карточки
+    .profile-card-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        box-sizing: border-box;
+    }
+    
+    // Заголовок карточки (Роль, Стаж и т.д.)
+    .profile-card-label {
+        position: absolute;
+        width: 143px;
+        height: 29px;
+        left: 50%;
+        top: 12px;
+        transform: translateX(-50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 19px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+    }
+    
+    // Значение карточки
+    .profile-card-value {
+        position: absolute;
+        width: 143px;
+        height: 69px;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 19px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        padding: 5px;
+        box-sizing: border-box;
+        word-break: break-word;
+
+        text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+        
+    }
+}
+
+// Нижняя розовая панель
+.profile-footer {
+    position: absolute;
+    width: 389px;
+    height: 81px;
+    left: 0px;
+    top: 767px;
+    background: #FFCBE5;
+}
+
+// Иконки (аватарки)
+.profile-icon {
+    position: absolute;
+    width: 77px;
+    height: 77px;
+    top: 771px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.icon-left {
+    left: 19px;
+}
+
+.icon-center {
+    left: 158px;
+}
+
+.icon-right {
+    left: 297px;
+
+    // Квадратная рамка вокруг иконки
+    &::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -6px;
+        right: -6px;
+        bottom: -1px;
+        border: 3px solid #D21B72;
+    }
+}
+
+// Кнопка "Ваш ход"
+.profile-turn {
+    position: absolute;
+    width: 158px;
+    height: 49px;
+    left: 50%;
+    top: 718px;
+    cursor: pointer;
+    transform: translateX(-50%);
+    
+    .profile-turn-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #FFFFFF;
+        border: 2px solid #FFCBE5;
+        border-radius: 50px;
+        box-sizing: border-box;
+    }
+    
+    .profile-turn-text {
+        position: absolute;
+        width: 132px;
+        height: 30px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+    }
+}
+
+// Таймер
+.profile-timer {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 289px;
+    top: 702px;
+    
+    .profile-timer-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F17BAB;
+        opacity: 0.75;
+        border-radius: 50px;
+        box-sizing: border-box;
+        border: 2px solid #7F375A; 
+    }
+    
+    .profile-timer-text {
+        position: absolute;
+        width: 64px;
+        height: 34px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 28px;
+        line-height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+
+        text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+    }
+}
+
+// Модальное окно для вскрытия карточки
+.card-modal {
+    position: absolute;
+    width: 172px;
+    height: 130px;
+    left: 24px;
+    top: 198px;
+    display: none;
+
+    
+    .card-modal-overlay {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: rgba(241, 123, 171, 0.75);  // полупрозрачный #F17BAB (75% непрозрачности)
+        border-radius: 50px;
+        border: 2px solid #7F375A;  // обводка
+        box-sizing: border-box;
+    }
+        
+    .card-modal-content {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+    }
+        
+    .card-modal-question {
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        color: #FFFFFF;
+        text-align: center;
+    }
+            
+    .card-modal-yes {
+        width: 85px;
+        height: 51px;
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        border-radius: 5px;
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        color: #FFFFFF;
+        cursor: pointer;
+                
+        &:hover {
+            background: #d45a8c;
+        }
+    }
+}
+
+.card-opened {
+    background: #FFCBE5 !important;
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "КАРТОЧКИ ВСЕХ ИГРОКОВ" (cards-all-players.html)
+// ============================================
+
+// Верхняя розовая полоса
+.cards-header {
+    position: absolute;
+    width: 393px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок
+.cards-title {
+    position: absolute;
+    width: 285px;
+    height: 31px;
+    left: 12px;
+    top: 27px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+}
+
+// Блок "Количество человек в проекте"
+.voted-block {
+    position: absolute;
+    width: 65px;
+    height: 65px;
+    left: 270;             
+    right: 95px;             
+    top: 10px;
+}
+
+.voted-badge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+}
+
+.voted-count {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FFFFFF;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+// Блок с вопросом (круг)
+.group-three {
+    position: absolute;
+    width: 45px;
+    height: 45px;
+    left: 340;             
+    right: 20px;             
+    top: 20px;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 50%;     
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    color: #7F375A;
+    cursor: pointer;
+}
+
+// Контейнер для всех игроков (прокручиваемый)
+.players-cards-container {
+    position: absolute;
+    width: 360px;
+    left: 17px;
+    top: 100px;
+    bottom: -100px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-right: 8px;
+
+    &::-webkit-scrollbar {
+        width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+        background: #FFCBE5;
+        border-radius: 2px;
+    }
+    &::-webkit-scrollbar-thumb {
+        background: #F17BAB;
+        border-radius: 2px;
+    }
+}
+
+// Блок одного игрока (большая рамка)
+.player-card-block {
+    position: relative;
+    width: 100%;
+    min-height: 475px;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+    padding: 6px;
+    background: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+}
+
+// Ник игрока
+.player-name {
+    position: absolute;
+    width: 304px;
+    height: 29px;
+    left: 38px;
+    top: 16px;              
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FE5499;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// Сетка карточек игрока (3x2)
+.player-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 5px;
+    justify-items: center;
+    align-items: start;
+    margin-top: 60px;
+}
+
+// Мини-карточка характеристики (маленькая рамка)
+.mini-card {
+    position: relative;
+    width: 100%;
+    max-width: 172px;
+    aspect-ratio: 172 / 130;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px;
+}
+
+// Специальный фон только для карточки с ролью
+.mini-card-role {
+    background: #FFCBE5;
+}
+
+// Остальные карточки — без фона
+.mini-card:not(.mini-card-role) {
+    background: transparent; 
+}
+
+// Заголовок карточки (Роль, Черта характера и т.д.)
+.mini-card-label {
+    position: absolute;
+    width: auto;           
+    max-width: 150px; //ограничиваем максимальную ширину
+    height: 29px;
+    left: 50%;
+    top: 12px;
+    transform: translateX(-50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 14px;        
+    line-height: 16px;   
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #FE5499;
+    background: transparent;
+    pointer-events: none;
+    white-space: nowrap; //запрещаем перенос на новую строку
+}
+
+// Значение карточки (Проектировщик-тестировщик и т.д.)
+.mini-card-value {
+    position: absolute;
+    width: 150px;
+    height: 69px;
+    left: 50%;
+    bottom: 12px;
+    transform: translateX(-50%);
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 16px;
+    line-height: 19px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #FFFFFF;
+    background: transparent;
+    pointer-events: none;
+    padding: 5px;
+    box-sizing: border-box;
+    word-break: break-word;
+
+    text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+}
+
+// Нижняя розовая панель
+.cards-footer {
+    position: absolute;
+    width: 389px;
+    height: 81px;
+    left: 0px;
+    top: 767px;
+    background: #FFCBE5;
+}
+
+// Иконки (аватарки)
+.cards-icon {
+    position: absolute;
+    width: 77px;
+    height: 77px;
+    top: 771px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.icon-left {
+    left: 19px;
+}
+
+.icon-center {
+    left: 158px;
+
+    // Квадратная рамка вокруг иконки
+    &::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -6px;
+        right: -6px;
+        bottom: -1px;
+        border: 3px solid #D21B72;
+    }
+}
+
+.icon-right {
+    left: 297px;
+
+    &::before {
+        display: none;  // принудительно скрываем
+    }
+}
+
+// Кнопка "Ваш ход"
+.cards-turn {
+    position: absolute;
+    width: 158px;
+    height: 49px;
+    left: 50%;
+    top: 718px;
+    cursor: pointer;
+    transform: translateX(-50%);
+    
+    .cards-turn-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #FFFFFF;
+        border: 2px solid #FFCBE5;
+        border-radius: 50px;
+        box-sizing: border-box;
+    }
+    
+    .cards-turn-text {
+        position: absolute;
+        width: 132px;
+        height: 30px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+    }
+}
+
+// Таймер
+.cards-timer {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 289px;
+    top: 702px;
+    
+    .cards-timer-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F17BAB;
+        opacity: 0.75;
+        border-radius: 50px;
+        box-sizing: border-box;
+        border: 2px solid #7F375A;
+    }
+    
+    .cards-timer-text {
+        position: absolute;
+        width: 64px;
+        height: 34px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 28px;
+        line-height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        
+        text-shadow:
+        1px 0 0 #7F375A,
+        -1px 0 0 #7F375A,
+        0 1px 0 #7F375A,
+        0 -1px 0 #7F375A,
+        1px 1px 0 #7F375A,
+        -1px -1px 0 #7F375A,
+        1px -1px 0 #7F375A,
+        -1px 1px 0 #7F375A;
+    }
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "ГОЛОСОВАНИЕ" (vote.html)
+// ============================================
+
+// Верхняя розовая полоса
+.vote-header {
+    position: absolute;
+    width: 389px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок "Раунд 1"
+.vote-title {
+    position: absolute;
+    width: 285px;
+    height: 31px;
+    left: 12px;
+    top: 6px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #7F375A;
+}
+
+// Подзаголовок
+.vote-subtitle {
+    position: absolute;
+    width: 370px;
+    height: 44px;
+    left: 12px;
+    top: 37px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 400;
+    font-size: 16px;
+    line-height: 19px;
+    display: flex;
+    align-items: center;
+    color: #7F375A;
+}
+
+// Текст "Проголосовало:"
+.vote-count-label {
+    position: absolute;
+    width: 180px;
+    height: 31px;
+    left: 107px;
+    top: 116px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    pointer-events: none;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+// Статистика голосования
+.vote-stats {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 276px;
+    top: 95px;
+}
+
+.vote-stats-badge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+}
+
+.vote-stats-count {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FFFFFF;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+// Список игроков для голосования
+.vote-players-list {
+    position: absolute;
+    width: 370px;
+    left: 11px;
+    top: 180px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 8px;
+}
+
+// Элемент игрока для голосования
+.vote-player-item {
+    position: relative;
+    width: 100%;
+    height: 60px;
+    
+    .vote-player-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        background: #FFFFFF;
+    }
+    
+    .vote-player-name {
+        position: absolute;
+        width: 90%;
+        max-width: 316px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        color: #FE5499;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    // Иконка крестика справа от игрока
+    .vote-player-icon {
+        position: absolute;
+        width: 50px;
+        height: 50px;
+        right: 8px;
+        top: 50%;
+        transform: translateY(-50%);
+    }
+}
+
+// Кнопка SKIP (пропустить)
+.vote-skip {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 11px;
+    top: 702px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    
+    .vote-skip-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        box-sizing: border-box;
+    }
+    
+    .vote-skip-text {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 25px;
+        line-height: 24px;
+        color: #FFFFFF;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+        pointer-events: none;
+    }
+}
+
+// Кнопка "Голосование"
+.vote-turn {
+    position: absolute;
+    width: 158px;
+    height: 49px;
+    left: 50%;
+    top: 718px;
+    cursor: pointer;
+    transform: translateX(-50%);
+    
+    .vote-turn-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #FFFFFF;
+        border: 2px solid #FFCBE5;
+        border-radius: 50px;
+        box-sizing: border-box;
+    }
+    
+    .vote-turn-text {
+        position: absolute;
+        width: 132px;
+        height: 30px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+    }
+}
+
+// Таймер
+.vote-timer {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 289px;
+    top: 702px;
+    
+    .vote-timer-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F17BAB;
+        opacity: 0.75;
+        border-radius: 50px;
+        box-sizing: border-box;
+        border: 2px solid #7F375A;
+    }
+    
+    .vote-timer-text {
+        position: absolute;
+        width: 64px;
+        height: 34px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 28px;
+        line-height: 34px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+}
+
+// Нижняя розовая панель
+.vote-footer {
+    position: absolute;
+    width: 389px;
+    height: 81px;
+    left: 0px;
+    top: 767px;
+    background: #FFCBE5;
+}
+
+// Иконки (аватарки)
+.vote-icon {
+    position: absolute;
+    width: 77px;
+    height: 77px;
+    top: 771px;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.icon-left {
+    left: 19px;
+    // Квадратная рамка вокруг иконки
+    &::before {
+        content: '';
+        position: absolute;
+        top: -4px;
+        left: -6px;
+        right: -6px;
+        bottom: -1px;
+        border: 3px solid #D21B72;
+    }
+}
+
+.icon-center {
+    left: 158px;
+    &::before {
+        display: none;  // принудительно скрываем
+    }
+}
+
+.icon-right {
+    left: 297px;
+    &::before {
+        display: none;  // принудительно скрываем
+    }
+}
+
+// Модальное окно подтверждения
+.vote-modal {
+    position: absolute;
+    width: 260px;
+    height: 150px;
+    left: calc(50% - 260px/2 + 0.5px);
+    top: calc(50% - 150px/2);
+    display: none;
+    
+    .vote-modal-content {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        background: #FFCBE5;
+        border: 2px solid #7F375A;
+        border-radius: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 20px;
+        box-sizing: border-box;
+        padding: 20px;
+    }
+    
+    .vote-modal-question {
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 18px;
+        line-height: 20px;
+        text-align: center;
+        color: #7F375A;
+    }
+    
+    .vote-modal-buttons {
+        display: flex;
+        gap: 30px;
+    }
+    
+    .vote-modal-no, .vote-modal-yes {
+        width: 80px;
+        height: 45px;
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 20px;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .vote-modal-no {
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        color: #FFFFFF;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+
+    .vote-modal-yes {
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        color: #FFFFFF;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+    
+}
+
+// Выгнанный игрок
+.vote-player-item.kicked {
+    position: relative;
+    width: 100%;
+    height: 60px; 
+
+    .vote-player-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0px;
+        top: 0px;
+        background: #DADADA;
+        border: 2px solid #9B3D63;
+        border-radius: 50px;
+    }
+    
+    .vote-player-name {
+        position: absolute;
+        width: 90%;
+        max-width: 316px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-weight: 700;
+        font-size: 20px;
+        color: #9B3D63;
+        text-decoration: line-through;  // зачёркивание
+    }
+    
+    .vote-player-icon {
+        display: none;  // скрываем крестик
+    }
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "ИТОГОВЫЕ ИГРОКИ" (final-team.html)
+// ============================================
+
+// Верхняя розовая полоса
+.final-header {
+    position: absolute;
+    width: 393px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок "Итоговый состав команды"
+.final-title {
+    position: absolute;
+    width: 358px;
+    height: 31px;
+    left: 12px;
+    top: 27px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 24px;
+    line-height: 29px;
+    color: #7F375A;
+}
+
+// Текст "Количество:"
+.final-count-label {
+    position: absolute;
+    width: 135px;
+    height: 31px;
+    left: 141px;
+    top: 116px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+// Статистика
+.final-stats {
+    position: absolute;
+    width: 94px;
+    height: 65px;
+    left: 276px;
+    top: 95px;
+}
+
+.final-stats-badge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    background: #F17BAB;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+}
+
+.final-stats-count {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    text-align: center;
+    color: #FFFFFF;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    box-sizing: border-box;
+    width: 60px;
+    height: 24px;
+    left: 17px;
+    top: 20px;
+    background: transparent;
+}
+
+// Список итоговых игроков
+.final-players-list {
+    position: absolute;
+    width: 360px;
+    left: 17px;
+    top: 170px;
+    bottom: 180px;
+    overflow-y: visible;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 0px;
+}
+
+.final-player-item {
+    position: relative;
+    width: 100%;
+    min-height: 60px;
+    flex-shrink: 0;
+    
+    .final-player-badge {
+        position: absolute;
+        width: 100%;
+        height: 60px;
+        left: 0;
+        top: 0;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        background: #FFFFFF;
+        box-sizing: border-box;
+    }
+    
+    .final-player-name {
+        position: absolute;
+        left: 20px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-family: 'Inria Serif';
+        font-weight: 700;
+        font-size: 20px;
+        line-height: 24px;
+        color: #FE5499;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: calc(100% - 100px);
+        pointer-events: none;
+        z-index: 3;
+    }
+    
+    // Раскрывающийся блок с картами
+    .player-cards-expanded {
+        position: absolute;
+        width: 100%;
+        top: 0;
+        left: 0;
+        padding: 15px;
+        padding-top: 0px;
+        background: #FFFFFF;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        box-sizing: border-box;
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    // Сетка карточек
+    .player-cards-grid {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px;
+        justify-items: center;
+        align-items: start;
+    }
+    
+    // Мини-карточка
+    .mini-card {
+        position: relative;
+        width: 100%;
+        max-width: 172px;
+        aspect-ratio: 172 / 130;
+        background: #FFCBE5;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+        box-sizing: border-box;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+    }
+    
+    .mini-card-label {
+        position: absolute;
+        width: 90px;
+        height: 29px;
+        left: 50%;
+        top: 12px;
+        transform: translateX(-50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FE5499;
+        background: transparent;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+    
+    .mini-card-value {
+        position: absolute;
+        width: 150px;
+        height: 69px;
+        left: 50%;
+        bottom: 12px;
+        transform: translateX(-50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 17px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        padding: 5px;
+        box-sizing: border-box;
+        word-break: break-word;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+    
+    // Раскрытое состояние
+    &.open {
+        .final-player-badge {
+            opacity: 0;
+            visibility: hidden;
+        }
+        
+        .player-cards-expanded {
+            display: flex;
+        }
+    }
+}
+
+// Выбывший игрок
+.final-player-item.eliminated {
+    cursor: default;
+    
+    .final-player-badge {
+        background: #DADADA;
+        border-color: #9B3D63;
+    }
+    
+    .final-player-name {
+        text-decoration: line-through;
+        color: #9B3D63;
+    }
+    
+    &.open .player-cards-expanded {
+        display: none;
+    }
+}
+
+// Кнопка "Вскрыть все карты"
+.final-reveal-btn {
+    position: absolute;
+    width: 174px;
+    height: 56px;
+    bottom: 150px;
+    left: 110px;
+    top: 680px;
+    
+    .final-reveal-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F5BFCF;
+        border: 2px solid #7F375A;
+        border-radius: 50px;
+    }
+    
+    .final-reveal-text {
+        position: absolute;
+        width: 124px;
+        height: 30px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 700;
+        font-size: 16px;
+        line-height: 19px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+}
+
+// Кнопка "Посмотреть результаты"
+.final-results-btn {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 47px;
+    top: 772px;
+    
+    .final-results-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        border-radius: 5px;
+    }
+    
+    .final-results-text {
+        position: absolute;
+        width: 264px;
+        height: 31px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 400;
+        font-size: 20px;
+        line-height: 24px;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+    }
+}
+
+// ============================================
+// СТИЛИ ДЛЯ ФРЕЙМА "ОТВЕТЫ НА ВОПРОСЫ" (answers.html)
+// ============================================
+
+// Верхняя розовая полоса
+.answers-header {
+    position: absolute;
+    width: 393px;
+    height: 85px;
+    left: 0px;
+    top: 0px;
+    background: #FFCBE5;
+}
+
+// Заголовок "Подведение итогов"
+.answers-title {
+    position: absolute;
+    width: 358px;
+    height: 38px;
+    left: 200px;
+    transform: translateX(-50%);
+    top: 24px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 32px;
+    line-height: 38px;
+    text-align: center;
+    color: #FFFFFF;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;  
+}
+
+// Карточка с вопросами
+.answers-card {
+    position: absolute;
+    width: 360px;
+    left: 17px;
+    top: 110px;
+    background: #FFFFFF;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    padding: 20px 20px 20px 20px;
+    box-sizing: border-box;
+}
+
+// Текст вопроса
+.answers-question {
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 22px;
+    line-height: 24px;
+    color: #FE5499;
+    margin-bottom: 20px;
+}
+
+// Контейнер для вариантов ответов
+.answers-options {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+// Один вариант ответа
+.answers-option {
+    position: relative;
+    width: 100%;
+    height: 51px;
+    display: flex;
+    justify-content: center;      
+    
+    .answers-option-badge {
+        position: absolute;
+        width: 90%;               
+        height: 100%;
+        left: 50%;                
+        transform: translateX(-50%); 
+        background: #F17BAB;
+        border: 2px solid #7F375A;
+        border-radius: 8px;
+        box-sizing: border-box;
+    }
+    
+    .answers-option-text {
+        position: absolute;
+        left: 50%;                
+        top: 50%;
+        transform: translate(-50%, -50%);
+        width: 80%;               
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 545;
+        font-size: 18px;          
+        line-height: 19px;
+        text-align: center;
+        color: #FFFFFF;
+        background: transparent;
+        pointer-events: none;
+        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+        word-break: break-word;
+    }
+}
+
+// Кнопка "Перейти к итогам"
+.answers-next-btn {
+    position: absolute;
+    width: 300px;
+    height: 65px;
+    left: 47px;
+    top: 772px;              
+    
+    .answers-next-badge {
+        position: absolute;
+        width: 100%;
+        height: 100%;
+        left: 0;
+        top: 0;
+        background: #DADADA;
+        border: 2px solid #7F375A;
+        border-radius: 5px;
+        box-sizing: border-box;
+    }
+    
+    .answers-next-text {
+        position: absolute;
+        width: 264px;
+        height: 31px;
+        left: 50%;
+        top: 50%;
+        transform: translate(-50%, -50%);
+        font-family: 'Inria Serif';
+        font-style: normal;
+        font-weight: 400;
+        font-size: 20px;
+        line-height: 24px;
+        text-align: center;
+        color: #7F375A;
+        background: transparent;
+        pointer-events: none;
+    }
+}
+
