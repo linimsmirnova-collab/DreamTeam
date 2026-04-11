@@ -475,7 +475,8 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
         }
 
-        const session = req.manager.GameSession;
+        const manager = req.manager;
+        const session = manager.GameSession;
         let targetPlayer = null;
 
         // Обработка пропуска голоса
@@ -511,9 +512,14 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         const activePlayers = session.players_list.filter(p => p.active);
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
         if (allVoted) {
-            io.to(roomCode).emit('all-voted', {
-                message: 'Все игроки проголосовали! Подводим итоги раунда.'
-            });
+            const excludedPlayer = manager.CompleteRound();
+
+            io.to(roomCode).emit('complete-round', {
+                player: excludedPlayer,
+                current_round: session.current_round,
+                rounds_count: session.rounds_count,
+            })
+            return res.status(200).json({ success: true });
         }
 
         res.status(200).json({ success: true, message: 'Ваш голос учтён' });
