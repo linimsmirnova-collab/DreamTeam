@@ -82,20 +82,6 @@ function authenticatePlayer(req, res, next) {
     next();
 }
 
-// // Тестовый эндпоинт, доступный только авторизованным игрокам
-// app.post('/api/room/test', authenticatePlayer, (req, res) => {
-//     res.json({
-//         success: true,
-//         message: 'Вы авторизованы в комнате',
-//         player: {
-//             id: req.player.id,
-//             nickname: req.player.nickname,
-//             isCreator: req.player.be_creator
-//         },
-//         roomId: req.roomId
-//     });
-// });
-
 // эндпоинт для отображения стартовой страницы в корневой ссылке
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, '..', 'WEB', 'pages', 'main-page.html'));
@@ -463,12 +449,6 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 })
-
-// app.listen(PORT, '0.0.0.0', () => {
-//     console.log(`Сервер запущен:`);
-//     console.log(`- Локально: http://localhost:${PORT}`);
-//     console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
-// });
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Сервер запущен:`);

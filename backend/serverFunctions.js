@@ -7,8 +7,6 @@ const crypto = require("crypto");
 const fs = require('fs');
 const path = require('path');
 
-const activeManagers = require("./server");
-
 function calculateGameParams(currentPlayers) {
     // расчёт целевого количества игроков
     const finalTargetSize = Math.floor(currentPlayers / 2);
