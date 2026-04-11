@@ -97,7 +97,7 @@ function authenticatePlayer(req, res, next) {
 // Эндпоинт создания комнаты
 app.post('/api/room/create', async (req, res) => {
     try {
-        const { randomEvents, maxPlayers, nickname } = req.body; //подправила на maxPlayers
+        const { randomEvents, maxPlayers, nickname } = req.body;
 
         // Простейшие проверки
         if (maxPlayers < 4 || maxPlayers > 16) {
@@ -114,10 +114,12 @@ app.post('/api/room/create', async (req, res) => {
 
         const project = await db.getProject()
 
-        const {rounds, final_players_count} = calculateGameParams(maxPlayers)
+        const {rounds, targetTeamSize} = calculateGameParams(maxPlayers)
+
+        console.log('target teamSize', targetTeamSize);
 
         // Создание игровой сессии
-        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, final_players_count, rounds, project)
+        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, targetTeamSize, rounds, project)
 
         console.log(manager.GameSession.players_list);
         console.log(manager.GameSession.project);
@@ -512,8 +514,20 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         const activePlayers = session.players_list.filter(p => p.active);
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
         if (allVoted) {
+            // получение исключаемого игрока Player и фиксация завершения раунда, если никого не исключили то null
             const excludedPlayer = manager.CompleteRound();
 
+            // Если достигнуто нужное количество игроков, через вебсокет выдаёт итоговый список игроков которые остались, ещё выдаёт исключённого игрока
+            if (session.players_count === session.players_final_count) {
+                console.log('game complete');
+                io.to(roomCode).emit('complete-game', {
+                    final_party: session.players_list.filter(p => p.active),
+                    excludedPlayer: excludedPlayer,
+                })
+                return res.status(200).json({success: true})
+            }
+
+            console.log('round complete');
             io.to(roomCode).emit('complete-round', {
                 player: excludedPlayer,
                 current_round: session.current_round,

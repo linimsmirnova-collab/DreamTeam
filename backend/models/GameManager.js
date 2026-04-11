@@ -37,6 +37,7 @@ class GameManager {
         this.#gameSession.players_list.push(player)
     }
 
+    // Фискирует и возращает исключение игрока, фиксирует завершение раунда, если никто не исключён увеличивает количество раундов, и возращает null
     CompleteRound() {
         const session = this.#gameSession;
         if (!session) return;
@@ -94,6 +95,7 @@ class GameManager {
 
         // 8. Переход к следующему раунду
         session.current_round += 1;
+        session.players_count -= 1;
 
         // Возрат исключённого игрока
         return excludedPlayer;
