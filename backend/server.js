@@ -39,7 +39,8 @@ if (test) {
     app.get('/', (req, res) => {
         res.sendFile(path.join(__dirname, 'public', 'test-socket.html'));
     });
-} else {
+}
+else {
     // Раздача статики из папки WEB
     app.use(express.static(path.join(__dirname, '..', 'WEB')));
     // эндпоинт для отображения стартовой страницы в корневой ссылке
@@ -47,7 +48,6 @@ if (test) {
         res.sendFile(path.join(__dirname, '..', 'WEB', 'pages', 'main-page.html'));
     });
 }
-
 
 //const db = new DataStorage('./db/dream_team.db')
 const db = new DataStorage(path.join(__dirname, 'db/dream_team_new.db'));
@@ -506,6 +506,15 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                 nickname: targetPlayer.nickname
             } : null
         });
+
+        // Проверяем, все ли активные игроки проголосовали
+        const activePlayers = session.players_list.filter(p => p.active);
+        const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
+        if (allVoted) {
+            io.to(roomCode).emit('all-voted', {
+                message: 'Все игроки проголосовали! Подводим итоги раунда.'
+            });
+        }
 
         res.status(200).json({ success: true, message: 'Ваш голос учтён' });
     } catch (error) {
