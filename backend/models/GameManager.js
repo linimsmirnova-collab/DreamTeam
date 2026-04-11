@@ -36,6 +36,10 @@ class GameManager {
     AddPlayerToGameSession (player) {
         this.#gameSession.players_list.push(player)
     }
+
+    CompleteRound() {
+        this.#gameSession.current_round += 1;
+    }
 }
 
 module.exports = GameManager;

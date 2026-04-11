@@ -2,26 +2,30 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>DreamTeam — Полный тест с картами игроков</title>
+    <title>DreamTeam — Тест с картами и голосованием</title>
     <style>
         * { box-sizing: border-box; }
         body { font-family: system-ui; background: #f0f2f5; margin: 0; padding: 20px; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; border-radius: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); overflow: hidden; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 32px; box-shadow: 0 8px 20px rgba(0,0,0,0.1); overflow: hidden; }
         .screen { display: none; padding: 24px; }
         .screen.active { display: block; }
         h2 { margin-top: 0; color: #7F375A; }
         .info-panel { background: #FFCBE5; border-radius: 20px; padding: 12px 16px; margin-bottom: 20px; color: #7F375A; }
         button { background: #F17BAB; border: none; color: white; font-weight: bold; padding: 10px 20px; border-radius: 40px; cursor: pointer; margin: 4px 6px 4px 0; }
         button.secondary { background: #FFCBE5; color: #7F375A; }
+        button.small { padding: 6px 12px; font-size: 12px; }
         input, select { padding: 10px 14px; border-radius: 40px; border: 1px solid #F17BAB; margin: 8px 0; width: 100%; }
         .players-list { list-style: none; padding: 0; margin: 12px 0; background: #FFF0F5; border-radius: 24px; padding: 12px; }
-        .players-list li { padding: 8px 12px; border-bottom: 1px solid #FFCBE5; display: flex; justify-content: space-between; }
+        .players-list li { padding: 8px 12px; border-bottom: 1px solid #FFCBE5; display: flex; justify-content: space-between; align-items: center; }
         .game-grid { display: flex; gap: 24px; flex-wrap: wrap; }
         .my-cards-section { flex: 2; min-width: 280px; }
         .players-revealed { flex: 1; min-width: 250px; background: #FFF0F5; border-radius: 24px; padding: 16px; }
         .player-reveal { margin-bottom: 16px; border-bottom: 1px solid #FFCBE5; padding-bottom: 8px; }
         .player-reveal strong { color: #7F375A; }
         .revealed-cards { font-size: 12px; margin-top: 6px; color: #555; }
+        .voting-section { margin-top: 24px; border-top: 2px solid #FFCBE5; padding-top: 16px; }
+        .voting-players { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+        .voting-player { background: #FFF0F5; border-radius: 40px; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; }
         .cards-grid { display: flex; flex-wrap: wrap; gap: 12px; margin: 16px 0; }
         .card { background: #FFF0F5; border-radius: 20px; border: 1px solid #F17BAB; width: 160px; padding: 10px; }
         .card.closed { opacity: 0.7; background: #e9e9e9; }
@@ -30,14 +34,15 @@
         .turn-indicator { background: #F17BAB; color: white; padding: 12px; border-radius: 60px; text-align: center; font-weight: bold; margin: 16px 0; }
         .log { background: #f8f9fa; border-radius: 20px; padding: 12px; max-height: 200px; overflow-y: auto; font-family: monospace; margin-top: 20px; }
         .flex-row { display: flex; gap: 12px; flex-wrap: wrap; }
+        .badge { background: #F17BAB; color: white; border-radius: 20px; padding: 2px 8px; font-size: 12px; }
     </style>
     <script src="/socket.io/socket.io.js"></script>
 </head>
 <body>
 <div class="container">
     <div id="startScreen" class="screen active">
-        <h2>🎮 DreamTeam — Тест с просмотром карт игроков</h2>
-        <div class="info-panel">Создайте или войдите в комнату → старт → вскрывайте карты → смотрите, кто что открыл</div>
+        <h2>🎮 DreamTeam — Тест с картами и голосованием</h2>
+        <div class="info-panel">Создайте комнату → старт → вскрывайте карты → голосуйте</div>
         <input type="text" id="nicknameInput" placeholder="Ваш никнейм" value="ТестИгрок">
         <div class="flex-row">
             <button id="createRoomBtn">✨ Создать комнату</button>
@@ -73,6 +78,12 @@
             <div class="players-revealed">
                 <h3>👥 Вскрытые карты игроков</h3>
                 <div id="playersRevealedContainer"></div>
+                <div class="voting-section">
+                    <h3>🗳️ Голосование</h3>
+                    <div id="votingStatus" class="info-panel" style="font-size: 14px;">Ожидание начала раунда</div>
+                    <div id="votingPlayersList" class="voting-players"></div>
+                    <button id="skipVoteBtn" class="secondary small">⏭️ Пропустить голос</button>
+                </div>
             </div>
         </div>
         <div class="log" id="eventLog"></div>
@@ -85,9 +96,13 @@
     let currentRoomCode = null, currentNickname = null, currentPlayerUuid = null;
     let isCreator = false;
     let myHand = [], myOpenCards = [];
-    let allPlayers = [];           // список игроков {uuid, nickname}
-    let revealedCardsMap = new Map(); // ключ: uuid игрока, значение: массив вскрытых карт
+    let allPlayers = [];
+    let revealedCardsMap = new Map();
     let lobbyInterval = null, turnInterval = null;
+
+    // Состояние голосования в текущем раунде
+    let hasVoted = false;          // проголосовал ли текущий игрок в этом раунде
+    let votingResults = new Map();  // uuid -> { votedForUuid, nickname }
 
     const startScreen = document.getElementById('startScreen');
     const lobbyScreen = document.getElementById('lobbyScreen');
@@ -142,10 +157,8 @@
         });
         socket.on('reveal-card', (data) => {
             addLog(`📢 ${data.player.nickname} вскрыл карту: "${data.openCard.name}"`);
-            // обновляем карты этого игрока
             if (!revealedCardsMap.has(data.player.uuid)) revealedCardsMap.set(data.player.uuid, []);
             revealedCardsMap.get(data.player.uuid).push(data.openCard);
-            // если это наш игрок, обновляем локально
             if (data.player.uuid === currentPlayerUuid) {
                 myOpenCards.push(data.openCard);
                 renderMyCards();
@@ -154,35 +167,42 @@
             renderPlayersRevealed();
             checkTurn();
         });
+        socket.on('player-voted', (data) => {
+            addLog(`🗳️ ${data.voter.nickname} проголосовал за ${data.target ? data.target.nickname : 'пропуск'}`);
+            votingResults.set(data.voter.uuid, {
+                votedForUuid: data.target ? data.target.uuid : null,
+                nickname: data.target ? data.target.nickname : 'пропуск'
+            });
+            renderVotingUI();
+        });
         socket.on('disconnect', () => addLog('❌ WebSocket отключён'));
     }
 
-    // Загрузка списка игроков (для игрового экрана)
     async function loadPlayersList() {
         if (!currentRoomCode) return [];
         const data = await apiRequest(`/api/room/players?code=${currentRoomCode}`);
         return data.players || [];
     }
 
-    // Инициализация игрового экрана
     async function startGameplay() {
         if (lobbyInterval) clearInterval(lobbyInterval);
         showScreen('game');
         document.getElementById('gameRoomCode').innerText = currentRoomCode;
         document.getElementById('gameNickname').innerText = currentNickname;
 
-        // Загружаем список игроков
         allPlayers = await loadPlayersList();
-        // Очищаем карты вскрытий
         revealedCardsMap.clear();
         allPlayers.forEach(p => revealedCardsMap.set(p.uuid, []));
-        // Загружаем свои карты
+        votingResults.clear();
+        hasVoted = false;
+
         const data = await apiRequest('/api/game/my-cards', 'GET');
         myHand = data.hand || [];
         myOpenCards = [];
         renderMyCards();
         renderOpenCardsList();
         renderPlayersRevealed();
+        renderVotingUI();
 
         if (turnInterval) clearInterval(turnInterval);
         turnInterval = setInterval(() => checkTurn(), 2000);
@@ -246,6 +266,83 @@
             container.appendChild(div);
         }
     }
+
+    function renderVotingUI() {
+        const container = document.getElementById('votingPlayersList');
+        const statusDiv = document.getElementById('votingStatus');
+        if (!container) return;
+
+        if (!allPlayers.length) return;
+
+        const activePlayers = allPlayers.filter(p => p.active !== false);
+        container.innerHTML = '';
+        activePlayers.forEach(player => {
+            if (player.uuid === currentPlayerUuid) return; // себя не показываем в списке для голосования
+            const votedInfo = votingResults.get(player.uuid);
+            const alreadyVotedForThis = votingResults.get(currentPlayerUuid)?.votedForUuid === player.uuid;
+            const div = document.createElement('div');
+            div.className = 'voting-player';
+            div.innerHTML = `
+                <span>${player.nickname}</span>
+                <button class="small vote-btn" data-uuid="${player.uuid}" ${hasVoted ? 'disabled' : ''}>🗳️ Голосовать</button>
+            `;
+            container.appendChild(div);
+        });
+
+        // Добавляем информацию о том, за кого уже проголосовал текущий игрок
+        const myVote = votingResults.get(currentPlayerUuid);
+        if (myVote) {
+            statusDiv.innerHTML = `✅ Вы проголосовали за ${myVote.nickname || 'пропуск'}`;
+        } else {
+            statusDiv.innerHTML = `⏳ Вы ещё не голосовали в этом раунде`;
+        }
+
+        // Показываем общие результаты (кто за кого)
+        const resultsText = Array.from(votingResults.entries())
+            .map(([uuid, vote]) => {
+                const voter = allPlayers.find(p => p.uuid === uuid);
+                return `${voter?.nickname || uuid} → ${vote.nickname}`;
+            }).join('; ');
+        if (resultsText) statusDiv.innerHTML += `<br><small>Результаты: ${resultsText}</small>`;
+
+        // Обработчики кнопок
+        document.querySelectorAll('.vote-btn').forEach(btn => {
+            btn.removeEventListener('click', voteHandler);
+            btn.addEventListener('click', voteHandler);
+        });
+    }
+
+    async function voteHandler(e) {
+        const btn = e.currentTarget;
+        const targetUuid = btn.dataset.uuid;
+        if (hasVoted) {
+            alert('Вы уже проголосовали в этом раунде');
+            return;
+        }
+        try {
+            await apiRequest('/api/game/create', 'POST', { vote_id: targetUuid });
+            addLog(`Вы проголосовали за игрока ${targetUuid}`);
+            hasVoted = true;
+            renderVotingUI();
+        } catch (err) {
+            alert(`Ошибка голосования: ${err.message}`);
+        }
+    }
+
+    document.getElementById('skipVoteBtn').onclick = async () => {
+        if (hasVoted) {
+            alert('Вы уже проголосовали');
+            return;
+        }
+        try {
+            await apiRequest('/api/game/create', 'POST', { vote_id: 'skip' });
+            addLog(`Вы пропустили голосование`);
+            hasVoted = true;
+            renderVotingUI();
+        } catch (err) {
+            alert(`Ошибка: ${err.message}`);
+        }
+    };
 
     function getTypeName(type) {
         const map = {1:'Роль',2:'Стаж',3:'Черта',4:'Soft skill',5:'Особенность',6:'Языки/среды'};

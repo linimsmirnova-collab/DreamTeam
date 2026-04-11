@@ -21,6 +21,7 @@ const {
 } = require('./serverFunctions');
 const player = require("./models/Player");
 
+const test = false // если true, то тестовый режим, если false, то обычный режим
 const app = express();
 const PORT = 3000;
 
@@ -31,11 +32,22 @@ const PORT = 3000;
 app.use(express.json());
 app.use(cookieParser());
 
-// Раздача статики из папки WEB
-app.use(express.static(path.join(__dirname, '..', 'WEB')));
+if (test) {
+    // Раздача тестовых файла html из папки public
+    app.use(express.static(path.join(__dirname, 'public', 'test-socket.html')));
+    // эндпоинт для отображения тестовой страницы в корневой ссылке
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(__dirname, 'public', 'test-socket.html'));
+    });
+} else {
+    // Раздача статики из папки WEB
+    app.use(express.static(path.join(__dirname, '..', 'WEB')));
+    // эндпоинт для отображения стартовой страницы в корневой ссылке
+    app.get('/', (req, res) => {
+        res.sendFile(path.join(__dirname, '..', 'WEB', 'pages', 'main-page.html'));
+    });
+}
 
-// // Раздача тестовых файлов html из папки public
-// app.use(express.static(path.join(__dirname, 'public')));
 
 //const db = new DataStorage('./db/dream_team.db')
 const db = new DataStorage(path.join(__dirname, 'db/dream_team_new.db'));
@@ -81,11 +93,6 @@ function authenticatePlayer(req, res, next) {
     req.roomId = roomId;
     next();
 }
-
-// эндпоинт для отображения стартовой страницы в корневой ссылке
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, '..', 'WEB', 'pages', 'main-page.html'));
-});
 
 // Эндпоинт создания комнаты
 app.post('/api/room/create', async (req, res) => {
@@ -362,7 +369,7 @@ app.get('/api/game/moved_player', authenticatePlayer, async (req, res) => {
         const movePlayer = selectPlayerMove(session)
         res.json(movePlayer);
     } catch (error) {
-        console.error('Ошибка при получении голосующего игрока:', error);
+        console.error('Ошибка при получении ходящего игрока:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 })
@@ -434,8 +441,15 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
 
     cat_card -= 1; // приведение к удобному индексу для обращения к массиву
 
+    if (player.isVoted) {
+        return res.status(400).json({error: 'Ошибка, нельзя вскрыть карту в этом раунде после голосования'})
+    }
+
     try {
         const openCard = player.hand[cat_card]
+        if (!openCard) {
+            return res.status(400).json({error: 'Карта не найдена'})
+        }
         openCard.open()
         player.openCards.push(openCard);
 
@@ -445,16 +459,68 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
         });
         res.sendStatus(200);
     } catch (error) {
-        console.log("Ошибка при вскрытии карты", error);
+        console.error("Ошибка при вскрытии карты", error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 })
 
-server.listen(PORT, '0.0.0.0', () => {
-    console.log(`Сервер запущен:`);
-    console.log(`- Локально: http://localhost:${PORT}`);
-    console.log(`- В сети: http://${getLocalIP('192.168.0.1/24')}:${PORT}`);
+// Эндпоинт обрабатывающий голосование игроков
+app.post('/api/game/create', authenticatePlayer, async (req, res) => {
+    try {
+        const player = req.player;
+        const roomCode = req.roomId;
+        const { vote_id } = req.body;
+
+        if (player.isVoted) {
+            return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
+        }
+
+        const session = req.manager.GameSession;
+        let targetPlayer = null;
+
+        // Обработка пропуска голоса
+        if (vote_id !== 'skip') {
+            // Ищем целевого игрока
+            targetPlayer = session.players_list.find(p => p.uuid == vote_id);
+
+            if (!targetPlayer || !targetPlayer.active) {
+                return res.status(404).json({ error: 'Игрок, за которого вы пытаетесь голосовать, не найден или исключён' });
+            }
+            // Проверка, чтобы игрок не голосовал за себя
+            if (targetPlayer.uuid === player.uuid) {
+                return res.status(400).json({ error: 'Нельзя голосовать за самого себя' });
+            }
+            player.votedOnPlayer = targetPlayer;
+        }
+
+        player.isVoted = true;
+
+        // Отправляем событие всем в комнате через WebSocket
+        io.to(roomCode).emit('player-voted', {
+            voter: {
+                uuid: player.uuid,
+                nickname: player.nickname
+            },
+            target: targetPlayer ? {
+                uuid: targetPlayer.uuid,
+                nickname: targetPlayer.nickname
+            } : null
+        });
+
+        res.status(200).json({ success: true, message: 'Ваш голос учтён' });
+    } catch (error) {
+        console.error('Ошибка при обработке голосования:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
 });
+
+// Экспорт для тестов
+if (process.env.NODE_ENV !== 'test') {
+    server.listen(PORT, '0.0.0.0', () => {
+        console.log(`Сервер запущен: http://localhost:${PORT}`);
+    });
+}
+
 // function getLocalIP() {
 //     const nets = require('os').networkInterfaces();
 //     for (const name of Object.keys(nets)) {
@@ -466,3 +532,5 @@ server.listen(PORT, '0.0.0.0', () => {
 //     }
 //     return '127.0.0.1';
 // }
+
+module.exports = { app, server, io, db, activeManagers };
