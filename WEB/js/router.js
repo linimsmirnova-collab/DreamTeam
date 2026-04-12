@@ -598,3 +598,142 @@ function addPageHandlers(container) {
         }  
     }
 }
+
+// ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ПРОФИЛЬ (profile.html) =====
+const profileContainer = container.querySelector('.profile-container, [data-page="profile"]');
+    
+    if (profileContainer) {
+        console.log('profile загружен');
+        const roomCode = sessionStorage.getItem('currentRoomCode');
+        const playerUuid = sessionStorage.getItem('currentPlayerUuid');
+        const currentPlayer = sessionStorage.getItem('currentPlayer');
+        
+        const nickEl = container.querySelector('.profile-nick-text');
+        if (nickEl && currentPlayer) nickEl.textContent = currentPlayer;
+        
+        if (!IS_TEST_MODE && roomCode && playerUuid) {
+            initSocket();
+            registerSocket(playerUuid, roomCode);
+        }
+        
+        const loadProfileCards = async () => {
+            if (IS_TEST_MODE) {
+                const testCards = [
+                    { cardType: 1, name: 'Проект-менеджер' },
+                    { cardType: 2, name: 'Ленивый' },
+                    { cardType: 3, name: '3' },
+                    { cardType: 4, name: 'Адаптивность' },
+                    { cardType: 5, name: 'Подогревает рыбу' },
+                    { cardType: 6, name: 'C#\nKotlin' }
+                ];
+                renderProfileCards(testCards);
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/game/my-cards', {
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) throw new Error('Ошибка');
+                const { hand } = await res.json();
+                renderProfileCards(hand);
+            } catch (err) {
+                alert('Не удалось загрузить карты');
+            }
+        };
+        
+        const renderProfileCards = (hand) => {
+            hand.forEach(card => {
+                const label = CARD_TYPE_TO_LABEL[card.cardType];
+                if (!label) return;
+                
+                const cardEl = findCardByLabel(profileContainer, label, true);
+                const valueEl = cardEl?.querySelector('.profile-card-value');
+                
+                if (valueEl) {
+                    valueEl.innerHTML = card.name.replace(/\n/g, '');
+                    valueEl.onclick = () => showRevealModal(card.cardType);
+                }
+            });
+        };
+        
+        const showRevealModal = (cardType) => {
+            const modal = container.querySelector('.card-modal');
+            const yesBtn = container.querySelector('.card-modal-yes');
+            
+            if (modal && yesBtn) {
+                modal.style.display = 'flex';
+                yesBtn.onclick = async () => {
+                    await revealCard(cardType);
+                    modal.style.display = 'none';
+                };
+            }
+        };
+        
+        const revealCard = async (cardType) => {
+            if (IS_TEST_MODE) return;
+            
+            try {
+                await fetch('/api/game/reveal-card', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ cat_card: cardType })
+                });
+            } catch (err) {
+                alert('Не удалось вскрыть карту');
+            }
+        };
+        
+        container.querySelector('.icon-center')?.addEventListener('click', () => {
+            loadPage('cards-all-players.html', container);
+        });
+        
+        loadProfileCards();
+    }
+    
+    // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ КАРТОЧКИ ВСЕХ ИГРОКОВ (cards-all-players.html) =====
+    const cardsAllContainer = container.querySelector('.cards-all-container, [data-page="cards-all-players"]');
+    
+    if (cardsAllContainer) {
+        console.log('cards-all-players загружен'); 
+        const roomCode = sessionStorage.getItem('currentRoomCode');
+        
+        if (!IS_TEST_MODE && roomCode) {
+            initSocket();
+        }
+        
+        const loadAllPlayersData = async () => {
+            if (IS_TEST_MODE)
+                return;
+            
+            try {
+                const playersRes = await fetch('/api/room/players', { credentials: 'include' });
+                if (!playersRes.ok) throw new Error('Ошибка');
+                const playersData = await playersRes.json();
+                const players = playersData.players;
+                
+                sessionStorage.setItem('roomPlayers', JSON.stringify(players));
+                
+                const countEl = container.querySelector('.voted-count');
+                if (countEl) countEl.textContent = players.length;
+                
+                const project = JSON.parse(sessionStorage.getItem('project') || '{}');
+                const titleEl = container.querySelector('.cards-title');
+                if (titleEl && project.name) titleEl.textContent = project.name;
+                
+            } catch (err) {
+                alert('Не удалось загрузить данные');
+            }
+        };
+        
+        container.querySelector('.icon-right')?.addEventListener('click', () => {
+            loadPage('profile.html', container);
+        });
+        
+        if (!IS_TEST_MODE) {
+            loadAllPlayersData();
+            window.cardsAllInterval = setInterval(loadAllPlayersData, 5000);
+        } 
+    }
