@@ -388,6 +388,8 @@ const io = socketIo(server, {
 // Хранилище соответствия socket.id -> { playerUuid, roomCode }
 const socketMap = new Map();
 
+const playerSocketMap = new Map();
+
 // создавние соединения с игроком с привязкой к коду комнаты
 io.on('connection', (socket) => {
     console.log(`New socket connected: ${socket.id}`);
@@ -400,6 +402,7 @@ io.on('connection', (socket) => {
             return;
         }
         socketMap.set(socket.id, { playerUuid, roomCode });
+        playerSocketMap.set(playerUuid, socket);
         socket.join(roomCode);
         console.log(`Socket ${socket.id} registered to room ${roomCode} (player ${playerUuid})`);
     });
@@ -410,8 +413,13 @@ io.on('connection', (socket) => {
             console.log(`Socket ${socket.id} disconnected from room ${info.roomCode}`);
             socketMap.delete(socket.id);
         }
+        for (let [uuid, s] of playerSocketMap.entries()) {
+            if (s === socket) playerSocketMap.delete(uuid);
+        }
     });
 });
+
+
 
 // Эндпоинт для старта игры
 app.post('/api/game/start', authenticatePlayer, async (req, res) => {
@@ -466,7 +474,7 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
     }
 })
 
-// Эндпоинт обрабатывающий голосование игроков
+// Эндпоинт обрабатывающий голосование игроков, и включающий основную работу логики программы
 app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     try {
         const player = req.player;
@@ -524,6 +532,13 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                     final_party: session.players_list.filter(p => p.active),
                     excludedPlayer: excludedPlayer,
                 })
+
+                if (player.be_creator) {
+                    const targetSocket = playerSocketMap.get(player.uuid);
+                    if (targetSocket) {
+                        targetSocket.emit('allow-creator-buttons');
+                    }
+                }
                 return res.status(200).json({success: true})
             }
 
@@ -543,7 +558,6 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     }
 });
 
-// Экспорт для тестов
 if (process.env.NODE_ENV !== 'test') {
     server.listen(PORT, '0.0.0.0', () => {
         console.log(`Сервер запущен: http://localhost:${PORT}`);
