@@ -407,6 +407,50 @@ io.on('connection', (socket) => {
         console.log(`Socket ${socket.id} registered to room ${roomCode} (player ${playerUuid})`);
     });
 
+    // Обработка события открытия всех карт когда после завершения игры создатель нажимает соответствующую кнопку
+    socket.on('open-cards', (data) => {
+        const room = socketMap.get(socket.id).roomCode;
+        const manager = activeManagers.get(room);
+        const session = manager.GameSession;
+        // проверяем, что игра завершена
+        if (session.game_state !== 'completed') {
+            console.log('open-cards: игра ещё не завершена');
+            return;
+        }
+
+        // проверяем, что отправитель – создатель
+        const creator = session.creater;
+        const senderInfo = socketMap.get(socket.id);
+        if (senderInfo.playerUuid !== creator.uuid) {
+            console.log('open-cards: только создатель может вскрыть все карты');
+            return;
+        }
+
+        // Получаем активных игроков
+        const activePlayers = session.players_list.filter(p => p.active);
+
+        // Для каждого активного игрока вскрываем все его карты
+        for (const player of activePlayers) {
+            if (!player.hand) continue;
+            for (const card of player.hand) {
+                // Если карта ещё не вскрыта
+                if (!player.openCards.some(oc => oc.id === card.id)) {
+                    card.open();                     // меняем внутреннее состояние
+                    player.openCards.push(card);    // добавляем в список вскрытых
+                }
+            }
+        }
+
+        // Отправляем событие всем в комнате, чтобы клиенты обновили интерфейс
+        io.to(room).emit('cards-opened', {
+            players: activePlayers.map(p => ({
+                uuid: p.uuid,
+                nickname: p.nickname,
+                openCards: p.openCards
+            }))
+        });
+    });
+
     socket.on('disconnect', () => {
         const info = socketMap.get(socket.id);
         if (info) {
@@ -418,8 +462,6 @@ io.on('connection', (socket) => {
         }
     });
 });
-
-
 
 // Эндпоинт для старта игры
 app.post('/api/game/start', authenticatePlayer, async (req, res) => {
@@ -528,6 +570,7 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             // Если достигнуто нужное количество игроков, через вебсокет выдаёт итоговый список игроков которые остались, ещё выдаёт исключённого игрока
             if (session.players_count === session.players_final_count) {
                 console.log('game complete');
+                session.game_state = gameState.completed;
                 io.to(roomCode).emit('complete-game', {
                     final_party: session.players_list.filter(p => p.active),
                     excludedPlayer: excludedPlayer,
