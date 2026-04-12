@@ -582,6 +582,14 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                         targetSocket.emit('allow-creator-buttons');
                     }
                 }
+
+                // Сохранение в бд после завершения игры
+                try {
+                    const result = await db.saveGameState(session);
+                    console.log('Игра успешно сохранена! ID сессии в базе:', result.sessionId);
+                } catch (error) {
+                    console.error('Не удалось сохранить игру:', error);
+                }
                 return res.status(200).json({success: true})
             }
 
@@ -591,6 +599,15 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                 current_round: session.current_round,
                 rounds_count: session.rounds_count,
             })
+
+            // Сохранение в бд после завершения раунда
+            try {
+                const result = await db.saveGameState(session);
+                console.log('Игра успешно сохранена! ID сессии в базе:', result.sessionId);
+            } catch (error) {
+                console.error('Не удалось сохранить игру:', error);
+            }
+
             return res.status(200).json({ success: true });
         }
 
@@ -600,6 +617,21 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });
+
+// Эндпоинт сохранения ответов на вопросы в бд
+app.post('/api/game/final-answers', authenticatePlayer, async (req, res) => {
+
+})
+
+// Эндпоинт передающий итоговый отчёт
+app.post('/api/game/final-report', authenticatePlayer, async (req, res) => {
+
+})
+
+// Эндпоинт берущий сессию из активных менеджеров или загружающий из бд, нужен для восстановления игрового состояния
+app.get('/api/game/state', authenticatePlayer, async (req, res) => {
+
+})
 
 if (process.env.NODE_ENV !== 'test') {
     server.listen(PORT, '0.0.0.0', () => {
