@@ -870,6 +870,17 @@ app.get('/api/game/state', async (req, res) => {
     }
 });
 
+// Эндпоинт для выхода из игры (очистка cookie)
+app.post('/api/logout', authenticatePlayer, (req, res) => {
+    res.cookie('playerSession', '', {
+        httpOnly: true,
+        maxAge: 0,          // истекает мгновенно
+        secure: false,
+        //sameSite: 'lax'
+    });
+    res.json({ success: true, message: 'Вы вышли из комнаты' });
+});
+
 // Асинхронная инициализация и запуск
 (async () => {
     await Player.nestId_on_dataBase(db);
