@@ -1,4 +1,6 @@
 const GameSession = require("./GameSession");
+const DataStorage = require("../db/DataStorage");
+const path = require("path");
 
 // Игрок
 class Player {
@@ -17,7 +19,12 @@ class Player {
         this.be_creator = be_creator
     }
 
-    static #nextId = 0; // в будущем будет браться последний id из базы данных
+    static #nextId = 0;
+    // Метод для последнего получения nextId из базы данных при запуске сервера, для корректного присваивания и хранения айди игроков
+    static async nestId_on_dataBase(db) {
+        const lastId = await db.getLastPlayerId();
+        Player.#nextId = (lastId === null || lastId === undefined) ? 0 : lastId;
+    }
     static nextId_next () {
         Player.#nextId = Player.#nextId + 1
         return Player.#nextId

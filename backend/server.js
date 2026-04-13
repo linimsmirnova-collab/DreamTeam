@@ -633,11 +633,16 @@ app.get('/api/game/state', authenticatePlayer, async (req, res) => {
 
 })
 
-if (process.env.NODE_ENV !== 'test') {
-    server.listen(PORT, '0.0.0.0', () => {
-        console.log(`Сервер запущен: http://localhost:${PORT}`);
-    });
-}
+// Асинхронная инициализация и запуск
+(async () => {
+    await Player.nestId_on_dataBase(db);
+    console.log('Счётчик ID игроков инициализирован');
+    if (process.env.NODE_ENV !== 'test') {
+        server.listen(PORT, '0.0.0.0', () => {
+            console.log(`Сервер запущен на порту ${PORT}`);
+        });
+    }
+})();
 
 // function getLocalIP() {
 //     const nets = require('os').networkInterfaces();

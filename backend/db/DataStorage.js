@@ -49,6 +49,19 @@ class DataStorage {
             });
         })
     }
+    // Получение послденего айди игрока
+    getLastPlayerId() {
+        return new Promise((resolve, reject) => {
+            this.db.get("SELECT MAX(id) as lastId FROM Players", (err, row) => {
+                if (err) {
+                    console.error('Ошибка получения последнего ID игрока:', err.message);
+                    reject(err);
+                } else {
+                    resolve(row?.lastId || null);
+                }
+            });
+        });
+    }
     // сохранение данных об игровой сессии
     saveGameState(gameSession) {
         return new Promise(async (resolve, reject) => {
@@ -72,6 +85,9 @@ class DataStorage {
                 // Получаем ID проекта (поддержка разных регистров, если в БД ID капсом или строчными)
                 const projectId = gameSession.project.ID || gameSession.project.id;
                 const roomCode = gameSession.roomCode;
+                const randomEvents = gameSession.randomEvents;
+                const gameState = gameSession.game_state
+                const currentRound = gameState.current_round;
 
                 // Проходимся по каждому игроку в списке
                 for (const player of gameSession.players_list) {
@@ -79,7 +95,7 @@ class DataStorage {
                     // 1. Сохраняем игрока (таблица players)
                     // Если игрок с таким uuid уже есть, IGNORE предотвратит ошибку дублирования
                     await runQuery(
-                        'INSERT OR IGNORE INTO players (ID, nickname) VALUES (?, ?)',
+                        'INSERT OR IGNORE INTO players (id, nickname) VALUES (?, ?)',
                         [player.uuid, player.nickname]
                     );
 
@@ -88,8 +104,8 @@ class DataStorage {
                     const roleId = player.be_creator ? 1 : 2;
 
                     const sessionResult = await runQuery(
-                        'INSERT INTO game_session (id_player, id_project, id_role, room_code) VALUES (?, ?, ?, ?)',
-                        [player.uuid, projectId, roleId, roomCode]
+                        'INSERT INTO game_session (id_player, id_project, id_role, room_code, onoff_events, stage, current_round) VALUES (?, ?, ?, ?, ?, ?, ?)',
+                        [player.uuid, projectId, roleId, roomCode, randomEvents, gameState, currentRound]
                     );
 
                     // Получаем ID только что созданной записи game_session именно для этого игрока
