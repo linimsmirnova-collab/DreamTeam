@@ -100,6 +100,8 @@ class GameManager {
         // Возрат исключённого игрока
         return excludedPlayer;
     }
+
+
 }
 
 module.exports = GameManager;

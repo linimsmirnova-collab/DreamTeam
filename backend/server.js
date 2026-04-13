@@ -637,10 +637,93 @@ app.post('/api/game/final-report', authenticatePlayer, async (req, res) => {
 
 })
 
-// Эндпоинт берущий сессию из активных менеджеров или загружающий из бд, нужен для восстановления игрового состояния
-app.get('/api/game/state', authenticatePlayer, async (req, res) => {
+// Эндпоинт для восстановления состояния игры
+app.get('/api/game/state', async (req, res) => {
+    try {
+        // 1. Извлекаем данные из куки
+        const cookieData = req.cookies.playerSession;
+        if (!cookieData) {
+            return res.status(401).json({ error: 'Не авторизован' });
+        }
 
-})
+        let sessionInfo;
+        try {
+            sessionInfo = JSON.parse(cookieData);
+        } catch (e) {
+            return res.status(400).json({ error: 'Неверный формат cookie' });
+        }
+
+        const { playerId, roomId } = sessionInfo;
+        if (!playerId || !roomId) {
+            return res.status(400). json({ error: 'Неполные данные в cookie' });
+        }
+
+        // 2. Ищем менеджер в активных или загружаем из БД
+        let manager = activeManagers.get(roomId);
+        if (!manager) {
+            try {
+                manager = await db.loadGameState(roomId);
+                if (manager) {
+                    activeManagers.set(roomId, manager);
+                    console.log(`Комната ${roomId} загружена из БД (api/game/state)`);
+                } else {
+                    return res.status(404).json({ error: 'Комната не найдена' });
+                }
+            } catch (err) {
+                console.error('Ошибка загрузки комнаты из БД:', err);
+                return res.status(500).json({ error: 'Ошибка загрузки состояния' });
+            }
+        }
+
+        const session = manager.GameSession;
+        const currentPlayer = session.players_list.find(p => p.uuid == playerId);
+        if (!currentPlayer) {
+            return res.status(403).json({ error: 'Игрок не принадлежит этой комнате' });
+        }
+
+        // 3. Формируем ответ
+        const response = {
+            roomCode: session.roomCode,
+            gameState: session.game_state,
+            currentRound: session.current_round,
+            totalRounds: session.rounds_count,
+            randomEventsEnabled: session.randomEvents,
+            project: session.project,
+            players: session.players_list.map(p => ({
+                uuid: p.uuid,
+                nickname: p.nickname,
+                active: p.active,
+                isCreator: p.be_creator,
+                openCards: p.openCards ? p.openCards.map(c => ({
+                    id: c.id,
+                    cardType: c.cardType,
+                    name: c.name
+                })) : []
+            })),
+            currentPlayer: {
+                uuid: currentPlayer.uuid,
+                nickname: currentPlayer.nickname,
+                isCreator: currentPlayer.be_creator,
+                hand: currentPlayer.hand ? currentPlayer.hand.map(c => ({
+                    id: c.id,
+                    cardType: c.cardType,
+                    name: c.name,
+                    isOpen: c.isOpen
+                })) : [],
+                openCards: currentPlayer.openCards ? currentPlayer.openCards.map(c => ({
+                    id: c.id,
+                    cardType: c.cardType,
+                    name: c.name
+                })) : []
+            }
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Ошибка в эндпоинте /api/game/state:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
 // Асинхронная инициализация и запуск
 (async () => {
