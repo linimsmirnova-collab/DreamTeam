@@ -18,6 +18,7 @@ const {
     generateRoomId,
     setPlayerSessionCookie,
     selectPlayerMove,
+    generateRandomEvent,
 } = require('./serverFunctions');
 const player = require("./models/Player");
 
@@ -599,6 +600,14 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                 current_round: session.current_round,
                 rounds_count: session.rounds_count,
             })
+
+            // Проверяем, нужно ли отправить случайное событие (ровно на половине раундов)
+            const halfRounds = Math.floor(session.rounds_count / 2);
+            if (session.current_round === halfRounds && !session.randomEvents) {
+                const randomEvent = generateRandomEvent();
+                io.to(roomCode).emit('random-event', randomEvent);
+                console.log('Случайное событие отправлено:', randomEvent);
+            }
 
             // Сохранение в бд после завершения раунда
             try {
