@@ -62,6 +62,19 @@ class DataStorage {
             });
         });
     }
+    // Получение вопросов для итогового отчёта из БД
+    getQuestions() {
+        return new Promise((resolve, reject) => {
+            this.#DB.all('SELECT id, text FROM question ORDER BY id', (err, rows) => {
+                if (err) {
+                    console.error('Ошибка получения вопросов:', err.message);
+                    reject(err);
+                } else {
+                    resolve(rows);
+                }
+            });
+        });
+    }
     // сохранение данных об игровой сессии
     saveGameState(gameSession) {
         return new Promise(async (resolve, reject) => {
@@ -235,6 +248,45 @@ class DataStorage {
                 console.error('Ошибка при загрузке состояния игры из БД:', error);
                 reject(error);
             }
+        });
+    }
+    // Получение ID сессии по коду комнаты
+    getSessionIdByRoomCode(roomCode) {
+        return new Promise((resolve, reject) => {
+            this.#DB.get('SELECT id FROM game_session WHERE room_code = ? LIMIT 1', [roomCode], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+    }
+    // Сохранение ответов (очищает старые для этой сессии и вставляет новые)
+    saveAnswers(sessionId, answers) {
+        return new Promise((resolve, reject) => {
+            const db = this.#DB;
+            db.run('BEGIN TRANSACTION', (err) => {
+                if (err) return reject(err);
+                // Удаляем старые ответы для этой сессии
+                db.run('DELETE FROM answers WHERE id_session = ?', [sessionId], (err) => {
+                    if (err) {
+                        db.run('ROLLBACK');
+                        return reject(err);
+                    }
+                    const stmt = db.prepare('INSERT INTO answers (id_session, id_question, text) VALUES (?, ?, ?)');
+                    for (const ans of answers) {
+                        stmt.run(sessionId, ans.questionId, ans.answerText);
+                    }
+                    stmt.finalize((err) => {
+                        if (err) {
+                            db.run('ROLLBACK');
+                            return reject(err);
+                        }
+                        db.run('COMMIT', (err) => {
+                            if (err) reject(err);
+                            else resolve({ success: true });
+                        });
+                    });
+                });
+            });
         });
     }
 }

@@ -11,6 +11,7 @@ const GameManager = require('./models/GameManager');
 const DataStorage = require('./db/DataStorage');
 const Player = require('./models/Player');
 const Card = require('./models/Card');
+const Report = require('./Report');
 
 const {
     calculateGameParams,
@@ -452,6 +453,62 @@ io.on('connection', (socket) => {
         });
     });
 
+    // Отправка вопросов для ручного ответа создателю
+    socket.on('give-answers', async () => {
+        try {
+            // Загружаем все вопросы из БД
+            const allQuestions = await db.getQuestions();
+            // Берём первые 5 (id 1-5) для ручного ответа
+            const manualQuestions = allQuestions.filter(q => q.id >= 1 && q.id <= 5);
+
+            // Варианты ответов (ситуации) для каждого вопроса (по данным из Excel)
+            const manualOptions = {
+                1: [
+                    { text: "У всех разработчиков релевантные языки", score: 18, comment: "Пишем на том, что надо. Быстро, красиво, без костылей. Заказчик плачет от счастья" },
+                    { text: "У 1 разработчика нерелевантный язык", score: 3, comment: "Один герой осваивает новый стек на ходу. Код работает, но смотреть на него страшно" },
+                    { text: "У 2+ разработчиков нерелевантные языки", score: 0, comment: "Мы мобильное приложение пишем на C++ и JS. Жесть" }
+                ],
+                2: [
+                    { text: "Есть аналитик", score: 3, comment: "Аналитик положил бубен на стол. Команда смотрит на бубен. Заказчик смотрит на бубен. Бубен смотрит на всех. Тишина. Работа кипит. Магия" },
+                    { text: "Есть тестировщик", score: 3, comment: "Пользователи больше не находят баги на проде первыми" },
+                    { text: "Есть проектировщик", score: 3, comment: "Нарисовал схему на 15 страницах. Разработчики плачут (от счастья, конечно же)" },
+                    { text: "Есть тех. Писатель", score: 3, comment: "Документация написана так, что её читают. Даже разработчики" },
+                    { text: "Есть PM", score: 3, comment: "Дедлайны перестали быть мемами. Кто что делает — понятно" },
+                    { text: "Есть разработчик", score: 5, comment: "Код пишется, фичи работают, магия случается" }
+                ],
+                3: [
+                    { text: "Нет странных особенностей", score: 6, comment: "Все адекватные люди. Работа идёт спокойно" },
+                    { text: "1 странная особенность", score: 2, comment: "В команде есть один «интересный» товарищ. Все уже привыкли, но иногда закрывают его в шкафу" },
+                    { text: "2+ людей со странными особенностями", score: -1, comment: "Цирк, а не команда. Чудеса, что проект вообще идёт" }
+                ],
+                4: [
+                    { text: "Нет неподходящих ролей", score: 12, comment: "Все при деле, никто не мешает разработке" },
+                    { text: "1 неподходящая роль", score: 6, comment: "«Я просто хочу помочь!» — говорит он. Все хотят, чтобы он не хотел" },
+                    { text: "2+ неподходящие роли", score: -12, comment: "В команде засела группа поддержки из другого отдела" }
+                ],
+                5: [
+                    { text: "Лидерство у PM", score: 6, comment: "Идеально. Менеджер ставит цели и ведет команду за собой" },
+                    { text: "Лидерство у разработчика", score: 5, comment: "Задачи ставятся криво, но код пишут хорошо" },
+                    { text: "Лидерство у кого-то еще", score: 3, comment: "Странно, но работает. Берёт на себя управление, хотя формально не должен" },
+                    { text: "Нет Лидера", score: -2, comment: "У нас «самоорганизация»" },
+                    { text: "2+ Лидеров", score: -5, comment: "Митинги длятся дольше, чем разработка. У каждого своя правда" }
+                ]
+            };
+
+            // Формируем ответ для клиента
+            const questionsWithOptions = manualQuestions.map(q => ({
+                id: q.id,
+                text: q.text,
+                options: manualOptions[q.id] || []
+            }));
+
+            socket.emit('manual-questions', { questions: questionsWithOptions });
+        } catch (error) {
+            console.error('Ошибка при отправке ручных вопросов:', error);
+            socket.emit('error', { message: 'Ошибка сервера' });
+        }
+    });
+
     socket.on('disconnect', () => {
         const info = socketMap.get(socket.id);
         if (info) {
@@ -568,6 +625,7 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             // получение исключаемого игрока Player и фиксация завершения раунда, если никого не исключили то null
             const excludedPlayer = manager.CompleteRound();
 
+            // Завершение игры
             // Если достигнуто нужное количество игроков, через вебсокет выдаёт итоговый список игроков которые остались, ещё выдаёт исключённого игрока
             if (session.players_count === session.players_final_count) {
                 console.log('game complete');
@@ -594,6 +652,7 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                 return res.status(200).json({success: true})
             }
 
+            // Завершение раунда
             console.log('round complete');
             io.to(roomCode).emit('complete-round', {
                 player: excludedPlayer,
@@ -627,15 +686,101 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     }
 });
 
-// Эндпоинт сохранения ответов на вопросы в бд
+// Эндпоинт сохранения ответов на вопросы в бд и фиксации их в сессии
 app.post('/api/game/final-answers', authenticatePlayer, async (req, res) => {
+    try {
+        const session = req.manager.GameSession;
+        const roomCode = session.roomCode;
+        const { answers: manualAnswers } = req.body; // массив [{ questionId, answerText, score, comment }]
 
-})
+        if (!req.player.be_creator) {
+            return res.status(403).json({ error: 'Только создатель может отправлять ответы' });
+        }
+
+        const activePlayers = session.players_list.filter(p => p.active);
+        const questions = await db.getQuestions();
+        const reportHelper = new Report(activePlayers, questions);
+
+        // Генерируем автоматические ответы (Map<id, { answerText, score, comment }>)
+        const autoAnswersMap = reportHelper.generateAutoAnswers();
+
+        // Преобразуем ручные ответы в Map
+        const manualMap = new Map();
+        if (Array.isArray(manualAnswers)) {
+            for (const ans of manualAnswers) {
+                manualMap.set(ans.questionId, {
+                    answerText: ans.answerText,
+                    score: ans.score,
+                    comment: ans.comment,
+                });
+            }
+        }
+
+        // Объединяем: сначала автоматические, потом перезаписываем ручными
+        const combinedAnswersMap = new Map();
+        for (const [qId, data] of autoAnswersMap.entries()) {
+            combinedAnswersMap.set(qId, { ...data});
+        }
+        for (const [qId, data] of manualMap.entries()) {
+            combinedAnswersMap.set(qId, { ...data});
+        }
+
+        reportHelper.answers = combinedAnswersMap;
+        session.report = reportHelper;
+
+        // Сохраняем в БД только текст ответа
+        const sessionRow = await db.getSessionIdByRoomCode(roomCode);
+        if (!sessionRow) {
+            return res.status(404).json({ error: 'Сессия не найдена в базе данных' });
+        }
+
+        const allAnswersForDB = Array.from(combinedAnswersMap.entries()).map(([qId, data]) => ({
+            questionId: qId,
+            answerText: data.answerText
+        }));
+
+        await db.saveAnswers(sessionRow.id, allAnswersForDB);
+
+        io.to(roomCode).emit('activate-result-button')
+
+        res.json({ success: true, message: 'Ответы сохранены' });
+    } catch (error) {
+        console.error('Ошибка при сохранении ответов:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
 // Эндпоинт передающий итоговый отчёт
 app.post('/api/game/final-report', authenticatePlayer, async (req, res) => {
+    try {
+        const session = req.manager.GameSession;
+        const report = session.report;
 
-})
+        if (!report) {
+            return res.status(404).json({ error: 'Отчёт не найден. Сначала сохраните ответы.' });
+        }
+
+        report.calculateScore();
+
+        // Преобразуем мапу answers в удобный для отправки формат (массив объектов)
+        const answersArray = Array.from(report.answers.entries()).map(([questionId, data]) => ({
+            questionId,
+            answerText: data.answerText,
+            score: data.score,
+            comment: data.comment,
+            isAuto: data.isAuto
+        }));
+
+        res.json({
+            totalScore: report.totalScore,
+            verdict: report.verdict,
+            answers: answersArray
+        });
+    } catch (error) {
+        console.error('Ошибка при формировании итогового отчёта:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 
 // Эндпоинт для восстановления состояния игры
 app.get('/api/game/state', async (req, res) => {

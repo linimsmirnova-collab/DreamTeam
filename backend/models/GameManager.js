@@ -1,6 +1,7 @@
 const GameSession = require('./GameSession');
 const DataStorage = require('../db/DataStorage');
 const Player = require('./Player');
+const Report = require('./Report');
 
 // Игровой менеджер
 class GameManager {
@@ -100,8 +101,6 @@ class GameManager {
         // Возрат исключённого игрока
         return excludedPlayer;
     }
-
-
 }
 
 module.exports = GameManager;
