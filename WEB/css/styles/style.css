@@ -2267,4 +2267,209 @@ span {
   color: #7F375A;
   background: transparent;
   pointer-events: none;
+}
+
+.results-header {
+  position: absolute;
+  width: 393px;
+  height: 85px;
+  left: 0px;
+  top: 0px;
+  background: #FFCBE5;
+}
+
+.results-title {
+  position: absolute;
+  width: 358px;
+  height: 38px;
+  left: 200px;
+  transform: translateX(-50%);
+  top: 24px;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 38px;
+  text-align: center;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+.results-card {
+  position: absolute;
+  width: 360px;
+  left: 17px;
+  top: 95px;
+  background: #FFFFFF;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+  padding: 24px 20px 20px 20px;
+  box-sizing: border-box;
+}
+
+.results-question {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #FE5499;
+  margin-bottom: 8px;
+}
+
+.results-description {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 19px;
+  color: #B36C89;
+  margin-bottom: 16px;
+}
+
+.results-answer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 8px;
+}
+
+.results-score {
+  width: 64px;
+  height: 58px;
+  background: transparent;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 32px;
+  line-height: 38px;
+  text-align: center;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #FE5499, -1px 0 0 #FE5499, 0 1px 0 #FE5499, 0 -1px 0 #FE5499;
+}
+
+.results-text {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #FE5499;
+  max-width: 240px;
+}
+
+.results-verdict {
+  position: absolute;
+  width: 360px;
+  left: 17px;
+  top: 1571px;
+  background: #FFFFFF;
+  border: 2px solid #7F375A;
+  border-radius: 50px;
+  padding: 24px 20px 20px 20px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+.verdict-title {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 29px;
+  text-align: center;
+  background: linear-gradient(90deg, #2BE798 0%, #188155 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 20px;
+}
+
+.verdict-score {
+  width: 145px;
+  height: 93px;
+  margin: 0 auto 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 96px;
+  line-height: 115px;
+  color: #FE5499;
+}
+
+.verdict-label {
+  width: 186px;
+  height: 39px;
+  margin: 0 auto 15px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #FE5499, -1px 0 0 #FE5499, 0 1px 0 #FE5499, 0 -1px 0 #FE5499;
+}
+
+.verdict-text {
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #B36C89;
+  margin-top: 15px;
+}
+
+.results-back-btn {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 47px;
+  top: 1920px;
+  bottom: 30px;
+}
+.results-back-btn .results-back-badge {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  left: 0;
+  top: 0;
+  background: #F17BAB;
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+.results-back-btn .results-back-text {
+  position: absolute;
+  width: 264px;
+  height: 31px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-family: "Inria Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-size: 20px;
+  line-height: 24px;
+  text-align: center;
+  color: #FFFFFF;
+  background: transparent;
+  pointer-events: none;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }/*# sourceMappingURL=style.css.map */
