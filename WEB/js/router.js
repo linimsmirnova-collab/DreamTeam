@@ -750,47 +750,13 @@ if (profileContainer) {
                 // Заменяем \n на <br> для переноса строк в HTML
                 valueEl.innerHTML = card.name.replace(/\n/g, '<br>');
                 valueEl.dataset.cardType = card.cardType;
-                
-                // Добавляем клик для вскрытия (только если карта ещё не вскрыта)
-                if (!valueEl.dataset.revealed) {
-                    valueEl.style.cursor = 'pointer';
-                    valueEl.onclick = () => showRevealModal(card.cardType);
-                }
             } else {
                 console.warn('не найдена карточка для', label);
             }
         });
-    }
-    
-    //  Модальное окно подтверждения вскрытия
-    function showRevealModal(cardType) {
-        const modal = container.querySelector('.card-modal');
-        const yesBtn = container.querySelector('.card-modal-yes');
-        const overlay = container.querySelector('.card-modal-overlay');
-        
-        if (modal && yesBtn) {
-            modal.style.display = 'flex';
-            
-            const handleConfirm = async () => {//для удаления обработчика
-                console.log('вскрытие карты подтверждено', cardType);
-                await revealCard(cardType);
-                modal.style.display = 'none';
-                yesBtn.removeEventListener('click', handleConfirm);
-            };
-            
-            yesBtn.addEventListener('click', handleConfirm);
-            
-            if (overlay) {
-                overlay.onclick = () => {
-                    modal.style.display = 'none';
-                    yesBtn.removeEventListener('click', handleConfirm);
-                };
-            }
-        }
-    }
-    
+    }    
     // Вскрытие карты отправка на сервер
-    async function revealCard(cardType) {
+   /* async function revealCard(cardType) {
         console.log('вскрытие карты типа', cardType);
         
         if (IS_TEST_MODE) {
@@ -836,7 +802,7 @@ if (profileContainer) {
             console.error('Ошибка вскрытия карты:', err);
             alert('Не удалось вскрыть карту');
         }
-    }
+    }*/
     
     // Обновление при вскрытии карты другим игроком через WebSocket
     function updateRevealedCard(playerUuidFromEvent, openCard) {
@@ -1260,4 +1226,5 @@ if (cardsAllContainer) {
     }
     
     console.log('Cards-all-players: логика инициализирована');
+}
 }
