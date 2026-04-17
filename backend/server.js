@@ -523,16 +523,18 @@ io.on('connection', (socket) => {
 
 // Эндпоинт для старта игры
 app.post('/api/game/start', authenticatePlayer, async (req, res) => {
-    const { player, manager } = req;
+    const manager = req.manager;
     const session = manager.GameSession;
 
     // Проверяем, что игра ещё не началась
-    if (session.game_state !== 'waiting') {
+    if (session.game_state !== gameState.waiting) {
+        console.log('Состояние игры:', session.game_state);
+        console.log('Код комнаты:', session.roomCode);
         return res.status(400). json({ error: 'Игра уже началась или завершена' });
     }
 
     // Меняем состояние игры
-    session.game_state = 'active';
+    session.game_state = gameState.active;
     session.current_round = 1;
 
     // Отправляем событие всем в комнате
