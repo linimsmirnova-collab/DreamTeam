@@ -11,7 +11,7 @@ const GameManager = require('./models/GameManager');
 const DataStorage = require('./db/DataStorage');
 const Player = require('./models/Player');
 const Card = require('./models/Card');
-const Report = require('./Report');
+const Report = require('./models/Report');
 
 const {
     calculateGameParams,

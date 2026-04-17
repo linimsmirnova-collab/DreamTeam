@@ -52,7 +52,7 @@ class DataStorage {
     // Получение послденего айди игрока
     getLastPlayerId() {
         return new Promise((resolve, reject) => {
-            this.db.get("SELECT MAX(id) as lastId FROM Players", (err, row) => {
+            this.#DB.get("SELECT MAX(id) as lastId FROM Players", (err, row) => {
                 if (err) {
                     console.error('Ошибка получения последнего ID игрока:', err.message);
                     reject(err);

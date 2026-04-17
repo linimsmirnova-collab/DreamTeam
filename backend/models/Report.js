@@ -1,5 +1,3 @@
-const { generateAutoAnswers } = require('../reportGenerator'); // переиспользуем логику, но лучше встроим сюда
-
 class Report {
     // Атрибуты
     finalTeam = [];                     // List<Player>
