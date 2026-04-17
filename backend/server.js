@@ -373,6 +373,7 @@ app.get('/api/game/moved_player', authenticatePlayer, async (req, res) => {
     const session = manager.GameSession;
     try {
         const movePlayer = selectPlayerMove(session)
+        console.log('movedPlayer: ', movePlayer);
         res.json(movePlayer);
     } catch (error) {
         console.error('Ошибка при получении ходящего игрока:', error);
@@ -393,6 +394,9 @@ const io = socketIo(server, {
 const socketMap = new Map();
 
 const playerSocketMap = new Map();
+
+// Хранилище таймеров для комнат (чтобы можно было остановить предыдущий)
+const roomTimers = new Map();
 
 // создавние соединения с игроком с привязкой к коду комнаты
 io.on('connection', (socket) => {
@@ -511,6 +515,36 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('start_timer', () => {
+        const roomCode = socket.roomCode;
+        if (!roomCode) return;
+
+        // Останавливаем предыдущий таймер для этой комнаты, если есть
+        if (roomTimers.has(roomCode)) {
+            clearInterval(roomTimers.get(roomCode));
+            roomTimers.delete(roomCode);
+        }
+
+        let timeLeft = 60; // 60 секунд
+
+        // Отправляем начальное значение сразу
+        io.to(roomCode).emit('update_timer', { timeLeft });
+
+        const interval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft < 0) {
+                // Таймер закончился
+                clearInterval(interval);
+                roomTimers.delete(roomCode);
+                io.to(roomCode).emit('timer_end', { message: 'Время вышло!' });
+            } else {
+                io.to(roomCode).emit('update_timer', { timeLeft });
+            }
+        }, 1000);
+
+        roomTimers.set(roomCode, interval);
+    });
+
     socket.on('disconnect', () => {
         const info = socketMap.get(socket.id);
         if (info) {
@@ -543,6 +577,9 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
     io.to(session.roomCode).emit('game-start', {
         message: 'Игра началась! Переход на страницу профиля.'
     });
+
+    // Ежесекундное обновление таймера через вебсокет
+
 
     res.json({ success: true });
 });

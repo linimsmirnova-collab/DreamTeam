@@ -1054,7 +1054,7 @@ function addPageHandlers(container) {
                     updateTurnIndicator(data.uuid, 60);
                     
                     // Блокируем/разблокируем карты
-                    const isMyTurn = data.uuid === playerUuid;
+                    const isMyTurn = data.uuid == playerUuid;
                     toggleCardsLock(!isMyTurn);
                     console.log('isMyTurn:', isMyTurn, 'playerUuid:', playerUuid, 'currentUuid:', data.uuid);
                 }
@@ -1087,7 +1087,7 @@ function addPageHandlers(container) {
             const timerText = container.querySelector('.profile-timer-text');
             const turnBadge = container.querySelector('.profile-turn-badge');
             
-            const isMyTurn = currentPlayerUuid === playerUuid;
+            const isMyTurn = currentPlayerUuid == playerUuid;
             console.log('updateTurnIndicator - текущий игрок:', currentPlayerUuid, 'мой UUID:', playerUuid, 'мой ход:', isMyTurn);
             
             // Если сменился игрок - перезапускаем таймер
@@ -1228,7 +1228,7 @@ function addPageHandlers(container) {
             cards.forEach((card, index) => {
                 card.addEventListener('click', async () => {
                     // Проверяем, что сейчас ход игрока
-                    const isMyTurn = currentTurnPlayerUuid === playerUuid;
+                    const isMyTurn = currentTurnPlayerUuid == playerUuid;
                     if (!isMyTurn) {
                         alert('Сейчас не ваш ход!');
                         return;
@@ -1482,7 +1482,7 @@ function addPageHandlers(container) {
             const timerText = container.querySelector('.cards-timer-text');
             const turnBadge = container.querySelector('.cards-turn-badge');
             
-            const isMyTurn = currentPlayerUuid === playerUuid;
+            const isMyTurn = currentPlayerUuid == playerUuid;
             
             if (turnText) {
                 turnText.textContent = isMyTurn ? 'Ваш ход' : 'Ход другого игрока';
