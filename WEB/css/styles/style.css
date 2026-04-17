@@ -804,7 +804,7 @@ span {
   width: 360px;
   height: 65px;
   left: 17px;
-  top: 107px;
+  top: 95px;
 }
 
 .profile-nick-badge {
@@ -837,7 +837,7 @@ span {
 }
 
 .profile-card {
-  position: absolute;
+  position: relative;
   width: 172px;
   height: 130px;
 }
@@ -861,7 +861,7 @@ span {
   font-family: "Inria Serif";
   font-style: normal;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 18px;
   line-height: 19px;
   display: flex;
   align-items: center;
@@ -881,7 +881,7 @@ span {
   font-family: "Inria Serif";
   font-style: normal;
   font-weight: 700;
-  font-size: 16px;
+  font-size: 13px;
   line-height: 19px;
   display: flex;
   align-items: center;
@@ -894,6 +894,28 @@ span {
   box-sizing: border-box;
   word-break: break-word;
   text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A;
+}
+
+/* Контейнер для всех карточек - ровно 2 колонки */
+.profile-cards-container {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  top: 165px;
+  bottom: 130px;
+  overflow-y: visible; /* убираем скролл у контейнера */
+  overflow-x: hidden;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 колонки одинаковой ширины */
+  gap: 8px;
+  justify-items: center;
+  align-items: start;
+  padding: 5px;
+}
+
+/* Стилизация скролла для контейнера карточек */
+.profile-cards-container::-webkit-scrollbar {
+  width: 4px; /* тонкий скролл */
 }
 
 .profile-footer {
@@ -925,15 +947,6 @@ span {
 
 .icon-right {
   left: 297px;
-}
-.icon-right::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -6px;
-  right: -6px;
-  bottom: -1px;
-  border: 3px solid #D21B72;
 }
 
 .profile-turn {
@@ -1078,7 +1091,7 @@ span {
 
 .cards-header {
   position: absolute;
-  width: 393px;
+  width: 389px;
   height: 85px;
   left: 0px;
   top: 0px;
@@ -1317,21 +1330,9 @@ span {
 .icon-center {
   left: 158px;
 }
-.icon-center::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -6px;
-  right: -6px;
-  bottom: -1px;
-  border: 3px solid #D21B72;
-}
 
 .icon-right {
   left: 297px;
-}
-.icon-right::before {
-  display: none;
 }
 
 .cards-turn {
@@ -1708,28 +1709,13 @@ span {
 .icon-left {
   left: 19px;
 }
-.icon-left::before {
-  content: "";
-  position: absolute;
-  top: -4px;
-  left: -6px;
-  right: -6px;
-  bottom: -1px;
-  border: 3px solid #D21B72;
-}
 
 .icon-center {
   left: 158px;
 }
-.icon-center::before {
-  display: none;
-}
 
 .icon-right {
   left: 297px;
-}
-.icon-right::before {
-  display: none;
 }
 
 .vote-modal {
@@ -1826,7 +1812,7 @@ span {
 
 .final-header {
   position: absolute;
-  width: 393px;
+  width: 389px;
   height: 85px;
   left: 0px;
   top: 0px;
@@ -2144,7 +2130,7 @@ span {
 
 .answers-header {
   position: absolute;
-  width: 393px;
+  width: 389px;
   height: 85px;
   left: 0px;
   top: 0px;
@@ -2271,7 +2257,7 @@ span {
 
 .results-header {
   position: absolute;
-  width: 393px;
+  width: 389px;
   height: 85px;
   left: 0px;
   top: 0px;
@@ -2472,4 +2458,34 @@ span {
   display: flex;
   align-items: center;
   justify-content: center;
+}
+
+/* ============================================
+   АКТИВНЫЕ СОСТОЯНИЯ ИКОНОК
+   ============================================ */
+/* Для страницы profile.html - активная иконка me */
+.profile-icon.active {
+  outline: 3px solid #D21B72 !important;
+  outline-offset: 0px !important; /* сдвиг рамки наружу */
+  box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Для страницы cards-all-players.html - активная иконка users */
+.cards-icon.active {
+  outline: 3px solid #D21B72 !important;
+  outline-offset: 0px !important;
+  box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+  border: none !important;
+  border-radius: 0 !important;
+}
+
+/* Для страницы vote.html - активная иконка kickout */
+.vote-icon.active {
+  outline: 3px solid #D21B72 !important;
+  outline-offset: 0px !important;
+  box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+  border: none !important;
+  border-radius: 0 !important;
 }/*# sourceMappingURL=style.css.map */

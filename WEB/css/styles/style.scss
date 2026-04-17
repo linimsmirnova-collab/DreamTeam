@@ -966,7 +966,7 @@ span {
     width: 360px;
     height: 65px;
     left: 17px;
-    top: 107px;
+    top: 95px;
 }
 
 // Рамка для ника
@@ -1002,7 +1002,7 @@ span {
 
 // Карточка характеристик (общая)
 .profile-card {
-    position: absolute;
+    position: relative;
     width: 172px;
     height: 130px;
     
@@ -1029,7 +1029,7 @@ span {
         font-family: 'Inria Serif';
         font-style: normal;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 18px;
         line-height: 19px;
         display: flex;
         align-items: center;
@@ -1051,7 +1051,7 @@ span {
         font-family: 'Inria Serif';
         font-style: normal;
         font-weight: 700;
-        font-size: 16px;
+        font-size: 13px;
         line-height: 19px;
         display: flex;
         align-items: center;
@@ -1075,6 +1075,27 @@ span {
         -1px 1px 0 #7F375A;
         
     }
+}
+
+/* Контейнер для всех карточек - ровно 2 колонки */
+.profile-cards-container {
+    position: absolute;
+    left: 10px;
+    right: 10px;
+    top: 165px;
+    bottom: 130px;
+    overflow-y: visible;  /* убираем скролл у контейнера */
+    overflow-x: hidden;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);  /* 2 колонки одинаковой ширины */
+    gap: 8px;
+    justify-items: center;
+    align-items: start;
+    padding: 5px;
+}
+/* Стилизация скролла для контейнера карточек */
+.profile-cards-container::-webkit-scrollbar {
+    width: 4px;  /* тонкий скролл */
 }
 
 // Нижняя розовая панель
@@ -1107,18 +1128,7 @@ span {
 }
 
 .icon-right {
-    left: 297px;
-
-    // Квадратная рамка вокруг иконки
-    &::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -6px;
-        right: -6px;
-        bottom: -1px;
-        border: 3px solid #D21B72;
-    }
+    left: 297px; 
 }
 
 // Кнопка "Ваш ход"
@@ -1290,7 +1300,7 @@ span {
 // Верхняя розовая полоса
 .cards-header {
     position: absolute;
-    width: 393px;
+    width: 389px;
     height: 85px;
     left: 0px;
     top: 0px;
@@ -1552,25 +1562,10 @@ span {
 
 .icon-center {
     left: 158px;
-
-    // Квадратная рамка вокруг иконки
-    &::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -6px;
-        right: -6px;
-        bottom: -1px;
-        border: 3px solid #D21B72;
-    }
 }
 
 .icon-right {
     left: 297px;
-
-    &::before {
-        display: none;  // принудительно скрываем
-    }
 }
 
 // Кнопка "Ваш ход"
@@ -1987,30 +1982,14 @@ span {
 
 .icon-left {
     left: 19px;
-    // Квадратная рамка вокруг иконки
-    &::before {
-        content: '';
-        position: absolute;
-        top: -4px;
-        left: -6px;
-        right: -6px;
-        bottom: -1px;
-        border: 3px solid #D21B72;
-    }
 }
 
 .icon-center {
     left: 158px;
-    &::before {
-        display: none;  // принудительно скрываем
-    }
 }
 
 .icon-right {
     left: 297px;
-    &::before {
-        display: none;  // принудительно скрываем
-    }
 }
 
 // Модальное окно подтверждения
@@ -2124,7 +2103,7 @@ span {
 // Верхняя розовая полоса
 .final-header {
     position: absolute;
-    width: 393px;
+    width: 389px;
     height: 85px;
     left: 0px;
     top: 0px;
@@ -2476,7 +2455,7 @@ span {
 // Верхняя розовая полоса
 .answers-header {
     position: absolute;
-    width: 393px;
+    width: 389px;
     height: 85px;
     left: 0px;
     top: 0px;
@@ -2618,7 +2597,7 @@ span {
 // Верхняя розовая полоса
 .results-header {
     position: absolute;
-    width: 393px;
+    width: 389px;
     height: 85px;
     left: 0px;
     top: 0px;
@@ -2830,4 +2809,36 @@ span {
         align-items: center;
         justify-content: center;
     }
+}
+
+
+/* ============================================
+   АКТИВНЫЕ СОСТОЯНИЯ ИКОНОК
+   ============================================ */
+
+/* Для страницы profile.html - активная иконка me */
+.profile-icon.active {
+    outline: 3px solid #D21B72 !important;
+    outline-offset: 0px !important;  /* сдвиг рамки наружу */
+    box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* Для страницы cards-all-players.html - активная иконка users */
+.cards-icon.active {
+    outline: 3px solid #D21B72 !important;
+    outline-offset: 0px !important;
+    box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+    border: none !important;
+    border-radius: 0 !important;
+}
+
+/* Для страницы vote.html - активная иконка kickout */
+.vote-icon.active {
+    outline: 3px solid #D21B72 !important;
+    outline-offset: 0px !important;
+    box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+    border: none !important;
+    border-radius: 0 !important;
 }
