@@ -976,7 +976,6 @@ app.post('/api/game/final-report', authenticatePlayer, async (req, res) => {
             answerText: data.answerText,
             score: data.score,
             comment: data.comment,
-            isAuto: data.isAuto
         }));
 
         res.json({

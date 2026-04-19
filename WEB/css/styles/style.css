@@ -2489,3 +2489,97 @@ span {
   border: none !important;
   border-radius: 0 !important;
 }/*# sourceMappingURL=style.css.map */
+/* ============================================
+   СТИЛИ ДЛЯ СТРАНИЦЫ ОТВЕТОВ (answers.html)
+   ============================================ */
+
+/* Контейнер для прокрутки карточек */
+.answers-content {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 110px;          /* отступ от верхней розовой полосы */
+  bottom: 120px;       /* оставляем место для кнопки внизу */
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 0 16px 10px 16px;
+  box-sizing: border-box;
+}
+
+/* Стилизация скроллбара */
+.answers-content::-webkit-scrollbar {
+  width: 4px;
+}
+.answers-content::-webkit-scrollbar-track {
+  background: #FFCBE5;
+  border-radius: 2px;
+}
+.answers-content::-webkit-scrollbar-thumb {
+  background: #F17BAB;
+  border-radius: 2px;
+}
+
+/* Карточки внутри контейнера – убираем абсолютное позиционирование */
+.answers-content .answers-card {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  margin: 0;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+/* Варианты ответов – по умолчанию серые */
+.answers-option {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.answers-option .answers-option-badge {
+  background: #DADADA;        /* серый фон */
+  border: 2px solid #7F375A;
+  transition: background 0.2s;
+}
+.answers-option .answers-option-text {
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+/* Выбранный вариант – розовый фон */
+.answers-option.selected .answers-option-badge {
+  background: #F17BAB;
+}
+.answers-option.selected .answers-option-text {
+  /* текст остаётся белым */
+}
+
+/* Кнопка "Перейти к итогам" – неактивное состояние (серая) */
+.answers-next-btn {
+  position: absolute;
+  width: 300px;
+  height: 65px;
+  left: 47px;
+  bottom: 30px;          /* фиксируем снизу */
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.answers-next-btn .answers-next-badge {
+  background: #DADADA;        /* серый фон */
+  border: 2px solid #7F375A;
+  border-radius: 5px;
+  transition: background 0.2s;
+}
+.answers-next-btn .answers-next-text {
+  color: #7F375A;             /* тёмный текст */
+  text-shadow: none;
+}
+
+/* Активное состояние (розовая кнопка) */
+.answers-next-btn.active .answers-next-badge {
+  background: #F17BAB;
+}
+.answers-next-btn.active .answers-next-text {
+  color: #FFFFFF;
+  text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
