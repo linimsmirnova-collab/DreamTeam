@@ -332,13 +332,24 @@ window.onload = function() {
         });
         
         // Глобальный обработчик для timer_end
-        socket.on('timer_end', (data) => {
-            console.log('Таймер закончился:', data);
-            showToast('Время вышло! Ход переходит другому игроку', 'warning');
-            if (typeof fetchCurrentTurn === 'function') {
-                fetchCurrentTurn();
+       // Глобальный обработчик для timer_end
+    socket.on('timer_end', (data) => {
+    console.log('Таймер закончился:', data);
+    showToast('Время вышло! Ход переходит другому игроку', 'warning');
+    
+    // Запрашиваем новый ход и перезапускаем таймер
+    if (typeof fetchCurrentTurn === 'function') {
+        fetchCurrentTurn().then(newTurnData => {
+            // Если получили новые данные — перезапускаем таймер
+            if (newTurnData && newTurnData.uuid && newTurnData.timeLeft !== undefined) {
+                console.log('Перезапуск таймера для нового хода:', newTurnData.uuid, newTurnData.timeLeft);
+                if (typeof restartTimer === 'function') {
+                    restartTimer(newTurnData.timeLeft);
+                }
             }
         });
+    }
+});
         
         // Глобальный обработчик для force-reveal-card
         socket.on('force-reveal-card', (data) => {
@@ -671,6 +682,9 @@ function addPageHandlers(container) {
 
                             sessionStorage.setItem('isCreator', 'true');// для создателя
 
+                            sessionStorage.setItem('currentRound', '1');
+                            sessionStorage.setItem('maxRounds', '3'); // раунды (не знаю там окно надо будет создавать скорее всего)
+
 
                             loadPage('player-list.html', container);
                         } else {
@@ -767,6 +781,9 @@ function addPageHandlers(container) {
                             if (data.project) {
                                 sessionStorage.setItem('project', JSON.stringify(data.project));
                             }
+                            //инициализация раундов
+                            sessionStorage.setItem('currentRound', '1');
+                            sessionStorage.setItem('maxRounds', '3');
                             
                             // 3. Потом переходим на страницу
                             loadPage('player-list.html', container);
@@ -2588,6 +2605,14 @@ if (voteContainer) {
     const currentPlayer = sessionStorage.getItem('currentPlayer');
     const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;
     
+    const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
+    const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;// данные у раунде
+
+    const roundNumberEl = container.querySelector('#round-number');
+    const maxRoundsEl = container.querySelector('#max-rounds');
+    if (roundNumberEl) roundNumberEl.textContent = currentRound;
+    if (maxRoundsEl) maxRoundsEl.textContent = maxRounds;
+
     // Состояние голосования
     let voteState = {
         voters: [],           // UUID игроков, которые уже проголосовали
@@ -2805,57 +2830,67 @@ if (voteContainer) {
     
     // завершение голосования
     function finishVoting(players) {
-        voteState.isFinished = true;
+    voteState.isFinished = true;
+    
+    // 1. Поиск игрока с наибольшим количеством голосов
+    let maxVotes = 0;
+    let kickedUuid = null;
+    
+    for (const [targetUuid, voters] of Object.entries(voteState.votes)) {
+        if (voters.length > maxVotes) {
+            maxVotes = voters.length;
+            kickedUuid = targetUuid;
+        }
+    }
+    
+    // 2. Основная логика: если кого-то выгнали
+    if (kickedUuid) {
+        voteState.kickedPlayer = kickedUuid;
         
-        // поиск игрока с наибольшим количеством голосов
-        let maxVotes = 0;
-        let kickedUuid = null;
-        
-        for (const [targetUuid, voters] of Object.entries(voteState.votes)) {
-            if (voters.length > maxVotes) {
-                maxVotes = voters.length;
-                kickedUuid = targetUuid;
+        // UI: уведомление и пометка в списке
+        const kickedPlayer = players.find(p => p.uuid === kickedUuid);
+        if (kickedPlayer) {
+            showToast(`${kickedPlayer.nickname} выгнан из команды!`, 'warning');
+            const kickedItem = container.querySelector(`.vote-player-item[data-player-uuid="${kickedUuid}"]`);
+            if (kickedItem) {
+                kickedItem.classList.add('kicked');
+                const icon = kickedItem.querySelector('.vote-player-icon');
+                if (icon) icon.remove();
             }
         }
         
-        if (kickedUuid) {
-            voteState.kickedPlayer = kickedUuid;
-            
-            // сообщение о выгнанном игроке
-            const kickedPlayer = players.find(p => p.uuid === kickedUuid);
-            if (kickedPlayer) {
-                showToast(`${kickedPlayer.nickname} выгнан из команды!`, 'warning');
-                
-                // пометка игрока как выгнанного в списке
-                const kickedItem = container.querySelector(`.vote-player-item[data-player-uuid="${kickedUuid}"]`);
-                if (kickedItem) {
-                    kickedItem.classList.add('kicked');
-                    const icon = kickedItem.querySelector('.vote-player-icon');
-                    if (icon) icon.remove();
-                }
-            }
-            
-            // на сервер если не тест
-            if (!IS_TEST_MODE) {
-                fetch('/api/vote/finish', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include',
-                    body: JSON.stringify({ roomCode, kickedUuid })
-                }).catch(err => console.error('Ошибка завершения:', err));
-            }
-            
-            // Через 2 секунды переходим на следующую страницу
+        // Отправка на сервер
+        if (!IS_TEST_MODE) {
+            fetch('/api/vote/finish', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ roomCode, kickedUuid })
+            }).catch(err => console.error('Ошибка завершения:', err));
+        }
+        
+        // 3. Переход: следующий раунд или финал
+        if (currentRound < maxRounds) {
             setTimeout(() => {
-                loadPage('final-team.html', container);
+                const nextRound = currentRound + 1;
+                sessionStorage.setItem('currentRound', nextRound.toString());
+                showToast(`Раунд ${nextRound} начинается...`, 'info');
+                loadPage('vote.html', container);
             }, 2000);
         } else {
-            // Никто не набрал голосов - далее
+            // Раунды кончились -> финал
             setTimeout(() => {
                 loadPage('final-team.html', container);
             }, 1500);
         }
+        
+    } else {
+        // 4. Если никто не набрал голосов (kickedUuid === null)
+        setTimeout(() => {
+            loadPage('final-team.html', container);
+        }, 1500);
     }
+} 
     
     // WebSocket: синхронизация голосования
     if (!IS_TEST_MODE && playerUuid && roomCode) {
