@@ -2209,10 +2209,8 @@ function addPageHandlers(container) {
             // Обработчик активации кнопки после сохранения ответов (если нужно)
             socket.on('activate-result-button', () => {
                 console.log('Получено событие activate-result-button');
-                // Можно перейти на страницу отчёта или показать сообщение
                 alert('Ответы сохранены! Теперь можно посмотреть итоговый отчёт.');
-                // Например, перейти на страницу итогового отчёта
-                loadPage('final-report.html', container);
+                loadPage('results.html', container);
             });
         } else if (IS_TEST_MODE) {
             // Тестовый режим: заглушка
@@ -2302,6 +2300,7 @@ function addPageHandlers(container) {
             };
         }
     }
+
     // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ИТОГОВ (final-team.html) =====
 const finalContainer = container.querySelector('.final-players-list, [data-page="final-team"]');
 
@@ -2369,12 +2368,12 @@ if (finalContainer) {
         
         if (!playersList) return;
         
-        // Обновляем счётчик (требование 4)
+        // обновляем счётчик 
         if (statsCount) {
             statsCount.textContent = players.length;
         }
         
-        // Очищаем и перерисовываем список
+        // очищаем и перерисовываем список
         playersList.innerHTML = '';
         
         // Рендерим игроков в команде
@@ -2968,4 +2967,113 @@ if (voteContainer) {
     console.log('Vote: логика инициализирована');
     
 }
+    // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ РЕЗУЛЬТАТОВ (results.html) =====
+    if (container.querySelector('.results-header')) {
+        console.log('Страница результатов загружена');
+
+        // Тестовые данные (10 вопросов + вердикт)
+        const mockReport = {
+            totalScore: 65,
+            verdict: 'Ладно, бывает',
+            answers: [
+                { questionId: 1, answerText: 'У всех разработчиков релевантные языки', score: 18, comment: 'Пишем на том, что надо. Быстро, красиво, без костылей.' },
+                { questionId: 2, answerText: 'Есть все 6 ролей', score: 20, comment: 'У нас полный комплект, каждый занимается своим делом.' },
+                { questionId: 3, answerText: '1 странная особенность', score: 2, comment: 'В команде есть один «интересный» товарищ.' },
+                { questionId: 4, answerText: 'Нет неподходящих ролей', score: 12, comment: 'Все при деле, никто не мешает разработке.' },
+                { questionId: 5, answerText: 'Лидерство у PM', score: 6, comment: 'Идеально. Менеджер ставит цели и ведет команду за собой.' },
+                { questionId: 6, answerText: 'Стаж разный (от 0 до 4)', score: 5, comment: 'Микс опыта и молодости. Есть на кого опереться.' },
+                { questionId: 7, answerText: 'Нет юных талантов', score: 0, comment: 'Очень жаль.' },
+                { questionId: 8, answerText: 'Нет вредителей', score: 10, comment: 'Все адекваты. Редкость, но бывает.' },
+                { questionId: 9, answerText: 'Нет ленивых', score: 9, comment: 'Все горят проектом, пашут как звери.' },
+                { questionId: 10, answerText: 'Ни одной пары противоположностей', score: 0, comment: 'Ну и ладно.' }
+            ]
+        };
+
+        // Загрузка отчёта (реальный или тестовый)
+        async function loadFinalReport() {
+            if (IS_TEST_MODE) {
+                console.log('Тестовый режим: используем заглушку отчёта');
+                renderResults(mockReport);
+                return;
+            }
+            try {
+                const res = await fetch('/api/game/final-report', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' }
+                });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                const data = await res.json();
+                console.log('Отчёт получен:', data);
+                renderResults(data);
+            } catch (err) {
+                console.error('Ошибка загрузки отчёта:', err);
+                showToast('Не удалось загрузить итоговый отчёт', 'error');
+                renderResults(mockReport);
+            }
+        }
+
+        function renderResults(data) {
+            const containerCards = document.querySelector('.results-cards-container');
+            if (!containerCards) return;
+            containerCards.innerHTML = '';
+
+            const answersSorted = data.answers.sort((a, b) => a.questionId - b.questionId);
+
+            answersSorted.forEach(ans => {
+                const card = document.createElement('div');
+                card.className = 'results-card';
+                const questionText = ans.questionText || `Вопрос ${ans.questionId}`;
+                card.innerHTML = `
+                <div class="results-question">${questionText}</div>
+                <div class="results-description">${ans.comment || ''}</div>
+                <div class="results-answer">
+                    <div class="results-text">${ans.answerText}</div>
+                    <div class="results-score">${ans.score > 0 ? `+${ans.score}` : ans.score}</div>
+                </div>
+            `;
+                containerCards.appendChild(card);
+            });
+
+            const verdictCard = document.createElement('div');
+            verdictCard.className = 'results-verdict';
+            verdictCard.innerHTML = `
+            <div class="verdict-title">Вердикт</div>
+            <div class="verdict-score">${data.totalScore}</div>
+            <div class="verdict-label">${data.verdict}</div>
+            <div class="verdict-text">${data.verdict}</div>
+        `;
+            containerCards.appendChild(verdictCard);
+        }
+
+        // Кнопка "Вернуться в главное меню"
+        const backBtn = container.querySelector('.results-back-btn');
+        if (backBtn) {
+            // Убираем старые обработчики
+            const newBackBtn = backBtn.cloneNode(true);
+            backBtn.parentNode.replaceChild(newBackBtn, backBtn);
+
+            newBackBtn.onclick = async () => {
+                if (!IS_TEST_MODE) {
+                    try {
+                        await fetch('/api/logout', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                    } catch (err) {
+                        console.error('Ошибка выхода:', err);
+                    }
+                }
+                sessionStorage.clear();
+                if (socket) socket.disconnect();
+                loadPage('main-page-content.html', container);
+            };
+        } else {
+            console.error('Кнопка .results-back-btn не найдена в DOM');
+        }
+
+        // Запускаем загрузку отчёта
+        loadFinalReport();
+    }
 }
