@@ -621,7 +621,6 @@ function addPageHandlers(container) {
                     // ===== ТЕСТОВЫЙ РЕЖИМ (без сервера) =====
                     // Генерируем случайный код комнаты
                     const roomCode = generateRoomCode();
-                    
                     // Сохраняем комнату в хранилище
                     rooms[roomCode] = {
                         creator: nickname,
@@ -2303,4 +2302,670 @@ function addPageHandlers(container) {
             };
         }
     }
+    // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ИТОГОВ (final-team.html) =====
+const finalContainer = container.querySelector('.final-players-list, [data-page="final-team"]');
+
+if (finalContainer) {
+    console.log('Final-team: страница загружена');
+    
+    // Данные из sessionStorage
+    const roomCode = sessionStorage.getItem('currentRoomCode');
+    const playerUuid = sessionStorage.getItem('currentPlayerUuid');
+    const currentPlayer = sessionStorage.getItem('currentPlayer');
+    const isCreator = sessionStorage.getItem('isCreator') === 'true';  
+    
+    // прокрутка страницы 
+    
+    // загрузка списка игроков с сервера 
+    let finalPlayers = [];  // Игроки в финале
+    let kickedPlayers = []; // Выгнанные игроки
+    
+    async function loadFinalTeam() {
+        if (IS_TEST_MODE) {
+    //для теста
+            finalPlayers = [
+                { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
+                    { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
+                    { cardType: 2, name: 'Агрессивный', isOpen: false },
+                    { cardType: 3, name: '1', isOpen: false },
+                    { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
+                    { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
+                    { cardType: 6, name: 'Figma\nC++', isOpen: false }
+                ]},
+                { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
+                { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
+                { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
+            ];
+            kickedPlayers = [
+                { uuid: 'test-5', nickname: 'РандомНик4' },
+                { uuid: 'test-6', nickname: 'РандомНик5' }
+            ];
+            renderFinalTeam(finalPlayers, kickedPlayers);
+            return;
+        }
+        
+        try {
+            // Запрашиваем финальный состав с сервера
+            const res = await fetch(`/api/game/final-team?code=${roomCode}`, {
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            finalPlayers = data.finalPlayers || [];
+            kickedPlayers = data.kickedPlayers || [];
+            
+            renderFinalTeam(finalPlayers, kickedPlayers);
+            
+        } catch (err) {
+            console.error('ошибка загрузки финала:', err);
+        }
+    }
+    
+    // отрисовка списка игроков
+    function renderFinalTeam(players, kicked) {
+        const playersList = container.querySelector('.final-players-list');
+        const statsCount = container.querySelector('.final-stats-count');
+        
+        if (!playersList) return;
+        
+        // Обновляем счётчик (требование 4)
+        if (statsCount) {
+            statsCount.textContent = players.length;
+        }
+        
+        // Очищаем и перерисовываем список
+        playersList.innerHTML = '';
+        
+        // Рендерим игроков в команде
+        players.forEach(player => {
+            const playerItem = document.createElement('div');
+            playerItem.className = 'final-player-item';
+            playerItem.dataset.playerUuid = player.uuid;
+            
+            // Генерируем карточки (вскрытые или скрытые)
+            let cardsHTML = '';
+            if (player.hand && player.hand.length > 0) {
+                const allRevealed = player.hand.every(c => c.isOpen);
+                
+                if (allRevealed || isCreator) {
+                    // Показываем карты
+                    player.hand.forEach(card => {
+                        const label = CARD_TYPE_TO_LABEL[card.cardType];
+                        cardsHTML += `
+                            <div class="mini-card">
+                                <div class="mini-card-label">${label}</div>
+                                <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
+                            </div>
+                        `;
+                    });
+                }
+            }
+            
+            playerItem.innerHTML = `
+                <div class="final-player-badge"></div>
+                <div class="final-player-name">${player.nickname}</div>
+                ${cardsHTML ? `<div class="player-cards-expanded"><div class="player-cards-grid">${cardsHTML}</div></div>` : ''}
+            `;
+            
+            // клик по нику - показать/скрыть карты (для не-создателя)
+            if (!isCreator && cardsHTML) {
+                const nameEl = playerItem.querySelector('.final-player-name');
+                const cardsExpanded = playerItem.querySelector('.player-cards-expanded');
+                
+                if (nameEl && cardsExpanded) {
+                    nameEl.style.cursor = 'pointer';
+                    nameEl.onclick = () => {
+                        if (cardsExpanded.style.display === 'none' || !cardsExpanded.style.display) {
+                            cardsExpanded.style.display = 'flex';
+                            playerItem.classList.add('open');
+                            nameEl.style.color = '#F17BAB';
+                        } else {
+                            cardsExpanded.style.display = 'none';
+                            playerItem.classList.remove('open');
+                            nameEl.style.color = '#FE5499';
+                        }
+                    };
+                }
+            }
+            
+            playersList.appendChild(playerItem);
+        });
+        
+        // рендер выгнанных игроков 
+        kicked.forEach(player => {
+            const kickedItem = document.createElement('div');
+            kickedItem.className = 'final-player-item eliminated';
+            kickedItem.dataset.playerUuid = player.uuid;
+            
+            kickedItem.innerHTML = `
+                <div class="final-player-badge"></div>
+                <div class="final-player-name">${player.nickname}</div>
+            `;
+            
+            playersList.appendChild(kickedItem);
+        });
+    }
+    
+    // вскрытие карт
+    if (!IS_TEST_MODE && playerUuid && roomCode) {
+        if (!socket) {
+            socket = io();
+        }
+        
+        socket.emit('register', { playerUuid, roomCode });
+        
+        socket.on('reveal-all-cards', (data) => {
+            console.log('все карты вскрыты:', data);
+            renderFinalTeam(finalPlayers, kickedPlayers);
+        });
+    }
+    
+    // вскрыть "вскрыть все карты" 
+    const revealBtn = container.querySelector('.final-reveal-btn');
+    
+    if (revealBtn) {
+        if (isCreator) {
+            //показывается кнопка только создателю
+            revealBtn.style.display = 'block';
+            revealBtn.style.cursor = 'pointer';
+            
+            revealBtn.onclick = async () => {
+                if (IS_TEST_MODE) {
+                    finalPlayers.forEach(p => {
+                        if (p.hand) p.hand.forEach(c => c.isOpen = true);
+                    });
+                    renderFinalTeam(finalPlayers, kickedPlayers);
+                    if (socket) {
+                        socket.emit('reveal-all-cards', { roomCode, finalPlayers });
+                    }
+                    return;
+                }
+                
+                try {
+                    // запрос на сервер
+                    const res = await fetch('/api/game/reveal-all-cards', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ roomCode })
+                    });
+                    
+                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                    
+                    console.log('все карты вскрыты');
+                    // Сервер сам разошлёт событие всем игрокам
+                    
+                } catch (err) {
+                    console.error('ошибка вскрытия:', err);
+                    alert('Не удалось вскрыть карты');
+                }
+            };
+        } else {
+            // Скрываем кнопку для не-создателя
+            revealBtn.style.display = 'none';
+        }
+    }
+    
+    // кнопка "Посмотреть результаты" 
+    const resultsBtn = container.querySelector('.final-results-btn');
+    
+    if (resultsBtn) {
+        if (isCreator) {
+            // только для создателя
+            resultsBtn.style.display = 'block';
+            resultsBtn.style.cursor = 'pointer';
+            
+            const badge = resultsBtn.querySelector('.final-results-badge');
+            const text = resultsBtn.querySelector('.final-results-text');
+            if (badge) {
+                badge.style.background = '#F17BAB';
+                badge.style.borderColor = '#7F375A';
+            }
+            if (text) {
+                text.style.color = '#FFFFFF';
+                text.style.textShadow = `1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A`;
+            }
+            
+            resultsBtn.onclick = () => {
+                // финальные данные для страницы ответов
+                sessionStorage.setItem('finalResults', JSON.stringify({
+                    finalPlayers,
+                    kickedPlayers,
+                    roomCode
+                }));
+                
+                // Переход на answers.html (или results.html)
+                loadPage('answers.html', container);
+            };
+        } else {
+            // Для не-создателя: кнопка видна, но неактивна (серая)
+            resultsBtn.style.display = 'block';
+            resultsBtn.style.cursor = 'not-allowed';
+            
+            const badge = resultsBtn.querySelector('.final-results-badge');
+            const text = resultsBtn.querySelector('.final-results-text');
+            if (badge) {
+                badge.style.background = '#DADADA';
+                badge.style.borderColor = '#9B3D63';
+            }
+            if (text) {
+                text.style.color = '#9B3D63';
+                text.style.textShadow = 'none';
+            }
+            
+
+            text.textContent = 'Ожидание создателя';
+            
+            resultsBtn.onclick = null;
+        }
+    }
+    
+    // На финальной странице иконки обычно не нужны, но если есть:
+    container.querySelector('.icon-left')?.addEventListener('click', () => {
+        if (confirm('Покинуть комнату?')) {
+            if (socket) socket.disconnect();
+            sessionStorage.clear();
+            loadPage('main-page-content.html', container);
+        }
+    });
+    
+    loadFinalTeam();
+    
+    console.log('Final-team: логика инициализирована');
+}
+// ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ГОЛОСОВАНИЯ (vote.html) =====
+const voteContainer = container.querySelector('.vote-players-list, [data-page="vote"]');
+
+if (voteContainer) {
+    console.log('Vote: страница загружена');
+    const roomCode = sessionStorage.getItem('currentRoomCode');
+    const playerUuid = sessionStorage.getItem('currentPlayerUuid');
+    const currentPlayer = sessionStorage.getItem('currentPlayer');
+    const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;
+    
+    // Состояние голосования
+    let voteState = {
+        voters: [],           // UUID игроков, которые уже проголосовали
+        votes: {},            // { targetUuid: [voterUuid, ...] }
+        kickedPlayer: null,   // UUID выгнанного игрока
+        isFinished: false     // Закончено ли голосование
+    };
+    
+    // загрузка игроков для голосования
+    async function loadVotePlayers() {
+        if (IS_TEST_MODE) {
+            // Тестовые данные
+            const testPlayers = [
+                { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true },
+                { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false },
+                { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false },
+                { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false },
+                { uuid: 'test-5', nickname: 'РандомНик4', be_creator: false },
+                { uuid: 'test-6', nickname: 'РандомНик5', be_creator: false }
+            ];
+            renderVotePlayers(testPlayers);
+            return;
+        }
+        
+        try {
+            const res = await fetch(`/api/vote/players?code=${roomCode}`, {
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            renderVotePlayers(data.players || []);
+            
+        } catch (err) {
+            console.error('Ошибка загрузки игроков:', err);
+        }
+    }
+    
+    //  отрисовка списка игроков 
+    function renderVotePlayers(players) {
+        const playersList = container.querySelector('.vote-players-list');
+        const voteCounter = container.querySelector('.vote-stats-count');
+        
+        if (!playersList) return;
+        
+        // Сортировка сначала текущий игрок 
+        const sortedPlayers = [...players].sort((a, b) => {
+            if (a.uuid === playerUuid) return -1;
+            if (b.uuid === playerUuid) return 1;
+            return 0;
+        });
+        
+        playersList.innerHTML = '';
+        
+        sortedPlayers.forEach(player => {
+            const isVoter = voteState.voters.includes(player.uuid);
+            const isKicked = player.uuid === voteState.kickedPlayer;
+            const isMyself = player.uuid === playerUuid;
+            
+            const playerItem = document.createElement('div');
+            playerItem.className = `vote-player-item${isKicked ? ' kicked' : ''}${isVoter ? ' voted' : ''}`;
+            playerItem.dataset.playerUuid = player.uuid;
+            
+            // Крестик только для не-себя и не-выгнанных и не-проголосовавших
+            const crossHTML = (!isMyself && !isKicked && !isVoter) 
+                ? `<div class="vote-player-icon" data-target="${player.uuid}" data-target-name="${player.nickname}"></div>` 
+                : '';
+            
+            playerItem.innerHTML = `
+                <div class="vote-player-badge"></div>
+                <div class="vote-player-name">${player.nickname}${isMyself ? ' (вы)' : ''}</div>
+                ${crossHTML}
+            `;
+            
+            // обработчик клика на крестик 
+            const cross = playerItem.querySelector('.vote-player-icon');
+            if (cross) {
+                cross.onclick = (e) => {
+                    e.stopPropagation();
+                    const targetUuid = cross.dataset.target;
+                    const targetName = cross.dataset.targetName;
+                    showKickModal(targetUuid, targetName);
+                };
+            }
+            
+            playersList.appendChild(playerItem);
+        });
+        
+        // счётчик обновление
+        if (voteCounter) {
+            voteCounter.textContent = `${voteState.voters.length} из ${players.length}`;
+        }
+        
+        // проверка закончено ли голосование
+        if (voteState.voters.length >= players.length && !voteState.isFinished) {
+            finishVoting(players);
+        }
+    }
+    
+    // модальное окно подтверждения 
+    let pendingKickUuid = null;
+    
+    function showKickModal(targetUuid, targetName) {
+        const modal = container.querySelector('.vote-modal');
+        const question = container.querySelector('.vote-modal-question');
+        const yesBtn = container.querySelector('.vote-modal-yes');
+        const noBtn = container.querySelector('.vote-modal-no');
+        
+        if (!modal) return;
+        
+        // Обновляем текст вопроса
+        if (question) {
+            question.textContent = `Вы действительно хотите выгнать игрока "${targetName}"?`;
+        }
+        
+        // модальное окно
+        modal.style.display = 'flex';
+        pendingKickUuid = targetUuid;
+        
+        // Обработчик "Да"
+        const handleYes = () => {
+            if (pendingKickUuid) {
+                submitVote(pendingKickUuid);
+            }
+            closeModal();
+        };
+        
+        // обработчик "Нет"
+        const handleNo = () => {
+            closeModal();
+        };
+        // далее
+        if (yesBtn) {
+            const newYesBtn = yesBtn.cloneNode(true);
+            yesBtn.parentNode.replaceChild(newYesBtn, yesBtn);
+            newYesBtn.addEventListener('click', handleYes);
+        }
+        
+        if (noBtn) {
+            const newNoBtn = noBtn.cloneNode(true);
+            noBtn.parentNode.replaceChild(newNoBtn, noBtn);
+            newNoBtn.addEventListener('click', handleNo);
+        }
+        
+        // Закрытие по клику на фон
+        modal.onclick = (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        };
+    }
+    
+    function closeModal() {
+        const modal = container.querySelector('.vote-modal');
+        if (modal) {
+            modal.style.display = 'none';
+        }
+        pendingKickUuid = null;
+    }
+    
+    // отправка голоса на сервер
+    async function submitVote(targetUuid) {
+        if (IS_TEST_MODE) {
+            // Тест локальное обновление
+            voteState.voters.push(playerUuid);
+            if (!voteState.votes[targetUuid]) {
+                voteState.votes[targetUuid] = [];
+            }
+            voteState.votes[targetUuid].push(playerUuid);
+            renderVotePlayers(getCurrentPlayers());
+            
+            if (socket) {
+                socket.emit('vote-cast', {
+                    roomCode,
+                    voterUuid: playerUuid,
+                    targetUuid
+                });
+            }
+            return;
+        }
+        
+        try {
+            const res = await fetch('/api/vote/cast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    roomCode,
+                    voterUuid: playerUuid,
+                    targetUuid
+                })
+            });
+            
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            console.log('Голос засчитан');
+            
+        } catch (err) {
+            console.error('Ошибка отправки голоса:', err);
+            alert('Не удалось проголосовать');
+        }
+    }
+    
+    // Вспомогательная функция для теста
+    function getCurrentPlayers() {
+        return [
+            { uuid: 'test-1', nickname: currentPlayer || 'МойНик' },
+            { uuid: 'test-2', nickname: 'РандомНик1' },
+            { uuid: 'test-3', nickname: 'РандомНик2' },
+            { uuid: 'test-4', nickname: 'РандомНик3' },
+            { uuid: 'test-5', nickname: 'РандомНик4' },
+            { uuid: 'test-6', nickname: 'РандомНик5' }
+        ];
+    }
+    
+    // завершение голосования
+    function finishVoting(players) {
+        voteState.isFinished = true;
+        
+        // поиск игрока с наибольшим количеством голосов
+        let maxVotes = 0;
+        let kickedUuid = null;
+        
+        for (const [targetUuid, voters] of Object.entries(voteState.votes)) {
+            if (voters.length > maxVotes) {
+                maxVotes = voters.length;
+                kickedUuid = targetUuid;
+            }
+        }
+        
+        if (kickedUuid) {
+            voteState.kickedPlayer = kickedUuid;
+            
+            // сообщение о выгнанном игроке
+            const kickedPlayer = players.find(p => p.uuid === kickedUuid);
+            if (kickedPlayer) {
+                showToast(`${kickedPlayer.nickname} выгнан из команды!`, 'warning');
+                
+                // пометка игрока как выгнанного в списке
+                const kickedItem = container.querySelector(`.vote-player-item[data-player-uuid="${kickedUuid}"]`);
+                if (kickedItem) {
+                    kickedItem.classList.add('kicked');
+                    const icon = kickedItem.querySelector('.vote-player-icon');
+                    if (icon) icon.remove();
+                }
+            }
+            
+            // на сервер если не тест
+            if (!IS_TEST_MODE) {
+                fetch('/api/vote/finish', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ roomCode, kickedUuid })
+                }).catch(err => console.error('Ошибка завершения:', err));
+            }
+            
+            // Через 2 секунды переходим на следующую страницу
+            setTimeout(() => {
+                loadPage('final-team.html', container);
+            }, 2000);
+        } else {
+            // Никто не набрал голосов - далее
+            setTimeout(() => {
+                loadPage('final-team.html', container);
+            }, 1500);
+        }
+    }
+    
+    // WebSocket: синхронизация голосования
+    if (!IS_TEST_MODE && playerUuid && roomCode) {
+        if (!socket) {
+            socket = io();
+        }
+        
+        socket.emit('register', { playerUuid, roomCode });
+        socket.on('vote-cast', (data) => {
+            console.log('Новый голос:', data);
+            if (!voteState.voters.includes(data.voterUuid)) {
+                voteState.voters.push(data.voterUuid);
+            }
+            if (!voteState.votes[data.targetUuid]) {
+                voteState.votes[data.targetUuid] = [];
+            }
+            voteState.votes[data.targetUuid].push(data.voterUuid);
+            
+            // Перерисовываем
+            loadVotePlayers();
+        });
+        
+        // Слушаем завершение голосования
+        socket.on('vote-finished', (data) => {
+            console.log('Голосование завершено:', data);
+            voteState.kickedPlayer = data.kickedUuid;
+            loadVotePlayers();
+        });
+    }
+    
+    // кнопка "пропустить" 
+    const skipBtn = container.querySelector('.vote-skip');
+    if (skipBtn) {
+        skipBtn.style.cursor = 'pointer';
+        skipBtn.onclick = () => {
+            if (voteState.voters.includes(playerUuid)) {
+                showToast('Вы уже проголосовали!', 'info');
+                return;
+            }
+            
+            if (confirm('Пропустить голосование?')) {
+                // Отправляем голос "пропуск"
+                submitVote(null);  // null = пропуск
+            }
+        };
+    }
+    
+    // Таймер 
+    let voteTimerInterval = null;
+    let timeLeft = 60;
+    
+    function startVoteTimer() {
+        const timerText = container.querySelector('.vote-timer-text');
+        
+        voteTimerInterval = setInterval(() => {
+            timeLeft--;
+            
+            if (timerText) {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                // Подсветка при остатке 10 секунд
+                if (timeLeft <= 10) {
+                    timerText.style.color = '#ff0000';
+                    timerText.style.fontWeight = 'bold';
+                }
+            }
+            
+            if (timeLeft <= 0) {
+                clearInterval(voteTimerInterval);
+                showToast('Время вышло!', 'warning');
+                if (!voteState.isFinished) {
+                    finishVoting(getCurrentPlayers());
+                }
+            }
+        }, 1000);
+    }
+    
+    // подсветка активной вкладки "kickout" 
+    setTimeout(() => {
+        if (typeof setActiveIcon === 'function') {
+            setActiveIcon(container, 'icon-left', 'vote-icon');
+        } else {
+            // Если setActiveIcon нет — подсвечиваем вручную
+            const icons = container.querySelectorAll('.vote-icon');
+            icons.forEach(icon => icon.classList.remove('vote-active'));
+            const leftIcon = container.querySelector('.icon-left');
+            if (leftIcon) leftIcon.classList.add('vote-active');
+        }
+        console.log('активирована "kickout"');
+    }, 100);
+    
+    // навигация по нижней панели 
+    container.querySelector('.icon-left')?.addEventListener('click', () => {
+        console.log('Уже на странице голосования');
+    });
+    
+    container.querySelector('.icon-center')?.addEventListener('click', () => {
+        console.log('Переход на cards-all-players');
+        if (voteTimerInterval) clearInterval(voteTimerInterval);
+        loadPage('cards-all-players.html', container);
+    });
+    
+    container.querySelector('.icon-right')?.addEventListener('click', () => {
+        console.log('Переход на profile');
+        if (voteTimerInterval) clearInterval(voteTimerInterval);
+        loadPage('profile.html', container);
+    });
+    
+    loadVotePlayers();
+    startVoteTimer();
+    
+    console.log('Vote: логика инициализирована');
+    
+}
 }

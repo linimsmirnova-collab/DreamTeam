@@ -2583,3 +2583,105 @@ span {
   color: #FFFFFF;
   text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
 }
+/* ===== СТРАНИЦА ИТОГОВ (final-team.html) ===== */
+
+/* Прокрутка списка игроков */
+.final-players-list {
+    position: absolute;
+    width: 360px;
+    left: 17px;
+    top: 170px;
+    bottom: 180px;  /* Отступ снизу для кнопок "Вскрыть" и "Результаты" */
+    overflow-y: auto;  /* ВКЛЮЧАЕТ ВЕРТИКАЛЬНУЮ ПРОКРУТКУ */
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 8px;  /* Место для скроллбара */
+    box-sizing: border-box;
+}
+.final-players-list::-webkit-scrollbar {
+    width: 4px;
+}
+.final-players-list::-webkit-scrollbar-track {
+    background: #FFCBE5;
+    border-radius: 2px;
+}
+.final-players-list::-webkit-scrollbar-thumb {
+    background: #F17BAB;
+    border-radius: 2px;
+}
+.final-players-list::-webkit-scrollbar-thumb:hover {
+    background: #7F375A;
+}
+/* ===== СТРАНИЦА ГОЛОСОВАНИЯ (vote.html) ===== */
+
+/* Прокрутка списка игроков (требование 1) */
+.vote-players-list {
+    position: absolute;
+    width: 360px;
+    left: 17px;
+    top: 180px;
+    bottom: 150px;  /* Отступ снизу для кнопок */
+    overflow-y: auto;  /* ✅ ВКЛЮЧАЕТ ВЕРТИКАЛЬНУЮ ПРОКРУТКУ */
+    overflow-x: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding-right: 8px;
+}
+
+/* Скроллбар для красоты */
+.vote-players-list::-webkit-scrollbar {
+    width: 4px;
+}
+.vote-players-list::-webkit-scrollbar-track {
+    background: #FFCBE5;
+    border-radius: 2px;
+}
+.vote-players-list::-webkit-scrollbar-thumb {
+    background: #F17BAB;
+    border-radius: 2px;
+}
+.vote-players-list::-webkit-scrollbar-thumb:hover {
+    background: #7F375A;
+}
+
+/* Выгнанный игрок (требование 12) */
+.vote-player-item.kicked {
+    cursor: default;
+}
+
+.vote-player-item.kicked .vote-player-badge {
+    background: #DADADA;
+    border-color: #9B3D63;
+}
+
+.vote-player-item.kicked .vote-player-name {
+    text-decoration: line-through;
+    color: #9B3D63;
+}
+
+.vote-player-item.kicked .vote-player-icon {
+    display: none;
+}
+
+/* Игрок, за которого уже проголосовали */
+.vote-player-item.voted .vote-player-icon {
+    opacity: 0.3;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+/* Подсвеченная иконка "kickout"*/
+.vote-icon.icon-left.vote-active::before {
+    content: "";
+    position: absolute;
+    top: -4px;
+    left: -6px;
+    right: -6px;
+    bottom: -1px;
+    border: 3px solid #D21B72;
+    border-radius: 50%;
+    pointer-events: none;
+}
