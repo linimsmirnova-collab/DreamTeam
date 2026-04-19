@@ -1093,10 +1093,6 @@ span {
     align-items: start;
     padding: 5px;
 }
-/* Стилизация скролла для контейнера карточек */
-.profile-cards-container::-webkit-scrollbar {
-    width: 4px;  /* тонкий скролл */
-}
 
 // Нижняя розовая панель
 .profile-footer {
@@ -1234,7 +1230,6 @@ span {
     width: 172px;
     height: 130px;
     left: 24px;
-    top: 198px;
     display: none;
 
     
@@ -1257,6 +1252,9 @@ span {
         align-items: center;
         justify-content: center;
         gap: 10px;
+        background: rgba(241, 123, 171, 0.95);
+        border-radius: 50px;
+        box-sizing: border-box;
     }
         
     .card-modal-question {
@@ -1289,13 +1287,10 @@ span {
     }
 }
 
-.card-opened {
-    background: #FFCBE5 !important;
-}
-
 // ============================================
 // СТИЛИ ДЛЯ ФРЕЙМА "КАРТОЧКИ ВСЕХ ИГРОКОВ" (cards-all-players.html)
 // ============================================
+
 
 // Верхняя розовая полоса
 .cards-header {
@@ -1318,18 +1313,10 @@ span {
     font-style: normal;
     font-weight: 700;
     font-size: 20px;
-    line-height: 24px;
+    line-height: 1.2;
     color: #7F375A;
-}
-
-// Блок "Количество человек в проекте"
-.voted-block {
-    position: absolute;
-    width: 65px;
-    height: 65px;
-    left: 270;             
-    right: 95px;             
-    top: 10px;
+    display: flex;
+    align-items: center;
 }
 
 .voted-badge {
@@ -1382,80 +1369,42 @@ span {
     cursor: pointer;
 }
 
-// Контейнер для всех игроков (прокручиваемый)
-.players-cards-container {
-    position: absolute;
-    width: 360px;
-    left: 17px;
-    top: 100px;
-    bottom: -100px;
-    overflow-y: auto;
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-    padding-right: 8px;
-
-    &::-webkit-scrollbar {
-        width: 4px;
-    }
-    &::-webkit-scrollbar-track {
-        background: #FFCBE5;
-        border-radius: 2px;
-    }
-    &::-webkit-scrollbar-thumb {
-        background: #F17BAB;
-        border-radius: 2px;
-    }
-}
-
-// Блок одного игрока (большая рамка)
+/* Блок одного игрока */
 .player-card-block {
     position: relative;
     width: 100%;
-    min-height: 475px;
+    height: auto;           
+    min-height: auto;       
     border: 2px solid #7F375A;
     border-radius: 50px;
     box-sizing: border-box;
     padding: 6px;
+    padding-bottom: 16px;
     background: #FFFFFF;
     display: flex;
     flex-direction: column;
 }
 
-// Ник игрока
-.player-name {
-    position: absolute;
-    width: 304px;
-    height: 29px;
-    left: 38px;
-    top: 16px;              
-    font-family: 'Inria Serif';
-    font-style: normal;
-    font-weight: 700;
-    font-size: 20px;
-    line-height: 24px;
-    color: #FE5499;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-// Сетка карточек игрока (3x2)
+/* Сетка карточек игрока - 2 колонки, 4 строки */
 .player-cards-grid {
     display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 5px;
+    grid-template-columns: repeat(2, 1fr);  /* 2 колонки */
+    grid-template-rows: repeat(4, auto);    /* 4 строки */
+    gap: 12px;
     justify-items: center;
     align-items: start;
-    margin-top: 60px;
+    margin-top: 10px;
+    margin-bottom: 8px;
+    padding: 0 12px;
 }
 
-// Мини-карточка характеристики (маленькая рамка)
+
+/* Мини-карточка */
 .mini-card {
     position: relative;
     width: 100%;
-    max-width: 172px;
-    aspect-ratio: 172 / 130;
+    max-width: 160px;
+    min-height: 110px;
     border: 2px solid #7F375A;
     border-radius: 50px;
     box-sizing: border-box;
@@ -1464,32 +1413,27 @@ span {
     align-items: center;
     justify-content: center;
     padding: 10px;
+    background: transparent;
 }
 
-// Специальный фон только для карточки с ролью
-.mini-card-role {
+/* Карточка с ролью - розовый фон */
+.mini-card[data-card-type="1"] {
     background: #FFCBE5;
 }
 
-// Остальные карточки — без фона
-.mini-card:not(.mini-card-role) {
-    background: transparent; 
-}
-
-// Заголовок карточки (Роль, Черта характера и т.д.)
+/* Заголовок карточки */
 .mini-card-label {
     position: absolute;
-    width: auto;           
-    max-width: 150px; //ограничиваем максимальную ширину
-    height: 29px;
+    width: auto;
+    max-width: 140px;
     left: 50%;
     top: 12px;
     transform: translateX(-50%);
     font-family: 'Inria Serif';
     font-style: normal;
     font-weight: 700;
-    font-size: 14px;        
-    line-height: 16px;   
+    font-size: 14px;
+    line-height: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1497,22 +1441,22 @@ span {
     color: #FE5499;
     background: transparent;
     pointer-events: none;
-    white-space: nowrap; //запрещаем перенос на новую строку
+    white-space: nowrap;
 }
 
-// Значение карточки (Проектировщик-тестировщик и т.д.)
+
+/* Значение карточки */
 .mini-card-value {
     position: absolute;
-    width: 150px;
-    height: 69px;
+    width: 140px;
     left: 50%;
     bottom: 12px;
     transform: translateX(-50%);
     font-family: 'Inria Serif';
     font-style: normal;
     font-weight: 700;
-    font-size: 16px;
-    line-height: 19px;
+    font-size: 14px;
+    line-height: 17px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1533,6 +1477,24 @@ span {
         -1px -1px 0 #7F375A,
         1px -1px 0 #7F375A,
         -1px 1px 0 #7F375A;
+}
+
+/* Ник игрока */
+.player-card-block .player-name {
+    //position: absolute;
+    width: 100%;
+    left: 38px;
+    top: 16px;
+    font-family: 'Inria Serif';
+    font-style: normal;
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FE5499;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
 }
 
 // Нижняя розовая панель
@@ -2828,10 +2790,15 @@ span {
 /* Для страницы cards-all-players.html - активная иконка users */
 .cards-icon.active {
     outline: 3px solid #D21B72 !important;
-    outline-offset: 0px !important;
+    outline-offset: 10px !important;
     box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
     border: none !important;
     border-radius: 0 !important;
+}
+
+/* Корректировка позиции центральной иконки на странице cards-all-players */
+.cards-icon.icon-center {
+    top: 769px !important;
 }
 
 /* Для страницы vote.html - активная иконка kickout */

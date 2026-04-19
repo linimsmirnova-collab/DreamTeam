@@ -207,8 +207,9 @@ app.post('/api/room/join', (req, res) => {
             success: true,
             nickname: newPlayer.nickname,
             roomId: roomCode,
-            maxPlayers: session.players_count, //добавила
+            maxPlayers: session.players_count, 
             playerId: newPlayer.uuid,
+            project: session.project
         });
 
     } catch (error) {
@@ -368,18 +369,26 @@ app.get('/api/game/my-cards', authenticatePlayer, async (req, res) => {
 });
 
 // Энпоинт выдающий вскрывающегося игрока
-app.get('/api/game/moved_player', authenticatePlayer, async (req, res) => {
+app.get('/api/game/moved_player', authenticatePlayer, (req, res) => {
     const manager = req.manager;
     const session = manager.GameSession;
+    
     try {
-        const movePlayer = selectPlayerMove(session)
-        console.log('movedPlayer: ', movePlayer);
-        res.json(movePlayer);
+        //возвращаем сохранённого currentMover
+        if (session.currentMover) {
+            console.log('Текущий игрок (currentMover):', session.currentMover);
+            res.json(session.currentMover);
+        } else {
+            // fallback на случай, если currentMover не установлен
+            const movePlayer = selectPlayerMove(session);
+            console.log('movedPlayer (fallback):', movePlayer);
+            res.json(movePlayer);
+        }
     } catch (error) {
         console.error('Ошибка при получении ходящего игрока:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
-})
+});
 
 // изпользование websocket с помощью socket io
 const server = http.createServer(app);
@@ -401,6 +410,10 @@ const roomTimers = new Map();
 // создавние соединения с игроком с привязкой к коду комнаты
 io.on('connection', (socket) => {
     console.log(`New socket connected: ${socket.id}`);
+
+    socket.on('error', (error) => {
+        console.error(`Socket error for ${socket.id}:`, error);
+    });
 
     // Клиент должен отправить событие 'register' с данными игрока
     socket.on('register', (data) => {
@@ -516,34 +529,123 @@ io.on('connection', (socket) => {
     });
 
     socket.on('start_timer', () => {
-        const roomCode = socket.roomCode;
-        if (!roomCode) return;
-
+        const socketInfo = socketMap.get(socket.id);
+        if (!socketInfo || !socketInfo.roomCode) {
+            console.error('start_timer: не удалось определить комнату');
+            return;
+        }
+        const roomCode = socketInfo.roomCode;
+        const manager = activeManagers.get(roomCode);
+        
+        if (!manager) {
+            console.error('start_timer: менеджер не найден');
+            return;
+        }
+        
+        const session = manager.GameSession;
+        const currentPlayer = session.currentMover;
+        
         // Останавливаем предыдущий таймер для этой комнаты, если есть
         if (roomTimers.has(roomCode)) {
-            clearInterval(roomTimers.get(roomCode));
+            clearTimeout(roomTimers.get(roomCode));
             roomTimers.delete(roomCode);
         }
-
+        
         let timeLeft = 60; // 60 секунд
-
+        
         // Отправляем начальное значение сразу
         io.to(roomCode).emit('update_timer', { timeLeft });
-
+        
+        // Создаём интервал для обновления таймера каждую секунду
         const interval = setInterval(() => {
             timeLeft--;
-            if (timeLeft < 0) {
-                // Таймер закончился
+            if (timeLeft <= 0) {
+                // Таймер закончился - очищаем интервал
                 clearInterval(interval);
+                
+                // Проверяем, не вскрыл ли игрок карту за это время
+                if (session.currentMover && session.currentMover.uuid === currentPlayer.uuid) {
+                    // Игрок не вскрыл карту - принудительно вскрываем случайную
+                    console.log(`Игрок ${currentPlayer.nickname} не вскрыл карту за 60 секунд, принудительное вскрытие`);
+                    
+                    // Находим невскрытые карты
+                    const unopenedCards = currentPlayer.hand.filter(card => !card.isOpen);
+                    
+                    if (unopenedCards.length > 0) {
+                        // Выбираем случайную невскрытую карту
+                        const randomIndex = Math.floor(Math.random() * unopenedCards.length);
+                        const forcedCard = unopenedCards[randomIndex];
+                        const originalIndex = currentPlayer.hand.findIndex(card => card.id === forcedCard.id);
+                        
+                        if (!forcedCard.name) {
+                            console.error('Ошибка: у карты нет поля name!', forcedCard);
+                            forcedCard.name = 'Неизвестная карта';
+                        }
+
+                        // Вскрываем карту принудительно
+                        forcedCard.open();
+                        currentPlayer.openCards.push(forcedCard);
+                        
+                        console.log(`Принудительно вскрыта карта: ${forcedCard.name} (индекс ${originalIndex})`);
+                        
+                        // Отправляем событие о принудительном вскрытии
+                        io.to(roomCode).emit('force-reveal-card', {
+                            player: {
+                                uuid: currentPlayer.uuid,
+                                nickname: currentPlayer.nickname
+                            },
+                            openCard: {
+                                id: forcedCard.id,
+                                cardType: forcedCard.cardType,
+                                name: forcedCard.name,
+                                index: originalIndex,
+                                wasForced: true
+                            },
+                            message: `Игрок ${currentPlayer.nickname} не успел открыть карту! Принудительно открыта карта "${forcedCard.name}"`
+                        });
+                    }
+                }
+                
+                // Переключаем ход на следующего игрока
+                const activePlayers = session.players_list.filter(p => p.active);
+                if (activePlayers.length > 0) {
+                    const currentIndex = activePlayers.findIndex(p => p.uuid === currentPlayer.uuid);
+                    const nextIndex = (currentIndex + 1) % activePlayers.length;
+                    session.currentMover = activePlayers[nextIndex];
+                    
+                    io.to(roomCode).emit('turn-update', {
+                        currentPlayerUuid: session.currentMover.uuid,
+                        timeLeft: 60
+                    });
+                    console.log(`Ход переключён на игрока: ${session.currentMover.nickname}`);
+                }
+                
+                io.to(roomCode).emit('timer_end', { 
+                    message: 'Время вышло!',
+                    forcedReveal: unopenedCards && unopenedCards.length > 0
+                });
+                
                 roomTimers.delete(roomCode);
-                io.to(roomCode).emit('timer_end', { message: 'Время вышло!' });
             } else {
                 io.to(roomCode).emit('update_timer', { timeLeft });
             }
         }, 1000);
-
+        
         roomTimers.set(roomCode, interval);
     });
+
+// Добавляем обработчик для остановки таймера (когда игрок успел открыть карту)
+socket.on('stop_timer', () => {
+    const socketInfo = socketMap.get(socket.id);
+    if (!socketInfo || !socketInfo.roomCode) return;
+    
+    const roomCode = socketInfo.roomCode;
+    if (roomTimers.has(roomCode)) {
+        clearInterval(roomTimers.get(roomCode));
+        roomTimers.delete(roomCode);
+        console.log(`Таймер остановлен для комнаты ${roomCode}`);
+    }
+});
 
     socket.on('disconnect', () => {
         const info = socketMap.get(socket.id);
@@ -573,6 +675,16 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
     session.game_state = gameState.active;
     session.current_round = 1;
 
+    // Устанавливаем первого игрока (создателя)
+    session.currentMover = session.players_list[0];
+
+    // Отправляем всем игрокам, чей ход
+    io.to(session.roomCode).emit('turn-update', {
+        currentPlayerUuid: session.currentMover.uuid,
+        timeLeft: 60
+    });
+    console.log(`Первый ход у игрока: ${session.currentMover.nickname}`);
+
     // Отправляем событие всем в комнате
     io.to(session.roomCode).emit('game-start', {
         message: 'Игра началась! Переход на страницу профиля.'
@@ -588,26 +700,81 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
 app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
     const player = req.player;
     const roomCode = req.roomId;
-    let {cat_card} = req.body;
+    const session = req.manager.GameSession;
 
-    cat_card -= 1; // приведение к удобному индексу для обращения к массиву
+    if (session.currentMover && session.currentMover.uuid != player.uuid) {
+        return res.status(400).json({ error: 'Сейчас не ваш ход' });
+    }
+
+    let {cat_card} = req.body;  // индекс карты (1-8)
+
+    console.log('Получен индекс карты для вскрытия:', cat_card);
+    
+    // Преобразуем в индекс массива (0-7)
+    const cardIndex = cat_card - 1;
+    
+    if (cardIndex < 0 || cardIndex >= player.hand.length) {
+        return res.status(400).json({error: 'Неверный индекс карты'});
+    }
 
     if (player.isVoted) {
         return res.status(400).json({error: 'Ошибка, нельзя вскрыть карту в этом раунде после голосования'})
     }
 
+    const openCard = player.hand[cardIndex];
+
+    if (!openCard) {
+        return res.status(400).json({error: 'Карта не найдена'});
+    }
+    
+    if (openCard.isOpen) {
+        return res.status(400).json({error: 'Карта уже вскрыта'});
+    }
+
     try {
-        const openCard = player.hand[cat_card]
-        if (!openCard) {
-            return res.status(400).json({error: 'Карта не найдена'})
-        }
-        openCard.open()
+        openCard.open();
         player.openCards.push(openCard);
 
+        console.log(`Игрок ${player.nickname} вскрыл карту под индексом ${cardIndex}:`, openCard);
+
         io.to(roomCode).emit('reveal-card', {
-            player: player,
-            openCard: openCard,
+            player: {
+                uuid: player.uuid,
+                nickname: player.nickname
+            },
+            openCard: {
+                id: openCard.id,
+                cardType: openCard.cardType,
+                name: openCard.name,
+                index: cardIndex 
+            }
         });
+
+        // Останавливаем таймер, так как карта уже открыта
+        const playerSocket = playerSocketMap.get(player.uuid);
+        if (playerSocket) {
+            playerSocket.emit('stop_timer');
+        }
+
+        // Останавливаем таймер на сервере
+        if (roomTimers.has(roomCode)) {
+            clearInterval(roomTimers.get(roomCode));
+            roomTimers.delete(roomCode);
+            console.log(`Таймер остановлен (карта открыта вовремя) для комнаты ${roomCode}`);
+        }
+
+        // Переключаем ход на следующего игрока
+        const activePlayers = session.players_list.filter(p => p.active);
+        const currentIndex = activePlayers.findIndex(p => p.uuid === player.uuid);
+        const nextIndex = (currentIndex + 1) % activePlayers.length;
+        session.currentMover = activePlayers[nextIndex];
+
+        io.to(roomCode).emit('turn-update', {
+            currentPlayerUuid: session.currentMover.uuid,
+            timeLeft: 60
+        });
+        console.log(`Ход переключён на игрока: ${session.currentMover.nickname}`);
+
         res.sendStatus(200);
     } catch (error) {
         console.error("Ошибка при вскрытии карты", error);
@@ -944,5 +1111,15 @@ app.post('/api/logout', authenticatePlayer, (req, res) => {
 //     }
 //     return '127.0.0.1';
 // }
+
+// Глобальный обработчик ошибок
+process.on('uncaughtException', (error) => {
+    console.error('Uncaught Exception:', error);
+    // Не даём серверу упасть
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+    console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+});
 
 module.exports = { app, server, io, db, activeManagers };
