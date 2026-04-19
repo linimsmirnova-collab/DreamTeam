@@ -2,7 +2,7 @@ let socket = null;
 let cardHandlersAdded = false;
 
 // ===== РЕЖИМ РАБОТЫ =====
-const IS_TEST_MODE = true; // true - тестовый режим (без бэкенда), false - с бэкендом
+const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
 
 // ===== ХРАНИЛИЩЕ КОМНАТ (только для тестового режима) =====
 const rooms = {};
@@ -667,6 +667,11 @@ function addPageHandlers(container) {
                             sessionStorage.setItem('maxPlayers', data.maxPlayers);
                             sessionStorage.setItem('project', JSON.stringify(data.project)); // сохраняем проект
                             sessionStorage.setItem('currentPlayerUuid', data.playerId);
+
+
+                            sessionStorage.setItem('isCreator', 'true');// для создателя
+
+
                             loadPage('player-list.html', container);
                         } else {
                             alert('Ошибка: ' + (data.error || 'Не удалось создать комнату'));
@@ -1428,7 +1433,7 @@ function addPageHandlers(container) {
             newIconRight.addEventListener('click', () => {
                 console.log('перезагрузка профиля');
                 if (timerInterval) clearInterval(timerInterval);
-                loadPage('profile.html', container);
+                //loadPage('profile.html', container);
             });
         }
 
@@ -1978,7 +1983,7 @@ function addPageHandlers(container) {
                     clearInterval(window.cardsAllInterval);
                     window.cardsAllInterval = null;
                 }
-                loadPage('profile.html', container);
+               loadPage('profile.html', container);
             });
         }
         
@@ -2904,11 +2909,16 @@ if (voteContainer) {
     
     function startVoteTimer() {
         const timerText = container.querySelector('.vote-timer-text');
+
+        if (timerText) {
+            timerText.textContent = '1:00'
+        }
         
         voteTimerInterval = setInterval(() => {
             timeLeft--;
             
             if (timerText) {
+
                 const minutes = Math.floor(timeLeft / 60);
                 const seconds = timeLeft % 60;
                 timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
@@ -2962,7 +2972,7 @@ if (voteContainer) {
     });
     
     loadVotePlayers();
-    startVoteTimer();
+   // startVoteTimer();
     
     console.log('Vote: логика инициализирована');
     
