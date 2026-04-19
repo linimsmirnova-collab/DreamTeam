@@ -2333,8 +2333,13 @@ if (finalContainer) {
     const roomCode = sessionStorage.getItem('currentRoomCode');
     const playerUuid = sessionStorage.getItem('currentPlayerUuid');
     const currentPlayer = sessionStorage.getItem('currentPlayer');
-    const isCreator = sessionStorage.getItem('isCreator') === 'true';  
+    const isCreator = sessionStorage.getItem('isCreator') === 'true'; 
     
+    const roundsCompletedEl = container.querySelector('#rounds-completed');
+    if (roundsCompletedEl) {
+        roundsCompletedEl.textContent = maxRounds;
+    }
+    const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;
     // прокрутка страницы 
     
     // загрузка списка игроков с сервера 
