@@ -1,54 +1,68 @@
+<!--<link rel="stylesheet" href="../css/styles/style.css">-->
+
+<!--&lt;!&ndash; Верхняя розовая полоса &ndash;&gt;-->
+<!--<div class="answers-header"></div>-->
+<!--<div class="answers-title">Подведение итогов</div>-->
+
+<!--&lt;!&ndash; Блок 1: Вопросы про языки и среды &ndash;&gt;-->
+<!--<div class="answers-card">-->
+<!--    <div class="answers-question">Соответствуют ли языки и среды теме проекта?</div>-->
+<!--    <div class="answers-options">-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">У всех разработчиков релевантные языки</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">У 1 разработчика нерелевантный язык</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">Проектировщик не знает языки визуального моделирования</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">Тестировщик не знает инструментов тестирования</div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; Блок 2: Вопросы про особенности &ndash;&gt;-->
+<!--<div class="answers-card" style="top: 470px;">-->
+<!--    <div class="answers-question">Есть ли в команде люди со странными особенностями, мешающими работе?</div>-->
+<!--    <div class="answers-options">-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">Нет странных особенностей</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">1 странная особенность</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">2 странных особенности</div>-->
+<!--        </div>-->
+<!--        <div class="answers-option">-->
+<!--            <div class="answers-option-badge"></div>-->
+<!--            <div class="answers-option-text">Все со странными особенностями</div>-->
+<!--        </div>-->
+<!--    </div>-->
+<!--</div>-->
+
+<!--&lt;!&ndash; Кнопка "Перейти к итогам" &ndash;&gt;-->
+<!--<div class="answers-next-btn">-->
+<!--    <div class="answers-next-badge"></div>-->
+<!--    <div class="answers-next-text">Перейти к итогам</div>-->
+<!--</div>-->
+
 <link rel="stylesheet" href="../css/styles/style.css">
 
-<!-- Верхняя розовая полоса -->
 <div class="answers-header"></div>
 <div class="answers-title">Подведение итогов</div>
 
-<!-- Блок 1: Вопросы про языки и среды -->
-<div class="answers-card">
-    <div class="answers-question">Соответствуют ли языки и среды теме проекта?</div>
-    <div class="answers-options">
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">У всех разработчиков релевантные языки</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">У 1 разработчика нерелевантный язык</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">Проектировщик не знает языки визуального моделирования</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">Тестировщик не знает инструментов тестирования</div>
-        </div>
-    </div>
-</div>
-
-<!-- Блок 2: Вопросы про особенности -->
-<div class="answers-card" style="top: 470px;">
-    <div class="answers-question">Есть ли в команде люди со странными особенностями, мешающими работе?</div>
-    <div class="answers-options">
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">Нет странных особенностей</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">1 странная особенность</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">2 странных особенности</div>
-        </div>
-        <div class="answers-option">
-            <div class="answers-option-badge"></div>
-            <div class="answers-option-text">Все со странными особенностями</div>
-        </div>
-    </div>
-</div>
+<!-- Контейнер для прокручиваемых карточек -->
+<div class="answers-content"></div>
 
 <!-- Кнопка "Перейти к итогам" -->
 <div class="answers-next-btn">

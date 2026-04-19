@@ -1,7 +1,7 @@
 let socket = null; // WebSocket соединение
 
 // ===== РЕЖИМ РАБОТЫ =====
-const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
+const IS_TEST_MODE = true; // true - тестовый режим (без бэкенда), false - с бэкендом
 
 // ===== ХРАНИЛИЩЕ КОМНАТ (только для тестового режима) =====
 const rooms = {};
@@ -1571,5 +1571,284 @@ function addPageHandlers(container) {
         }
         
         console.log('Cards-all-players: логика инициализирована');
+    }
+    // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ answers.html (создатель отвечает на вопросы) =====
+    const answersContainer = container.querySelector('.answers-card, .answers-header');
+    if (answersContainer) {
+        console.log('Страница ответов загружена');
+
+        // Флаги и переменные
+        let currentQuestions = [];          // массив вопросов с опциями
+        let userAnswers = {};               // { questionId: { selectedOptions: [], answerText, score, comment } }
+        let allQuestionsAnswered = false;
+        let submitButton = null;
+        let submitEnabled = false;
+
+        // Функция для рендеринга вопросов на основе данных от сервера
+        function renderQuestions(questionsData) {
+            // Очищаем контейнер, оставляя только заголовок и кнопку (если они есть)
+            const container = document.querySelector('.container');
+            let answersContent = container.querySelector('.answers-content');
+            if (!answersContent) {
+                answersContent = document.createElement('div');
+                answersContent.className = 'answers-content';
+                container.appendChild(answersContent);
+            }
+            answersContent.innerHTML = '';
+
+            questionsData.forEach(q => {
+                const card = document.createElement('div');
+                card.className = 'answers-card';
+                card.dataset.qid = q.id;
+                card.innerHTML = `
+                <div class="answers-question">${q.text}</div>
+                <div class="answers-options"></div>
+            `;
+                const optionsContainer = card.querySelector('.answers-options');
+
+                q.options.forEach(opt => {
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'answers-option';
+                    optionDiv.dataset.value = opt.text;
+                    optionDiv.dataset.score = opt.score;
+                    optionDiv.dataset.comment = opt.comment;
+                    optionDiv.innerHTML = `
+                    <div class="answers-option-badge"></div>
+                    <div class="answers-option-text">${opt.text}</div>
+                `;
+                    optionsContainer.appendChild(optionDiv);
+                });
+
+                answersContent.appendChild(card);
+            });
+
+            // Добавляем кнопку "Перейти к итогам", если её нет
+            if (!submitButton) {
+                const footer = container.querySelector('.answers-next-btn');
+                if (footer) submitButton = footer;
+                else {
+                    submitButton = document.createElement('div');
+                    submitButton.className = 'answers-next-btn';
+                    submitButton.innerHTML = `
+                    <div class="answers-next-badge"></div>
+                    <div class="answers-next-text">Перейти к итогам</div>
+                `;
+                    container.appendChild(submitButton);
+                }
+            }
+
+            // Инициализируем userAnswers
+            userAnswers = {};
+            questionsData.forEach(q => {
+                userAnswers[q.id] = { selectedOptions: [], answerText: '', score: 0, comment: '' };
+            });
+
+            // Добавляем обработчики кликов на опции
+            attachOptionHandlers();
+        }
+
+        function attachOptionHandlers() {
+            const cards = document.querySelectorAll('.answers-card');
+            cards.forEach(card => {
+                const qid = parseInt(card.dataset.qid);
+                const options = card.querySelectorAll('.answers-option');
+
+                if (qid === 2) {
+                    // Множественный выбор: toggle стиль
+                    options.forEach(opt => {
+                        opt.style.cursor = 'pointer';
+                        opt.onclick = () => {
+                            const isSelected = opt.classList.contains('selected');
+                            if (isSelected) {
+                                opt.classList.remove('selected');
+                            } else {
+                                opt.classList.add('selected');
+                            }
+                            updateAnswerForQuestion(qid);
+                            checkAllQuestionsAnswered();
+                        };
+                    });
+                } else {
+                    // Одиночный выбор: при клике сбрасываем остальные
+                    options.forEach(opt => {
+                        opt.style.cursor = 'pointer';
+                        opt.onclick = () => {
+                            options.forEach(o => o.classList.remove('selected'));
+                            opt.classList.add('selected');
+                            updateAnswerForQuestion(qid);
+                            checkAllQuestionsAnswered();
+                        };
+                    });
+                }
+            });
+        }
+
+        function updateAnswerForQuestion(qid) {
+            const card = document.querySelector(`.answers-card[data-qid="${qid}"]`);
+            if (!card) return;
+            const selected = card.querySelectorAll('.answers-option.selected');
+            const selectedData = Array.from(selected).map(opt => ({
+                text: opt.querySelector('.answers-option-text').innerText,
+                score: parseInt(opt.dataset.score),
+                comment: opt.dataset.comment
+            }));
+
+            if (selectedData.length === 0) {
+                userAnswers[qid] = { selectedOptions: [], answerText: '', score: 0, comment: '' };
+                return;
+            }
+
+            let answerText = '';
+            let totalScore = 0;
+            let comments = [];
+
+            if (qid === 2) {
+                // Вопрос 2: все ли роли присутствуют
+                const selectedRoles = selectedData.map(s => s.text);
+                if (selectedRoles.length === 6) {
+                    answerText = "Есть все 6 ролей";
+                    comments = ["У нас полный комплект, каждый занимается своим делом"];
+                } else {
+                    answerText = selectedRoles.join(', ');
+                    comments = selectedData.map(s => s.comment);
+                }
+                totalScore = selectedData.reduce((sum, s) => sum + s.score, 0);
+            } else {
+                // Остальные вопросы - одиночный выбор
+                const data = selectedData[0];
+                answerText = data.text;
+                totalScore = data.score;
+                comments = [data.comment];
+            }
+
+            userAnswers[qid] = {
+                selectedOptions: selectedData,
+                answerText: answerText,
+                score: totalScore,
+                comment: comments.join(', ')
+            };
+        }
+
+        function checkAllQuestionsAnswered() {
+            const totalQuestions = currentQuestions.length;
+            let answeredCount = 0;
+            for (let i = 1; i <= totalQuestions; i++) {
+                if (userAnswers[i] && userAnswers[i].selectedOptions.length > 0) answeredCount++;
+            }
+            allQuestionsAnswered = (answeredCount === totalQuestions);
+
+            if (submitButton) {
+                if (allQuestionsAnswered) {
+                    submitButton.classList.add('active');
+                } else {
+                    submitButton.classList.remove('active');
+                }
+            }
+        }
+
+        // Запрос вопросов через WebSocket
+        if (!IS_TEST_MODE && socket && socket.connected) {
+            socket.emit('give-answers');
+            socket.on('manual-questions', (data) => {
+                console.log('Получены ручные вопросы:', data);
+                currentQuestions = data.questions;
+                renderQuestions(currentQuestions);
+            });
+
+            // Обработчик активации кнопки после сохранения ответов (если нужно)
+            socket.on('activate-result-button', () => {
+                console.log('Получено событие activate-result-button');
+                // Можно перейти на страницу отчёта или показать сообщение
+                alert('Ответы сохранены! Теперь можно посмотреть итоговый отчёт.');
+                // Например, перейти на страницу итогового отчёта
+                loadPage('final-report.html', container);
+            });
+        } else if (IS_TEST_MODE) {
+            // Тестовый режим: заглушка
+            const mockQuestions = [
+                { id: 1, text: "Соответствуют ли языки и среды теме проекта?", options: [
+                        { text: "У всех разработчиков релевантные языки", score: 18, comment: "Пишем на том, что надо" },
+                        { text: "У 1 разработчика нерелевантный язык", score: 3, comment: "Один герой осваивает новый стек" },
+                        { text: "У 2+ разработчиков нерелевантные языки", score: 0, comment: "Жесть" }
+                    ]},
+                { id: 2, text: "Все ли роли присутствуют в команде?", options: [
+                        { text: "Есть аналитик", score: 3, comment: "Аналитик положил бубен на стол" },
+                        { text: "Есть тестировщик", score: 3, comment: "Пользователи больше не находят баги" },
+                        { text: "Есть проектировщик", score: 3, comment: "Нарисовал схему на 15 страницах" },
+                        { text: "Есть тех. Писатель", score: 3, comment: "Документация написана так, что её читают" },
+                        { text: "Есть PM", score: 3, comment: "Дедлайны перестали быть мемами" },
+                        { text: "Есть разработчик", score: 5, comment: "Код пишется, фичи работают" }
+                    ]},
+                { id: 3, text: "Есть ли в команде люди со странными особенностями, мешающими работе?", options: [
+                        { text: "Нет странных особенностей", score: 6, comment: "Все адекватные люди" },
+                        { text: "1 странная особенность", score: 2, comment: "Один «интересный» товарищ" },
+                        { text: "2+ людей со странными особенностями", score: -1, comment: "Цирк" }
+                    ]},
+                { id: 4, text: "Есть ли в команде неподходящие для разработки роли?", options: [
+                        { text: "Нет неподходящих ролей", score: 12, comment: "Все при деле" },
+                        { text: "1 неподходящая роль", score: 6, comment: "«Я просто хочу помочь!»" },
+                        { text: "2+ неподходящие роли", score: -12, comment: "Группа поддержки" }
+                    ]},
+                { id: 5, text: "Есть ли в команде человек с Лидерством?", options: [
+                        { text: "Лидерство у PM", score: 6, comment: "Идеально" },
+                        { text: "Лидерство у разработчика", score: 5, comment: "Задачи ставятся криво" },
+                        { text: "Лидерство у кого-то еще", score: 3, comment: "Странно, но работает" },
+                        { text: "Нет Лидера", score: -2, comment: "Самоорганизация" },
+                        { text: "2+ Лидеров", score: -5, comment: "Митинги длятся дольше" }
+                    ]}
+            ];
+            currentQuestions = mockQuestions;
+            renderQuestions(mockQuestions);
+        }
+
+        // Обработчик кнопки "Перейти к итогам"
+        if (submitButton) {
+            submitButton.onclick = async () => {
+                if (!allQuestionsAnswered) {
+                    alert('Ответьте на все вопросы');
+                    return;
+                }
+                // Формируем массив ответов
+                const answersArray = [];
+                for (let i = 1; i <= currentQuestions.length; i++) {
+                    const ans = userAnswers[i];
+                    if (ans && ans.selectedOptions.length > 0) {
+                        answersArray.push({
+                            questionId: i,
+                            answerText: ans.answerText,
+                            score: ans.score,
+                            comment: ans.comment
+                        });
+                    }
+                }
+                console.log('Отправка ответов:', answersArray);
+                if (IS_TEST_MODE) {
+                    alert('Тестовый режим: ответы сохранены локально');
+                    console.log('Mock save:', answersArray);
+                    // В тестовом режиме можно перейти к отчёту
+                    loadPage('final-report.html', container);
+                    return;
+                }
+                try {
+                    const res = await fetch('/api/game/final-answers', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ answers: answersArray })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        console.log('Ответы сохранены:', data);
+                        // Не переходим сразу, ждём события activate-result-button
+                    } else {
+                        const err = await res.json();
+                        alert('Ошибка: ' + (err.error || 'Не удалось сохранить ответы'));
+                    }
+                } catch (err) {
+                    console.error('Ошибка отправки:', err);
+                    alert('Не удалось отправить ответы');
+                }
+            };
+        }
     }
 }

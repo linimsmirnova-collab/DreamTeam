@@ -2842,3 +2842,141 @@ span {
     border: none !important;
     border-radius: 0 !important;
 }
+//// Контейнер для прокрутки карточек
+//.answers-content {
+//    position: absolute;
+//    left: 0;
+//    right: 0;
+//    top: 110px;
+//    bottom: 120px;
+//    overflow-y: auto;
+//    display: flex;
+//    flex-direction: column;
+//    gap: 20px;
+//    padding: 0 16px 10px 16px;
+//    box-sizing: border-box;
+//}
+//
+//// Переопределяем карточки внутри контейнера
+//.answers-content .answers-card {
+//    position: relative !important;
+//    top: auto !important;
+//    left: auto !important;
+//    margin: 0;
+//    width: 100%;
+//    flex-shrink: 0;
+//}
+//
+//// Стилизация скроллбара
+//.answers-content::-webkit-scrollbar {
+//    width: 4px;
+//}
+//.answers-content::-webkit-scrollbar-track {
+//    background: #FFCBE5;
+//    border-radius: 2px;
+//}
+//.answers-content::-webkit-scrollbar-thumb {
+//    background: #F17BAB;
+//    border-radius: 2px;
+//}
+//// ============================================
+//// ДОПОЛНИТЕЛЬНЫЕ СТИЛИ ДЛЯ СТРАНИЦЫ ОТВЕТОВ (answers.html)
+//// ============================================
+//
+//// Контейнер для прокрутки – занимает всё пространство между шапкой и кнопкой
+//.answers-content {
+//    position: absolute;
+//    left: 0;
+//    right: 0;
+//    top: 110px;          // отступ от верхней розовой полосы
+//    bottom: 120px;       // оставляем место для кнопки внизу
+//    overflow-y: auto;
+//    display: flex;
+//    flex-direction: column;
+//    gap: 20px;
+//    padding: 0 16px 10px 16px;
+//    box-sizing: border-box;
+//
+//    // Стилизация скроллбара
+//    &::-webkit-scrollbar {
+//        width: 4px;
+//    }
+//    &::-webkit-scrollbar-track {
+//        background: #FFCBE5;
+//        border-radius: 2px;
+//    }
+//    &::-webkit-scrollbar-thumb {
+//        background: #F17BAB;
+//        border-radius: 2px;
+//    }
+//}
+//
+//// Карточки внутри контейнера – убираем абсолютное позиционирование
+//.answers-content .answers-card {
+//    position: relative !important;
+//    top: auto !important;
+//    left: auto !important;
+//    margin: 0;
+//    width: 100%;
+//    flex-shrink: 0;
+//}
+//
+//// Стили для выбранных и невыбранных вариантов
+//.answers-option {
+//    cursor: pointer;
+//    transition: all 0.2s ease;
+//
+//    // Невыбранный вариант – серый фон
+//    .answers-option-badge {
+//        background: #DADADA;        // серый
+//        border: 2px solid #7F375A;
+//        transition: background 0.2s;
+//    }
+//
+//    // Выбранный вариант – розовый фон
+//    &.selected .answers-option-badge {
+//        background: #F17BAB;        // розовый
+//    }
+//
+//    // Эффект при наведении (опционально)
+//    &:hover .answers-option-badge {
+//        background: #e0a0b5;
+//    }
+//}
+//
+//// Кнопка "Перейти к итогам" – неактивное состояние (серая)
+//.answers-next-btn {
+//    position: absolute;
+//    width: 300px;
+//    height: 65px;
+//    left: 47px;
+//    bottom: 30px;          // фиксируем снизу, а не top
+//    cursor: pointer;
+//    transition: opacity 0.2s;
+//
+//    .answers-next-badge {
+//        background: #DADADA;        // серый фон
+//        border: 2px solid #7F375A;
+//        border-radius: 5px;
+//        transition: background 0.2s;
+//    }
+//
+//    .answers-next-text {
+//        color: #7F375A;             // тёмный текст для серой кнопки
+//        text-shadow: none;
+//    }
+//
+//    // Активное состояние (розовая кнопка)
+//    &.active .answers-next-badge {
+//        background: #F17BAB;
+//    }
+//
+//    &.active .answers-next-text {
+//        color: #FFFFFF;
+//        text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+//    }
+//}
+//.answers-next-btn.active {
+//    opacity: 1 !important;
+//    pointer-events: auto !important;
+//}
