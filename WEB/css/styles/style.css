@@ -2419,13 +2419,60 @@ span {
   margin-top: 15px;
 }
 
+/* Стили для страницы результатов (results.html) */
+.results-cards-container {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 95px;           /* отступ от шапки */
+  bottom: 100px;       /* место для кнопки */
+  overflow-y: auto;
+  padding: 0 16px 10px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+}
+
+/* Переопределяем карточки внутри контейнера (убираем абсолютное позиционирование) */
+.results-cards-container .results-card {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  margin: 0;
+  width: 100%;
+}
+
+.results-cards-container .results-verdict {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  margin: 0;
+  width: 100%;
+}
+
+/* Стилизация скроллбара (опционально) */
+.results-cards-container::-webkit-scrollbar {
+  width: 4px;
+}
+.results-cards-container::-webkit-scrollbar-track {
+  background: #FFCBE5;
+  border-radius: 2px;
+}
+.results-cards-container::-webkit-scrollbar-thumb {
+  background: #F17BAB;
+  border-radius: 2px;
+}
+
+/* Кнопка "Вернуться в главное меню" – должна быть видима и кликабельна */
 .results-back-btn {
   position: absolute;
   width: 300px;
   height: 65px;
   left: 47px;
-  top: 1920px;
-  bottom: 30px;
+  bottom: 20px;        /* отступ снизу */
+  cursor: pointer;
+  z-index: 10;
 }
 .results-back-btn .results-back-badge {
   position: absolute;
@@ -2445,7 +2492,7 @@ span {
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  font-family: "Inria Serif";
+  font-family: 'Inria Serif';
   font-style: normal;
   font-weight: 400;
   font-size: 20px;
@@ -2455,9 +2502,6 @@ span {
   background: transparent;
   pointer-events: none;
   text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* ============================================
