@@ -681,10 +681,8 @@ function addPageHandlers(container) {
 
 
                             sessionStorage.setItem('isCreator', 'true');// для создателя
-
                             sessionStorage.setItem('currentRound', '1');
-                            sessionStorage.setItem('maxRounds', '3'); // раунды (не знаю там окно надо будет создавать скорее всего)
-
+                            sessionStorage.setItem('maxRounds', data.rounds || Math.floor(data.maxPlayers / 2));
 
                             loadPage('player-list.html', container);
                         } else {
@@ -783,7 +781,7 @@ function addPageHandlers(container) {
                             }
                             //инициализация раундов
                             sessionStorage.setItem('currentRound', '1');
-                            sessionStorage.setItem('maxRounds', '3');
+                            sessionStorage.setItem('maxRounds', data.rounds || Math.floor(data.maxPlayers / 2));
                             
                             // 3. Потом переходим на страницу
                             loadPage('player-list.html', container);
@@ -2335,7 +2333,7 @@ if (finalContainer) {
     const currentPlayer = sessionStorage.getItem('currentPlayer');
     const isCreator = sessionStorage.getItem('isCreator') === 'true'; 
     
-    const roundsCompletedEl = container.querySelector('#rounds-completed');
+    const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
     if (roundsCompletedEl) {
         roundsCompletedEl.textContent = maxRounds;
     }
@@ -2883,7 +2881,7 @@ if (voteContainer) {
                 loadPage('vote.html', container);
             }, 2000);
         } else {
-            // Раунды кончились -> финал
+            // Раунды кончились - финал
             setTimeout(() => {
                 loadPage('final-team.html', container);
             }, 1500);
@@ -2904,6 +2902,19 @@ if (voteContainer) {
         }
         
         socket.emit('register', { playerUuid, roomCode });
+
+        socket.on('vote-timer-update', (data) => {
+        console.log('Синхронизация таймера голосования:', data.timeLeft);
+        timeLeft = data.timeLeft;
+        
+        const timerText = container.querySelector('.vote-timer-text');
+        if (timerText) {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    });
+
         socket.on('vote-cast', (data) => {
             console.log('Новый голос:', data);
             if (!voteState.voters.includes(data.voterUuid)) {
@@ -2942,13 +2953,19 @@ if (voteContainer) {
             }
         };
     }
-    
+    let timeLeft = 60;
     // Таймер 
     let voteTimerInterval = null;
-    let timeLeft = 60;
     
     function startVoteTimer() {
         const timerText = container.querySelector('.vote-timer-text');
+
+        if (voteTimerInterval) {
+        clearInterval(voteTimerInterval);
+        voteTimerInterval = null;
+    }
+
+        timeLeft = 60;
 
         if (timerText) {
             timerText.textContent = '1:00'
