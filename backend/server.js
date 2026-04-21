@@ -634,18 +634,57 @@ io.on('connection', (socket) => {
         roomTimers.set(roomCode, interval);
     });
 
-// Добавляем обработчик для остановки таймера (когда игрок успел открыть карту)
-socket.on('stop_timer', () => {
-    const socketInfo = socketMap.get(socket.id);
-    if (!socketInfo || !socketInfo.roomCode) return;
+    // Добавляем обработчик для остановки таймера (когда игрок успел открыть карту)
+    socket.on('stop_timer', () => {
+        const socketInfo = socketMap.get(socket.id);
+        if (!socketInfo || !socketInfo.roomCode) return;
     
-    const roomCode = socketInfo.roomCode;
-    if (roomTimers.has(roomCode)) {
-        clearInterval(roomTimers.get(roomCode));
-        roomTimers.delete(roomCode);
-        console.log(`Таймер остановлен для комнаты ${roomCode}`);
-    }
-});
+        const roomCode = socketInfo.roomCode;
+        if (roomTimers.has(roomCode)) {
+            clearInterval(roomTimers.get(roomCode));
+            roomTimers.delete(roomCode);
+            console.log(`Таймер остановлен для комнаты ${roomCode}`);
+        }
+    });
+
+    socket.on('start_timer5', () => {
+        const socketInfo = socketMap.get(socket.id);
+        if (!socketInfo || !socketInfo.roomCode) {
+            console.error('start_timer5: не удалось определить комнату');
+            return;
+        }
+        const roomCode = socketInfo.roomCode;
+        const manager = activeManagers.get(roomCode);
+        if (!manager) {
+            console.error('start_timer5: менеджер не найден');
+            return;
+        }
+
+        // Останавливаем предыдущий таймер для этой комнаты, если есть
+        const timerKey = roomCode + '_5min';
+        if (roomTimers.has(timerKey)) {
+            clearInterval(roomTimers.get(timerKey));
+            roomTimers.delete(timerKey);
+        }
+
+        let timeLeft = 300; // 5 минут = 300 секунд
+
+        // Отправляем начальное значение
+        io.to(roomCode).emit('update_timer5', { timeLeft });
+
+        const interval = setInterval(() => {
+            timeLeft--;
+            if (timeLeft <= 0) {
+                clearInterval(interval);
+                roomTimers.delete(timerKey);
+                io.to(roomCode).emit('timer5_end', { message: '5 минут прошло!' });
+            } else {
+                io.to(roomCode).emit('update_timer5', { timeLeft });
+            }
+        }, 1000);
+
+        roomTimers.set(timerKey, interval);
+    });
 
     socket.on('disconnect', () => {
         const info = socketMap.get(socket.id);
