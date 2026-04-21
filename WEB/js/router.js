@@ -1,5 +1,10 @@
 let socket = null;
 let cardHandlersAdded = false;
+let timerInterval = null;
+let currentTurnPlayerUuid = null;
+let currentSelectedCard = null;
+let currentSelectedIndex = null; 
+let isModalOpen = false;  
 
 // ===== РЕЖИМ РАБОТЫ =====
 const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
@@ -285,6 +290,86 @@ function generateRoomCode() {
     }
     return code;
 }
+// ===== ГЛОБАЛЬНЫЕ ФУНКЦИИ ДЛЯ ХОДА И ТАЙМЕРА =====
+
+async function fetchCurrentTurn() {
+    try {
+        const res = await fetch('/api/game/moved_player', {
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        console.log('Текущий ход (данные с сервера):', data);
+        if (data && data.uuid) {
+            updateTurnIndicator(data.uuid, data.timeLeft || 60);
+        }
+        return data;
+    } catch (err) {
+        console.error('Ошибка получения текущего хода:', err);
+        return null;
+    }
+}
+
+function updateTurnIndicator(currentPlayerUuid, timeLeft) {
+    const turnText = document.querySelector('.profile-turn-text, .cards-turn-text');
+    const timerText = document.querySelector('.profile-timer-text, .cards-timer-text');
+    const turnBadge = document.querySelector('.profile-turn-badge, .cards-turn-badge');
+    const playerUuid = sessionStorage.getItem('currentPlayerUuid');
+    const isMyTurn = currentPlayerUuid == playerUuid;
+    
+    console.log('updateTurnIndicator - текущий игрок:', currentPlayerUuid, 'мой UUID:', playerUuid, 'мой ход:', isMyTurn);
+    
+    if (currentTurnPlayerUuid !== currentPlayerUuid) {
+        console.log('Смена хода! Был:', currentTurnPlayerUuid, 'Стал:', currentPlayerUuid);
+        currentTurnPlayerUuid = currentPlayerUuid;
+        
+        const allCards = document.querySelectorAll('.profile-card');
+        if (isMyTurn) {
+            console.log('Мой ход, разблокируем карты');
+            allCards.forEach(card => {
+                if (!card.classList.contains('card-opened')) {
+                    card.style.opacity = '1';
+                    card.style.pointerEvents = 'auto';
+                }
+            });
+            if (socket && socket.connected) {
+                console.log('Запуск серверного таймера (мой ход)');
+                socket.emit('start_timer');
+            }
+        } else {
+            console.log('Не мой ход, блокируем карты');
+            allCards.forEach(card => {
+                if (!card.classList.contains('card-opened')) {
+                    card.style.pointerEvents = 'none';
+                }
+            });
+        }
+    }
+    
+    if (turnText) {
+        turnText.textContent = isMyTurn ? 'Ваш ход' : 'Ход другого игрока';
+        turnText.style.color = isMyTurn ? '#FE5499' : '#999';
+    }
+    
+    if (timerText && timeLeft !== undefined) {
+        const minutes = Math.floor(timeLeft / 60);
+        const seconds = timeLeft % 60;
+        timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        if (isMyTurn && timeLeft <= 10) {
+            timerText.style.color = '#ff0000';
+            timerText.style.fontWeight = 'bold';
+        } else {
+            timerText.style.color = '';
+            timerText.style.fontWeight = '';
+        }
+    }
+    
+    if (turnBadge) {
+        turnBadge.style.background = isMyTurn ? '#FFFFFF' : '#DADADA';
+        turnBadge.style.borderColor = isMyTurn ? '#FFCBE5' : '#999';
+    }
+}
 
 // Выполнится, когда страница полностью загрузится (HTML, CSS..)
 window.onload = function() {
@@ -386,8 +471,10 @@ window.onload = function() {
                 console.log('Зарегистрирован в комнате:', currentRoomCode);
 
                 setTimeout(() => {
+                    if (typeof fetchCurrentTurn === 'function') {
                     fetchCurrentTurn();
-                }, 500);
+                    }
+                    }, 500);
 
             } else {
                 console.log('Нет данных для регистрации, повторная попытка через 1 секунду');
@@ -435,19 +522,6 @@ window.onload = function() {
                     loadProfileCardsManually();
                 }
             }, 100);
-        });
-        
-        // Добавьте обработку переподключения
-        socket.on('reconnect', () => {
-            console.log('WebSocket переподключен');
-            const playerUuid = sessionStorage.getItem('currentPlayerUuid');
-            const roomCode = sessionStorage.getItem('currentRoomCode');
-            if (playerUuid && roomCode) {
-                socket.emit('register', { playerUuid, roomCode });
-                setTimeout(() => {
-                    fetchCurrentTurn();
-                }, 500);
-            }
         });
 
         socket.on('disconnect', () => {
@@ -682,7 +756,12 @@ function addPageHandlers(container) {
 
                             sessionStorage.setItem('isCreator', 'true');// для создателя
                             sessionStorage.setItem('currentRound', '1');
-                            sessionStorage.setItem('maxRounds', data.rounds || Math.floor(data.maxPlayers / 2));
+                            const initialPlayers = parseInt(data.maxPlayers);
+                            const targetTeamSize = Math.floor(initialPlayers / 2);
+                            const roundsCount = initialPlayers - targetTeamSize;
+
+                            sessionStorage.setItem('maxRounds', roundsCount);
+                            sessionStorage.setItem('targetTeamSize', targetTeamSize);
 
                             loadPage('player-list.html', container);
                         } else {
@@ -781,7 +860,12 @@ function addPageHandlers(container) {
                             }
                             //инициализация раундов
                             sessionStorage.setItem('currentRound', '1');
-                            sessionStorage.setItem('maxRounds', data.rounds || Math.floor(data.maxPlayers / 2));
+                            const initialPlayers = parseInt(data.maxPlayers);
+                            const targetTeamSize = Math.floor(initialPlayers / 2);
+                            const roundsCount = initialPlayers - targetTeamSize;
+
+                            sessionStorage.setItem('maxRounds', roundsCount);
+                            sessionStorage.setItem('targetTeamSize', targetTeamSize);
                             
                             // 3. Потом переходим на страницу
                             loadPage('player-list.html', container);
@@ -1312,110 +1396,6 @@ function addPageHandlers(container) {
                 console.error(`Карта с индексом ${openCard.index} не найдена на странице профиля`);
             }
         }
-        
-        // Таймер и индикатор хода
-        let timerInterval = null;
-        let currentTurnPlayerUuid = null;
-        let currentSelectedCard = null;     // Текущая выбранная карта
-        let currentSelectedIndex = null;    // Индекс текущей выбранной карты
-        let isModalOpen = false;            // Флаг открытого модального окна
-
-        // Получение текущего игрока для хода
-        async function fetchCurrentTurn() {
-            try {
-                const res = await fetch('/api/game/moved_player', {
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' }
-                });
-                
-                if (!res.ok) throw new Error(`HTTP ${res.status}`);
-                
-                const data = await res.json();
-                console.log('Текущий ход (данные с сервера):', data);
-                
-                if (data && data.uuid) {
-                    // Обновляем индикатор хода
-                    updateTurnIndicator(data.uuid, 60);
-                }
-                
-                return data;
-            } catch (err) {
-                console.error('Ошибка получения текущего хода:', err);
-            }
-        }
-
-        // Индикатор хода и таймер на странице профиля
-        function updateTurnIndicator(currentPlayerUuid, timeLeft) {
-            const turnText = container.querySelector('.profile-turn-text');
-            const timerText = container.querySelector('.profile-timer-text');
-            const turnBadge = container.querySelector('.profile-turn-badge');
-            
-            const isMyTurn = currentPlayerUuid == playerUuid;
-            console.log('updateTurnIndicator - текущий игрок:', currentPlayerUuid, 'мой UUID:', playerUuid, 'мой ход:', isMyTurn);
-            
-            // Если сменился игрок
-            if (currentTurnPlayerUuid !== currentPlayerUuid) {
-                console.log('Смена хода! Был:', currentTurnPlayerUuid, 'Стал:', currentPlayerUuid);
-                currentTurnPlayerUuid = currentPlayerUuid;
-                
-                // Управление блокировкой/разблокировкой карт
-                const allCards = document.querySelectorAll('.profile-card');
-                
-                if (isMyTurn) {
-                    // Мой ход - разблокируем неоткрытые карты
-                    console.log('Мой ход, разблокируем карты');
-                    allCards.forEach(card => {
-                        if (!card.classList.contains('card-opened')) {
-                            card.style.opacity = '1';
-                            card.style.pointerEvents = 'auto';
-                        }
-                    });
-                    
-                    // Запускаем таймер
-                    if (socket && socket.connected) {
-                        console.log('Запуск серверного таймера (мой ход)');
-                        socket.emit('start_timer');
-                    }
-                } else {
-                    // Не мой ход - блокируем все неоткрытые карты 
-                    console.log('Не мой ход, блокируем карты');
-                    allCards.forEach(card => {
-                        if (!card.classList.contains('card-opened')) {
-                            card.style.pointerEvents = 'none';
-                        }
-                    });
-                }
-            }
-            
-            // Обновляем текст "Ваш ход" / "Ход другого игрока"
-            if (turnText) {
-                turnText.textContent = isMyTurn ? 'Ваш ход' : 'Ход другого игрока';
-                turnText.style.color = isMyTurn ? '#FE5499' : '#999';
-            }
-            
-            // Обновляем отображение таймера с подсветкой
-            if (timerText && timeLeft !== undefined) {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
-                // Подсветка при остатке 10 секунд
-                if (isMyTurn && timeLeft <= 10) {
-                    timerText.style.color = '#ff0000';
-                    timerText.style.fontWeight = 'bold';
-                } else {
-                    timerText.style.color = '';
-                    timerText.style.fontWeight = '';
-                }
-            }
-            
-            // Обновляем цвет бейджа хода
-            if (turnBadge) {
-                turnBadge.style.background = isMyTurn ? '#FFFFFF' : '#DADADA';
-                turnBadge.style.borderColor = isMyTurn ? '#FFCBE5' : '#999';
-            }
-        }
-
         // Периодически проверяем, чей ход
         const turnCheckInterval = setInterval(() => {
             if (document.querySelector('.profile-container')) {
@@ -1483,9 +1463,16 @@ function addPageHandlers(container) {
         }, 200);
 
         // после загрузки карт, получаем текущего игрока для хода
-        setTimeout(() => {
-            fetchCurrentTurn();
-        }, 500);
+    setTimeout(() => {
+    fetchCurrentTurn();
+    }, 500);
+
+
+    setTimeout(() => {
+    if (typeof fetchCurrentTurn === 'function') {
+        fetchCurrentTurn();
+    }
+    }, 500);
         
         function setupCardClickHandlers() {
             if (cardHandlersAdded) {
@@ -1960,32 +1947,6 @@ function addPageHandlers(container) {
         if (!IS_TEST_MODE && socket && playerUuid && roomCode) {
             socket.emit('register', { playerUuid, roomCode });
         }
-        
-        // Индикатор хода
-        function updateTurnIndicator(currentPlayerUuid, timeLeft) {
-            const turnText = container.querySelector('.cards-turn-text');
-            const timerText = container.querySelector('.cards-timer-text');
-            const turnBadge = container.querySelector('.cards-turn-badge');
-            
-            const isMyTurn = currentPlayerUuid == playerUuid;
-            
-            if (turnText) {
-                turnText.textContent = isMyTurn ? 'Ваш ход' : 'Ход другого игрока';
-                turnText.style.color = isMyTurn ? '#FE5499' : '#999';
-            }
-            
-            if (timerText && timeLeft !== undefined) {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-            
-            if (turnBadge) {
-                turnBadge.style.background = isMyTurn ? '#FFFFFF' : '#DADADA';
-                turnBadge.style.borderColor = isMyTurn ? '#FFCBE5' : '#999';
-            }
-        }
-        
         // Навигация - обновляем обработчики иконок
         const iconRight = document.querySelector('.icon-right');
         if (iconRight) {
@@ -2333,11 +2294,18 @@ if (finalContainer) {
     const currentPlayer = sessionStorage.getItem('currentPlayer');
     const isCreator = sessionStorage.getItem('isCreator') === 'true'; 
     
-    const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
-    if (roundsCompletedEl) {
-        roundsCompletedEl.textContent = maxRounds;
-    }
     const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;
+const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
+
+const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
+const maxRoundsEl = container.querySelector('#max-rounds');
+
+if (roundsCompletedEl) {
+    roundsCompletedEl.textContent = currentRound - 1; // Прошедших раундов
+}
+if (maxRoundsEl) {
+    maxRoundsEl.textContent = maxRounds; // Всего раундов
+}
     // прокрутка страницы 
     
     // загрузка списка игроков с сервера 

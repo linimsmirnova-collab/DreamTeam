@@ -1098,6 +1098,27 @@ app.post('/api/logout', authenticatePlayer, (req, res) => {
         });
     }
 })();
+//пробую добавить эндпоинт для одображения ников на голосовании
+app.get('/api/vote/players', authenticatePlayer, (req, res) => {
+    try {
+        const manager = req.manager;
+        const session = manager.GameSession;
+        
+        // Возвращаем только активных игроков (кто ещё не выгнан)
+        const activePlayers = session.players_list.filter(p => p.active);
+        
+        res.json({
+            players: activePlayers.map(p => ({
+                uuid: p.uuid,
+                nickname: p.nickname,
+                be_creator: p.be_creator
+            }))
+        });
+    } catch (error) {
+        console.error('Ошибка получения игроков для голосования:', error);
+        res.status(500).json({ error: 'Не удалось получить список игроков' });
+    }
+});
 
 // function getLocalIP() {
 //     const nets = require('os').networkInterfaces();
