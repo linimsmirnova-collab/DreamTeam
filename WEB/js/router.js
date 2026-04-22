@@ -4,7 +4,11 @@ let timerInterval = null;
 let currentTurnPlayerUuid = null;
 let currentSelectedCard = null;
 let currentSelectedIndex = null; 
-let isModalOpen = false;  
+let isModalOpen = false;
+let currentGamePhase = 'revelation';
+let isNavigationBlocked = false;
+let discussionTimerInterval = null;
+let voteTimerInterval = null;
 
 // ===== РЕЖИМ РАБОТЫ =====
 const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
@@ -405,7 +409,7 @@ window.onload = function() {
             }
         });
         
-        // Глобальный обработчик для update_timer
+        // таймер через сервер работает теперь
         socket.on('update_timer', (data) => {
             console.log('Обновление таймера:', data.timeLeft);
             const timerText = document.querySelector('.profile-timer-text, .cards-timer-text');
@@ -456,6 +460,14 @@ window.onload = function() {
         socket.on('stop_timer', () => {
             console.log('Таймер остановлен (карта открыта вовремя)');
         });
+
+        socket.on('discussion-start', (data) => {
+        console.log('фаза обсуждения');
+        currentGamePhase = 'discussion';
+        showToast('время обсудить, кого выгнать, и проголосовать', 'info');
+        startDiscussionPhase(data?.timeLeft || 300);
+        blockNavigation(true); 
+    });
 
         socket.on('connect', () => {
             console.log(`WebSocket подключен (id: ${socket.id})`);
@@ -535,8 +547,179 @@ window.onload = function() {
     } else {
         loadPage('main-page-content.html', container);
     }
+    function startDiscussionPhase(timeLeft) {
+    currentGamePhase = 'discussion';
+    // Если сервер ещё не запустил 5-минутный таймер, запускаем на клиенте (как fallback)
+    if (!discussionTimerInterval) {
+        discussionTimerInterval = setInterval(() => {
+            timeLeft--;
+            updateDiscussionTimerUI(timeLeft);
+            if (timeLeft <= 0) {
+                clearInterval(discussionTimerInterval);
+                discussionTimerInterval = null;
+                showToast('Время на обсуждение вышло, голосуйте!', 'warning');
+                finishVotingPhase();
+            }
+        }, 1000);
+    }
+}
+function updateDiscussionTimerUI(timeLeft) {
+    const timerEl = document.querySelector('.vote-timer-text, .profile-timer-text, .cards-timer-text');
+    if (timerEl) {
+        const min = Math.floor(timeLeft / 60);
+        const sec = timeLeft % 60;
+        timerEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+        timerEl.style.color = timeLeft <= 30 ? '#FF3B30' : '#333';
+        timerEl.style.fontWeight = timeLeft <= 10 ? 'bold' : 'normal';
+    }
+}
+function blockNavigation(block) {
+    isNavigationBlocked = block;
+    const profileIcon = document.querySelector('.icon-right');
+    const cards = document.querySelectorAll('.profile-card');
+
+    if (block) {
+        // Блокируем иконку профиля
+        if (profileIcon) {
+            profileIcon.style.pointerEvents = 'none';
+            profileIcon.style.opacity = '0.5';
+            const newIcon = profileIcon.cloneNode(true);
+            profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+            newIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showToast('Сейчас этап обсуждения и голосования. Переход на профиль временно заблокирован.', 'warning');
+            });
+            newIcon.style.pointerEvents = 'auto'; // Чтобы ловить клик для тоста
+            newIcon.style.opacity = '0.7';
+        }
+        // Блокируем карты
+        cards.forEach(card => {
+            if (!card.classList.contains('card-opened')) {
+                card.style.pointerEvents = 'none';
+                card.style.opacity = '0.6';
+                card.style.filter = 'grayscale(50%)';
+            }
+        });
+    } else {
+        if (profileIcon) {
+            profileIcon.style.pointerEvents = 'auto';
+            profileIcon.style.opacity = '1';
+            const newIcon = profileIcon.cloneNode(true);
+            profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+            // Восстанавливаем стандартный обработчик
+            newIcon.addEventListener('click', () => {
+                if (timerInterval) clearInterval(timerInterval);
+                loadPage('profile.html', container);
+            });
+        }
+        cards.forEach(card => {
+            if (!card.classList.contains('card-opened')) {
+                card.style.pointerEvents = 'auto';
+                card.style.opacity = '1';
+                card.style.filter = 'none';
+            }
+        });
+    }
+}
+function finishVotingPhase() {
+    currentGamePhase = 'voting';
+    // Переход на страницу голосования, если мы ещё не там
+    if (!container.querySelector('.vote-players-list')) {
+        loadPage('vote.html', container);
+    }
+}
+}
+// ===== УПРАВЛЕНИЕ ФАЗАМИ И БЛОКИРОВКОЙ НАВИГАЦИИ =====
+function startDiscussionPhase(timeLeft) {
+    currentGamePhase = 'discussion';
+    if (!discussionTimerInterval) {
+        discussionTimerInterval = setInterval(() => {
+            timeLeft--;
+            updateDiscussionTimerUI(timeLeft);
+            if (timeLeft <= 0) {
+                clearInterval(discussionTimerInterval);
+                discussionTimerInterval = null;
+                showToast('⏰ Время на обсуждение вышло!', 'warning');
+                finishVotingPhase();
+            }
+        }, 1000);
+    }
 }
 
+function updateDiscussionTimerUI(timeLeft) {
+    const timerEl = document.querySelector('.vote-timer-text, .profile-timer-text, .cards-timer-text');
+    if (timerEl) {
+        const min = Math.floor(timeLeft / 60);
+        const sec = timeLeft % 60;
+        timerEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
+        // Визуальное предупреждение
+        timerEl.style.color = timeLeft <= 30 ? '#FF3B30' : '#333';
+        timerEl.style.fontWeight = timeLeft <= 10 ? 'bold' : 'normal';
+    }
+}
+
+function blockNavigation(block) {
+    isNavigationBlocked = block;
+    const profileIcon = document.querySelector('.icon-right');
+    const cards = document.querySelectorAll('.profile-card');
+
+    if (block) {
+        // Блокируем иконку профиля (делаем её неактивной визуально)
+        if (profileIcon) {
+            profileIcon.style.pointerEvents = 'none';
+            profileIcon.style.opacity = '0.5';
+            
+            // Создаём новый элемент, чтобы поймать клик для уведомления
+            const newIcon = profileIcon.cloneNode(true);
+            profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+            
+            newIcon.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                showToast('Сейчас этап обсуждения. Переход на профиль заблокирован.', 'warning');
+            });
+            
+            // возврат
+            newIcon.style.pointerEvents = 'auto'; 
+            newIcon.style.opacity = '0.7';
+        }
+        // Блокировка карт
+        cards.forEach(card => {
+            if (!card.classList.contains('card-opened')) {
+                card.style.pointerEvents = 'none';
+                card.style.opacity = '0.6';
+                card.style.filter = 'grayscale(50%)';
+            }
+        });
+    } else {
+        // анлок интерфейса
+        if (profileIcon) {
+            profileIcon.style.pointerEvents = 'auto';
+            profileIcon.style.opacity = '1';
+            const newIcon = profileIcon.cloneNode(true);
+            profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+            newIcon.addEventListener('click', () => {
+                if (timerInterval) clearInterval(timerInterval);
+                loadPage('profile.html', container);
+            });
+        }
+        cards.forEach(card => {
+            if (!card.classList.contains('card-opened')) {
+                card.style.pointerEvents = 'auto';
+                card.style.opacity = '1';
+                card.style.filter = 'none';
+            }
+        });
+    }
+}
+function finishVotingPhase() {
+    currentGamePhase = 'voting';
+    blockNavigation(false); // Снятие блокировки
+    if (!container.querySelector('.vote-players-list')) {
+        loadPage('vote.html', container);
+    }
+}
 // Функция для загрузки HTML страницы
 function loadPage(pageName, container) {
 
@@ -2624,10 +2807,18 @@ if (voteContainer) {
     
     //  отрисовка списка игроков 
     function renderVotePlayers(players) {
+        console.log('рендер игроков');
+        console.log('Игроков получено:', players.length);
+        console.log('Текущий playerUuid:', playerUuid);
+        console.log('voteState.voters:', voteState.voters);
+        console.log('voteState.kickedPlayer:', voteState.kickedPlayer);
+        console.log('Игроки:', players);
         const playersList = container.querySelector('.vote-players-list');
         const voteCounter = container.querySelector('.vote-stats-count');
         
         if (!playersList) return;
+
+        voteState.voters = players.filter(p => p.hasVoted).map(p => p.uuid);
         
         // Сортировка сначала текущий игрок 
         const sortedPlayers = [...players].sort((a, b) => {
@@ -2641,15 +2832,26 @@ if (voteContainer) {
         sortedPlayers.forEach(player => {
             const isVoter = voteState.voters.includes(player.uuid);
             const isKicked = player.uuid === voteState.kickedPlayer;
-            const isMyself = player.uuid === playerUuid;
+            //const isMyself = player.uuid === playerUuid;
+            
+            console.log('на самого себя');
+            console.log('playerUuid из sessionStorage:', playerUuid, typeof playerUuid);
+            console.log('player.uuid из сервера:', player.uuid, typeof player.uuid);
+
+            const isMyself = String(player.uuid).trim() === String(playerUuid).trim();//чтобы не было пробелов
             
             const playerItem = document.createElement('div');
             playerItem.className = `vote-player-item${isKicked ? ' kicked' : ''}${isVoter ? ' voted' : ''}`;
             playerItem.dataset.playerUuid = player.uuid;
-            
-            // Крестик только для не-себя и не-выгнанных и не-проголосовавших
-            const crossHTML = (!isMyself && !isKicked && !isVoter) 
-                ? `<div class="vote-player-icon" data-target="${player.uuid}" data-target-name="${player.nickname}"></div>` 
+
+            playerItem.style.position = 'relative'
+
+        // блокировка голосования для самого себя
+            const crossHTML = (!isMyself && !isKicked) 
+                ? `<div class="vote-player-icon" 
+                    style="position: absolute; width: 50px; height: 50px; right: 8px; top: 50%; transform: translateY(-50%); background: url('../images/x.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer;" 
+                    data-target="${player.uuid}" 
+                    data-target-name="${player.nickname}"></div>` 
                 : '';
             
             playerItem.innerHTML = `
@@ -2746,46 +2948,66 @@ if (voteContainer) {
     
     // отправка голоса на сервер
     async function submitVote(targetUuid) {
-        if (IS_TEST_MODE) {
-            // Тест локальное обновление
-            voteState.voters.push(playerUuid);
-            if (!voteState.votes[targetUuid]) {
-                voteState.votes[targetUuid] = [];
-            }
-            voteState.votes[targetUuid].push(playerUuid);
-            renderVotePlayers(getCurrentPlayers());
-            
-            if (socket) {
-                socket.emit('vote-cast', {
-                    roomCode,
-                    voterUuid: playerUuid,
-                    targetUuid
-                });
-            }
-            return;
+    console.log('=== submitVote вызвана ===');
+    console.log('targetUuid:', targetUuid);
+    console.log('playerUuid:', playerUuid);
+    console.log('roomCode:', roomCode);
+    console.log('IS_TEST_MODE:', IS_TEST_MODE);
+    
+    if (IS_TEST_MODE) {
+        // Тест локальное обновление
+        voteState.voters.push(playerUuid);
+        if (!voteState.votes[targetUuid]) {
+            voteState.votes[targetUuid] = [];
         }
+        voteState.votes[targetUuid].push(playerUuid);
+        renderVotePlayers(getCurrentPlayers());
         
-        try {
-            const res = await fetch('/api/vote/cast', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    roomCode,
-                    voterUuid: playerUuid,
-                    targetUuid
-                })
+        if (socket) {
+            socket.emit('vote-cast', {
+                roomCode,
+                voterUuid: playerUuid,
+                targetUuid
             });
-            
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            console.log('Голос засчитан');
-            
-        } catch (err) {
-            console.error('Ошибка отправки голоса:', err);
-            alert('Не удалось проголосовать');
         }
+        return;
     }
+
+    const skipBtn = container.querySelector('.vote-skip');
+    if (skipBtn) skipBtn.style.pointerEvents = 'none';
+
+    try {
+        const requestBody = {
+            vote_id: targetUuid || 'skip'
+        };
+        
+        console.log('Отправка запроса на /api/game/create:');
+        console.log('Request body:', requestBody);
+        
+        const res = await fetch('/api/game/create', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(requestBody)
+        });
+        
+        console.log('Статус ответа:', res.status);
+        
+        if (!res.ok) {
+            const errorData = await res.json().catch(() => ({}));
+            console.error('Ошибка сервера:', errorData);
+            throw new Error(`HTTP ${res.status}: ${errorData.error || 'Unknown error'}`);
+        }
+        const result = await res.json();
+        console.log('Голос успешно отправлен:', result);
+        showToast(targetUuid ? 'Голос учтён' : 'Вы пропустили голосование', 'success');
+
+        await loadVotePlayers()
+    } catch (err) {
+        console.error('Ошибка отправки голоса:', err);
+        showToast('Не удалось проголосовать: ' + err.message, 'error');
+    }
+}
     
     // Вспомогательная функция для теста
     function getCurrentPlayers() {
@@ -2871,7 +3093,7 @@ if (voteContainer) {
         
         socket.emit('register', { playerUuid, roomCode });
 
-        socket.on('vote-timer-update', (data) => {
+        socket.on('update_timer', (data) => {
         console.log('Синхронизация таймера голосования:', data.timeLeft);
         timeLeft = data.timeLeft;
         
@@ -2893,7 +3115,6 @@ if (voteContainer) {
             }
             voteState.votes[data.targetUuid].push(data.voterUuid);
             
-            // Перерисовываем
             loadVotePlayers();
         });
         
@@ -2921,50 +3142,6 @@ if (voteContainer) {
             }
         };
     }
-    let timeLeft = 60;
-    // Таймер 
-    let voteTimerInterval = null;
-    
-    function startVoteTimer() {
-        const timerText = container.querySelector('.vote-timer-text');
-
-        if (voteTimerInterval) {
-        clearInterval(voteTimerInterval);
-        voteTimerInterval = null;
-    }
-
-        timeLeft = 60;
-
-        if (timerText) {
-            timerText.textContent = '1:00'
-        }
-        
-        voteTimerInterval = setInterval(() => {
-            timeLeft--;
-            
-            if (timerText) {
-
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
-                // Подсветка при остатке 10 секунд
-                if (timeLeft <= 10) {
-                    timerText.style.color = '#ff0000';
-                    timerText.style.fontWeight = 'bold';
-                }
-            }
-            
-            if (timeLeft <= 0) {
-                clearInterval(voteTimerInterval);
-                showToast('Время вышло!', 'warning');
-                if (!voteState.isFinished) {
-                    finishVoting(getCurrentPlayers());
-                }
-            }
-        }, 1000);
-    }
-    
     // подсветка активной вкладки "kickout" 
     setTimeout(() => {
         if (typeof setActiveIcon === 'function') {
@@ -2997,7 +3174,6 @@ if (voteContainer) {
     });
     
     loadVotePlayers();
-   // startVoteTimer();
     
     console.log('Vote: логика инициализирована');
     
@@ -3107,8 +3283,6 @@ if (voteContainer) {
         } else {
             console.error('Кнопка .results-back-btn не найдена в DOM');
         }
-
-        // Запускаем загрузку отчёта
         loadFinalReport();
     }
 }

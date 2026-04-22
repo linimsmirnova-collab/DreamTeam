@@ -822,19 +822,26 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
 })
 
 // Эндпоинт обрабатывающий голосование игроков, и включающий основную работу логики программы
-app.post('/api/game/create', authenticatePlayer, async (req, res) => {
+/*app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     try {
         const player = req.player;
         const roomCode = req.roomId;
         const { vote_id } = req.body;
+        let targetPlayer = null;
 
         if (player.isVoted) {
             return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
         }
+        if (targetPlayer.uuid === player.uuid) {
+        return res.status(400).json({ error: 'Нельзя голосовать за самого себя' });
+        }
 
         const manager = req.manager;
         const session = manager.GameSession;
-        let targetPlayer = null;
+
+        if (player.isVoted) {
+        return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
+        }
 
         // Обработка пропуска голоса
         if (vote_id !== 'skip') {
@@ -930,6 +937,101 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     } catch (error) {
         console.error('Ошибка при обработке голосования:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});*/
+app.post('/api/game/create', authenticatePlayer, async (req, res) => {
+    try {
+        const player = req.player;
+        const roomCode = req.roomId;
+        const { vote_id } = req.body;
+        
+        const manager = req.manager;
+        const session = manager.GameSession;
+        
+        // Проверка, не голосовал ли уже
+        if (player.isVoted) {
+            return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
+        }
+        
+        let targetPlayer = null;
+        
+        // Обработка пропуска голоса
+        if (vote_id !== 'skip') {
+            // Ищем целевого игрока ТОЛЬКО если голосуем не за пропуск
+            targetPlayer = session.players_list.find(p => p.uuid == vote_id);
+            
+            if (!targetPlayer || !targetPlayer.active) {
+                return res.status(404).json({ error: 'Игрок, за которого вы пытаетесь голосовать, не найден или исключён' });
+            }
+            
+            // Проверка, чтобы игрок не голосовал за себя (ТОЛЬКО ПОСЛЕ того как нашли targetPlayer)
+            if (targetPlayer.uuid === player.uuid) {
+                return res.status(400).json({ error: 'Нельзя голосовать за самого себя' });
+            }
+            
+            player.votedOnPlayer = targetPlayer;
+        }
+        
+        player.isVoted = true;
+        
+        // Отправляем событие всем в комнате через WebSocket
+        io.to(roomCode).emit('player-voted', {
+            voter: {
+                uuid: player.uuid,
+                nickname: player.nickname
+            },
+            target: targetPlayer ? {
+                uuid: targetPlayer.uuid,
+                nickname: targetPlayer.nickname
+            } : null
+        });
+        
+        // Проверяем, все ли активные игроки проголосовали
+        const activePlayers = session.players_list.filter(p => p.active);
+        const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
+        
+        if (allVoted) {
+            const excludedPlayer = manager.CompleteRound();
+            
+            if (session.players_count === session.players_final_count) {
+                session.game_state = gameState.completed;
+                io.to(roomCode).emit('complete-game', {
+                    final_party: session.players_list.filter(p => p.active),
+                    excludedPlayer: excludedPlayer,
+                });
+                
+                // Сохранение в БД
+                try {
+                    await db.saveGameState(session);
+                    console.log('Игра успешно сохранена!');
+                } catch (error) {
+                    console.error('Не удалось сохранить игру:', error);
+                }
+                
+                return res.status(200).json({ success: true });
+            }
+            
+            io.to(roomCode).emit('complete-round', {
+                player: excludedPlayer,
+                current_round: session.current_round,
+                rounds_count: session.rounds_count,
+            });
+            
+            try {
+                await db.saveGameState(session);
+                console.log('Раунд сохранён в БД');
+            } catch (error) {
+                console.error('Не удалось сохранить раунд:', error);
+            }
+            
+            return res.status(200).json({ success: true });
+        }
+        
+        res.status(200).json({ success: true, message: 'Ваш голос учтён' });
+        
+    } catch (error) {
+        console.error('Ошибка при обработке голосования:', error);
+        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
     }
 });
 
@@ -1150,7 +1252,8 @@ app.get('/api/vote/players', authenticatePlayer, (req, res) => {
             players: activePlayers.map(p => ({
                 uuid: p.uuid,
                 nickname: p.nickname,
-                be_creator: p.be_creator
+                be_creator: p.be_creator,
+                hasVoted: p.isVoted || false 
             }))
         });
     } catch (error) {

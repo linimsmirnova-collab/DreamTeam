@@ -2667,7 +2667,7 @@ span {
     left: 17px;
     top: 180px;
     bottom: 150px;  /* Отступ снизу для кнопок */
-    overflow-y: auto;  /* ✅ ВКЛЮЧАЕТ ВЕРТИКАЛЬНУЮ ПРОКРУТКУ */
+    overflow-y: auto;  /* ВКЛЮЧАЕТ ВЕРТИКАЛЬНУЮ ПРОКРУТКУ */
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
@@ -2709,14 +2709,6 @@ span {
 .vote-player-item.kicked .vote-player-icon {
     display: none;
 }
-
-/* Игрок, за которого уже проголосовали */
-.vote-player-item.voted .vote-player-icon {
-    opacity: 0.3;
-    cursor: not-allowed;
-    pointer-events: none;
-}
-
 /* Подсвеченная иконка "kickout"*/
 .vote-icon.icon-left.vote-active::before {
     content: "";
