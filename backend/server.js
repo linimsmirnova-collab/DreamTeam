@@ -221,12 +221,32 @@ app.post('/api/room/join', (req, res) => {
 // Эндпоинт выдачи списка игроков для лобби
 app.get('/api/room/players', authenticatePlayer, (req, res) => {
     const manager = req.manager;
+    const session = manager.GameSession;
+    
+    // Создаём копию списка игроков с обновлённой информацией о картах
+    const playersWithOpenStatus = session.players_list.map(player => {
+        // Создаём копию игрока
+        const playerCopy = { ...player };
+        
+        // Обновляем статус isOpen для каждой карты в hand
+        if (playerCopy.hand && playerCopy.openCards) {
+            playerCopy.hand = playerCopy.hand.map(card => {
+                const isOpened = playerCopy.openCards.some(oc => oc.id === card.id);
+                return {
+                    ...card,
+                    isOpen: isOpened
+                };
+            });
+        }
+        
+        return playerCopy;
+    });
 
     res.json({
-        players: manager.GameSession.players_list,
-        maxPlayers: manager.GameSession.players_count  //добавила
+        players: playersWithOpenStatus,
+        maxPlayers: session.players_count
     });
-})
+});
 
 //тут эндпоинт can-start
 //authenticatePlayer подрезал
