@@ -972,6 +972,9 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         if (player.isVoted) {
             return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
         }
+        if (!player.active) {
+        return res.status(403).json({ error: 'Вы исключены из команды и не можете голосовать' });
+        }
         
         let targetPlayer = null;
         
@@ -1012,7 +1015,11 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         
         if (allVoted) {
             const excludedPlayer = manager.CompleteRound();
-            
+
+            if (session.game_state !== gameState.completed) {
+            session.current_round++;
+            console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
+    }
             if (session.players_count === session.players_final_count) {
                 session.game_state = gameState.completed;
                 io.to(roomCode).emit('complete-game', {
