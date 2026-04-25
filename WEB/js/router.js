@@ -286,7 +286,7 @@ function generateRoomCode() {
 }
 
 // Инициализирует приложение после полной загрузки страницы
-window.onload = function() {
+window.onload = async function() {
     
     const container = document.querySelector('.container');
     const roomCode = sessionStorage.getItem('currentRoomCode');
@@ -330,26 +330,25 @@ window.onload = function() {
                 timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
             }
         });
-        
-        // Глобальный обработчик для timer_end
+
        // Глобальный обработчик для timer_end
-    socket.on('timer_end', (data) => {
-    console.log('Таймер закончился:', data);
-    showToast('Время вышло! Ход переходит другому игроку', 'warning');
-    
-    // Запрашиваем новый ход и перезапускаем таймер
-    if (typeof fetchCurrentTurn === 'function') {
-        fetchCurrentTurn().then(newTurnData => {
-            // Если получили новые данные — перезапускаем таймер
-            if (newTurnData && newTurnData.uuid && newTurnData.timeLeft !== undefined) {
-                console.log('Перезапуск таймера для нового хода:', newTurnData.uuid, newTurnData.timeLeft);
-                if (typeof restartTimer === 'function') {
-                    restartTimer(newTurnData.timeLeft);
-                }
+        socket.on('timer_end', (data) => {
+            console.log('Таймер закончился:', data);
+            showToast('Время вышло! Ход переходит другому игроку', 'warning');
+            
+            // Запрашиваем новый ход и перезапускаем таймер
+            if (typeof fetchCurrentTurn === 'function') {
+                fetchCurrentTurn().then(newTurnData => {
+                    // Если получили новые данные — перезапускаем таймер
+                    if (newTurnData && newTurnData.uuid && newTurnData.timeLeft !== undefined) {
+                        console.log('Перезапуск таймера для нового хода:', newTurnData.uuid, newTurnData.timeLeft);
+                        if (typeof restartTimer === 'function') {
+                            restartTimer(newTurnData.timeLeft);
+                        }
+                    }
+                });
             }
         });
-    }
-});
         
         // Глобальный обработчик для force-reveal-card
         socket.on('force-reveal-card', (data) => {
@@ -373,11 +372,11 @@ window.onload = function() {
         });
 
         socket.on('discussion-start', (data) => {
-        console.log('фаза обсуждения');
-        currentGamePhase = 'discussion';
-        showToast('время обсудить, кого выгнать, и проголосовать', 'info');
-        blockNavigation(true); 
-    });
+            console.log('фаза обсуждения');
+            currentGamePhase = 'discussion';
+            showToast('время обсудить, кого выгнать, и проголосовать', 'info');
+            blockNavigation(true, container); 
+        });
 
         socket.on('connect', () => {
             console.log(`WebSocket подключен (id: ${socket.id})`);
@@ -454,7 +453,7 @@ window.onload = function() {
             console.log('Раунд завершен, обсуждение:', data);
             showToast('Пора обсудить, кого выгнать, и проголосовать', 'warning');
 
-            blockNavigation(true);
+            blockNavigation(true, container);
 
             if (socket?.connected) {
             socket.emit('start_timer5');
@@ -490,7 +489,7 @@ window.onload = function() {
             showToast('Время голосования истекло!', 'warning');
             if (!voteState.isFinished && lastRenderedPlayers.length > 0) {
             finishVoting(lastRenderedPlayers);
-    }
+        }
         });
 
         socket.on('force-reveal-card', (data) => {
@@ -528,15 +527,97 @@ window.onload = function() {
             }
         });
     }
-    
-    // проверка на то что игрок уже является членом комнаты
-    if (roomCode && currentPlayer) {
-        loadPage('player-list.html', container);
-    } else {
-        loadPage('main-page-content.html', container);
+
+    async function restoreGameState() {
+        if (!roomCode || !currentPlayer) {
+            console.log('Нет данных в sessionStorage, показываем главную страницу');
+            loadPage('main-page-content.html', container);
+            return false;
+        }
+        
+        if (IS_TEST_MODE) {
+            console.log('Тестовый режим: показываем player-list');
+            loadPage('player-list.html', container);
+            return true;
+        }
+        
+        try {
+            console.log('Пытаемся восстановить состояние игры...');
+            const response = await fetch('/api/game/state', {
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (!response.ok) {
+                console.log('Не удалось восстановить состояние, показываем главную страницу');
+                loadPage('main-page-content.html', container);
+                return false;
+            }
+            
+            const state = await response.json();
+            console.log('Состояние игры получено:', state);
+            
+            // Обновляем sessionStorage
+            sessionStorage.setItem('currentRoomCode', state.roomCode);
+            sessionStorage.setItem('currentRound', state.currentRound);
+            sessionStorage.setItem('maxRounds', state.totalRounds);
+            sessionStorage.setItem('project', JSON.stringify(state.project));
+            sessionStorage.setItem('maxPlayers', state.players.length);
+            sessionStorage.setItem('currentPlayerUuid', state.currentPlayer.uuid);
+            sessionStorage.setItem('isCreator', state.currentPlayer.isCreator ? 'true' : 'false');
+            
+            // Сохраняем вскрытые карты
+            const revealedCards = {};
+            state.currentPlayer.openCards.forEach(card => {
+                const cardIndex = state.currentPlayer.hand.findIndex(c => c.id === card.id);
+                if (cardIndex !== -1) {
+                    revealedCards[cardIndex] = true;
+                }
+            });
+            sessionStorage.setItem('revealedCards', JSON.stringify(revealedCards));
+            
+            // Восстанавливаем последнюю страницу
+            const lastPage = sessionStorage.getItem('currentPage');
+            const gameState = state.gameState;
+            const allowedPages = ['profile.html', 'cards-all-players.html', 'vote.html'];
+            
+            if (gameState === 'waiting') {
+                loadPage('player-list.html', container);
+            } else if (gameState === 'completed') {
+                if (state.project && state.currentPlayer.isCreator) {
+                    loadPage('results.html', container);
+                } else {
+                    loadPage('final-team.html', container);
+                }
+            } else if (gameState === 'active') {
+                if (lastPage && allowedPages.includes(lastPage)) {
+                    if (lastPage === 'vote.html') {
+                        const hasVotes = state.players.some(p => p.hasVoted === true);
+                        loadPage(hasVotes ? 'vote.html' : 'profile.html', container);
+                    } else {
+                        loadPage(lastPage, container);
+                    }
+                } else {
+                    const hasVotes = state.players.some(p => p.hasVoted === true);
+                    loadPage(hasVotes ? 'vote.html' : 'profile.html', container);
+                }
+            } else {
+                loadPage('profile.html', container);
+            }
+            return true;
+            
+        } catch (error) {
+            console.error('Ошибка восстановления:', error);
+            loadPage('player-list.html', container);
+            return false;
+        }
     }
+
+    // Запускаем восстановление
+    await restoreGameState();
 }
-function blockNavigation(block) {
+
+function blockNavigation(block, container) {
     isNavigationBlocked = block;
     const profileIcon = document.querySelector('.icon-right');
     const cards = document.querySelectorAll('.profile-card');
@@ -590,7 +671,7 @@ function blockNavigation(block) {
         });
     }
 }
-function finishVotingPhase() {
+function finishVotingPhase(container) {
     currentGamePhase = 'voting';
     if (!container.querySelector('.vote-players-list')) {
         loadPage('vote.html', container);
@@ -606,12 +687,13 @@ function loadPage(pageName, container) {
         console.error('container не найден!');
         return;
     }
-    
+
+    sessionStorage.setItem('currentPage', pageName);
+
     fetch(`/pages/${pageName}`)
 
         // Когда файл загрузился, читаем его как текст
         .then(response => response.text()) 
-        
         
         // Вставляем этот текст в контейнер
         .then(html => { 
