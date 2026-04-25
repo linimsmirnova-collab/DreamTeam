@@ -295,6 +295,8 @@ window.onload = function() {
     // ===== ПОДКЛЮЧЕНИЕ WEBSOCKET ДЛЯ ВСЕХ ИГРОКОВ =====
     if (!IS_TEST_MODE && !socket) {
         socket = io({ withCredentials: true });
+
+
         
 
         // Единый обработчик для reveal-card
@@ -450,30 +452,43 @@ window.onload = function() {
             console.log('WebSocket отключен');
         });
 
-        socket.on('complete-round', (data) => {
-            console.log('Раунд завершен, обсуждение:', data);
-            showToast('Пора обсудить, кого выгнать, и проголосовать', 'warning');
+    socket.on('complete-round', (data) => {
+    console.log('Раунд завершен, обсуждение:', data);
+    
 
-            blockNavigation(true);
+    if (data.current_round) {
+        sessionStorage.setItem('currentRound', data.current_round.toString());
+        console.log(`Обновлён раунд: ${data.current_round} из ${data.rounds_count}`);
+    }
+    
+    if (data.rounds_count) {
+        sessionStorage.setItem('maxRounds', data.rounds_count.toString());
+    }
+    
+    showToast('Пора обсудить, кого выгнать, и проголосовать', 'warning');
 
-            if (socket?.connected) {
-            socket.emit('start_timer5');
-        }
-        if (!container.querySelector('.vote-players-list')) {
-        loadPage('vote.html', container);
-        } else {
-        loadVotePlayers();
-        }
-            
-            // Останавливаем таймер вскрытия карт
-            if (socket && socket.connected) {
-                socket.emit('stop_timer');      // останавливаем текущий таймер (60 сек)
-                socket.emit('start_timer5');    // запускаем таймер голосования (5 мин)
-            }
-            
-            // Переход на страницу голосования
-            loadPage('vote.html', container);
-        });
+    blockNavigation(true);
+
+    if (socket?.connected) {
+        socket.emit('start_timer5');
+    }
+    
+    // Останавливаем таймер вскрытия карт
+    if (socket && socket.connected) {
+        socket.emit('stop_timer');
+        socket.emit('start_timer5');
+    }
+    
+    loadPage('vote.html', container);
+});
+socket.on('complete-game', (data) => {
+    console.log('Игра завершена:', data);
+    
+    
+    sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
+    
+    loadPage('final-team.html', container);
+});
 
         socket.on('update_timer5', (data) => {
             console.log('Обновление таймера голосования:', data.timeLeft);
@@ -2654,10 +2669,10 @@ if (finalContainer) {
     const isCreator = sessionStorage.getItem('isCreator') === 'true'; 
     
     const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;
-const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
+    const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
 
-const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
-const maxRoundsEl = container.querySelector('#max-rounds');
+    const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
+    const maxRoundsEl = container.querySelector('#max-rounds');
 
 if (roundsCompletedEl) {
     roundsCompletedEl.textContent = currentRound - 1; // Прошедших раундов
@@ -2665,6 +2680,7 @@ if (roundsCompletedEl) {
 if (maxRoundsEl) {
     maxRoundsEl.textContent = maxRounds; // Всего раундов
 }
+console.log(`текущий раунд на vote.html: ${currentRound} из ${maxRounds}`);
     // прокрутка страницы 
     
     // загрузка списка игроков с сервера 
@@ -2934,16 +2950,17 @@ if (voteContainer) {
     const roomCode = sessionStorage.getItem('currentRoomCode');
     const playerUuid = sessionStorage.getItem('currentPlayerUuid');
     const currentPlayer = sessionStorage.getItem('currentPlayer');
-    const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;
     
     const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
     const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;// данные у раунде
 
     const roundNumberEl = container.querySelector('#round-number');
     const maxRoundsEl = container.querySelector('#max-rounds');
+
     if (roundNumberEl) roundNumberEl.textContent = currentRound;
     if (maxRoundsEl) maxRoundsEl.textContent = maxRounds;
 
+    console.log(`Текущий раунд: ${currentRound} из ${maxRounds}`);
     // Состояние голосования
     let voteState = {
         voters: [],           // UUID игроков, которые уже проголосовали
@@ -3248,12 +3265,11 @@ if (voteContainer) {
             }).catch(err => console.error('Ошибка завершения:', err));
         }
         blockNavigation(false);
+
         // 3. Переход: следующий раунд или финал
         if (currentRound < maxRounds) {
             setTimeout(() => {
-                const nextRound = currentRound + 1;
-                sessionStorage.setItem('currentRound', nextRound.toString());
-                showToast(`Раунд ${nextRound} начинается...`, 'info');
+                showToast('Переход к следующему раунду...', 'info');
                 loadPage('profile.html', container);
             }, 2000);
         } else {
@@ -3276,6 +3292,20 @@ if (voteContainer) {
         if (!socket) {
             socket = io();
         }
+        socket.on('complete-game', (data) => {
+        console.log('Игра завершена сервером. Переход к финалу:', data);
+        blockNavigation(false); // Снимаем блокировку
+    
+    // Сохранение финального состава в sessionStorage для final-team.html
+        if (data.final_party) {
+        sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
+    }
+    
+    //переход на страницу итогов
+    setTimeout(() => {
+        loadPage('final-team.html', container);
+    }, 1500);
+});
         
         socket.emit('register', { playerUuid, roomCode });
 
