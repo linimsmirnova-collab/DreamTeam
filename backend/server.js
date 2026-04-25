@@ -972,6 +972,9 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         if (player.isVoted) {
             return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
         }
+        if (!player.active) {
+        return res.status(403).json({ error: 'Вы исключены из команды и не можете голосовать' });
+        }
         
         let targetPlayer = null;
         
@@ -1012,24 +1015,28 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         
         if (allVoted) {
             const excludedPlayer = manager.CompleteRound();
-            
-            if (session.players_count === session.players_final_count) {
-                session.game_state = gameState.completed;
-                io.to(roomCode).emit('complete-game', {
-                    final_party: session.players_list.filter(p => p.active),
-                    excludedPlayer: excludedPlayer,
-                });
-                
-                // Сохранение в БД
-                try {
-                    await db.saveGameState(session);
-                    console.log('Игра успешно сохранена!');
-                } catch (error) {
-                    console.error('Не удалось сохранить игру:', error);
-                }
-                
-                return res.status(200).json({ success: true });
-            }
+
+            if (session.game_state !== gameState.completed) {
+            session.current_round++;
+            console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
+    }
+            // с подсчётом только активных игроков
+        const activeCount = session.players_list.filter(p => p.active).length;
+        if (activeCount <= session.players_final_count) {
+        session.game_state = gameState.completed;
+        io.to(roomCode).emit('complete-game', {
+        final_party: session.players_list.filter(p => p.active),
+        excludedPlayer: excludedPlayer,
+    });
+    
+    try {
+        await db.saveGameState(session);
+        console.log('Игра завершена, данные сохранены.');
+    } catch (error) {
+        console.error('Не удалось сохранить игру:', error);
+    }
+    return res.status(200).json({ success: true });
+}
             
             io.to(roomCode).emit('complete-round', {
                 player: excludedPlayer,
