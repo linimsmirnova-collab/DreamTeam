@@ -286,7 +286,7 @@ function generateRoomCode() {
 }
 
 // Инициализирует приложение после полной загрузки страницы
-window.onload = async function() {
+window.onload = function() {
     
     const container = document.querySelector('.container');
     const roomCode = sessionStorage.getItem('currentRoomCode');
@@ -333,23 +333,23 @@ window.onload = async function() {
         
         // Глобальный обработчик для timer_end
        // Глобальный обработчик для timer_end
-        socket.on('timer_end', (data) => {
-            console.log('Таймер закончился:', data);
-            showToast('Время вышло! Ход переходит другому игроку', 'warning');
-            
-            // Запрашиваем новый ход и перезапускаем таймер
-            if (typeof fetchCurrentTurn === 'function') {
-                fetchCurrentTurn().then(newTurnData => {
-                    // Если получили новые данные — перезапускаем таймер
-                    if (newTurnData && newTurnData.uuid && newTurnData.timeLeft !== undefined) {
-                        console.log('Перезапуск таймера для нового хода:', newTurnData.uuid, newTurnData.timeLeft);
-                        if (typeof restartTimer === 'function') {
-                            restartTimer(newTurnData.timeLeft);
-                        }
-                    }
-                });
+    socket.on('timer_end', (data) => {
+    console.log('Таймер закончился:', data);
+    showToast('Время вышло! Ход переходит другому игроку', 'warning');
+    
+    // Запрашиваем новый ход и перезапускаем таймер
+    if (typeof fetchCurrentTurn === 'function') {
+        fetchCurrentTurn().then(newTurnData => {
+            // Если получили новые данные — перезапускаем таймер
+            if (newTurnData && newTurnData.uuid && newTurnData.timeLeft !== undefined) {
+                console.log('Перезапуск таймера для нового хода:', newTurnData.uuid, newTurnData.timeLeft);
+                if (typeof restartTimer === 'function') {
+                    restartTimer(newTurnData.timeLeft);
+                }
             }
         });
+    }
+});
         
         // Глобальный обработчик для force-reveal-card
         socket.on('force-reveal-card', (data) => {
@@ -373,12 +373,11 @@ window.onload = async function() {
         });
 
         socket.on('discussion-start', (data) => {
-            console.log('фаза обсуждения');
-            currentGamePhase = 'discussion';
-            showToast('время обсудить, кого выгнать, и проголосовать', 'info');
-            startDiscussionPhase(data?.timeLeft || 300, container);
-            blockNavigation(true, container); 
-        });
+        console.log('фаза обсуждения');
+        currentGamePhase = 'discussion';
+        showToast('время обсудить, кого выгнать, и проголосовать', 'info');
+        blockNavigation(true); 
+    });
 
         socket.on('connect', () => {
             console.log(`WebSocket подключен (id: ${socket.id})`);
@@ -415,7 +414,7 @@ window.onload = async function() {
         
         // Слушаем событие начала игры
         socket.on('game-start', (data) => {
-            console.log(`ПОЛУЧЕНО game-start:`, data);
+            console.log(`game-start:`, data);
             
             // Останавливаем все интервалы при получении события
             if (window.canStartInterval) {
@@ -452,8 +451,19 @@ window.onload = async function() {
         });
 
         socket.on('complete-round', (data) => {
-            console.log('Раунд завершен:', data);
+            console.log('Раунд завершен, обсуждение:', data);
             showToast('Пора обсудить, кого выгнать, и проголосовать', 'warning');
+
+            blockNavigation(true);
+
+            if (socket?.connected) {
+            socket.emit('start_timer5');
+        }
+        if (!container.querySelector('.vote-players-list')) {
+        loadPage('vote.html', container);
+        } else {
+        loadVotePlayers();
+        }
             
             // Останавливаем таймер вскрытия карт
             if (socket && socket.connected) {
@@ -478,6 +488,9 @@ window.onload = async function() {
         socket.on('timer5_end', (data) => {
             console.log('Таймер голосования закончился:', data);
             showToast('Время голосования истекло!', 'warning');
+            if (!voteState.isFinished && lastRenderedPlayers.length > 0) {
+            finishVoting(lastRenderedPlayers);
+    }
         });
 
         socket.on('force-reveal-card', (data) => {
@@ -515,206 +528,40 @@ window.onload = async function() {
             }
         });
     }
-
-    async function restoreGameState() {
-        // Проверяем, есть ли базовые данные в sessionStorage
-        if (!roomCode || !currentPlayer) {
-            console.log('Нет данных в sessionStorage, показываем главную страницу');
-            loadPage('main-page-content.html', container);
-            return false;
-        }
-        
-        // В тестовом режиме просто показываем player-list
-        if (IS_TEST_MODE) {
-            console.log('Тестовый режим: показываем player-list');
-            loadPage('player-list.html', container);
-            return true;
-        }
-        
-        try {
-            console.log('Пытаемся восстановить состояние игры...');
-            const response = await fetch('/api/game/state', {
-                credentials: 'include',
-                headers: { 'Content-Type': 'application/json' }
-            });
-            
-            if (!response.ok) {
-                console.log('Не удалось восстановить состояние, показываем главную страницу');
-                loadPage('main-page-content.html', container);
-                return false;
-            }
-            
-            const state = await response.json();
-            console.log('Состояние игры получено:', state);
-            
-            // Обновляем sessionStorage актуальными данными
-            sessionStorage.setItem('currentRoomCode', state.roomCode);
-            sessionStorage.setItem('currentRound', state.currentRound);
-            sessionStorage.setItem('maxRounds', state.totalRounds);
-            sessionStorage.setItem('project', JSON.stringify(state.project));
-            sessionStorage.setItem('maxPlayers', state.players.length);
-            sessionStorage.setItem('currentPlayerUuid', state.currentPlayer.uuid);
-            sessionStorage.setItem('isCreator', state.currentPlayer.isCreator ? 'true' : 'false');
-            
-            // Сохраняем информацию о вскрытых картах
-            const revealedCards = {};
-            state.currentPlayer.openCards.forEach(card => {
-                const cardIndex = state.currentPlayer.hand.findIndex(c => c.id === card.id);
-                if (cardIndex !== -1) {
-                    revealedCards[cardIndex] = true;
-                }
-            });
-            sessionStorage.setItem('revealedCards', JSON.stringify(revealedCards));
-            
-            // Получаем сохраненную страницу
-            const lastPage = sessionStorage.getItem('currentPage');
-            console.log('Последняя сохранённая страница:', lastPage);
-
-            // Определяем, какую страницу показывать в зависимости от состояния игры
-            const gameState = state.gameState;
-            
-            if (gameState === 'waiting') {
-                console.log('Игра в статусе waiting, показываем player-list');
-                loadPage('player-list.html', container);
-                return true;
-            }
-            
-            if (gameState === 'completed') {
-                if (state.project && state.currentPlayer.isCreator) {
-                    loadPage('results.html', container);
-                } else {
-                    loadPage('final-team.html', container);
-                }
-                return true;
-            }
-            
-            if (gameState === 'active') {
-            // Проверяем, есть ли сохраненная страница
-            // Разрешённые страницы для активной игры
-            const allowedPages = ['profile.html', 'cards-all-players.html', 'vote.html'];
-            
-            // Если есть сохранённая страница и она разрешена - восстанавливаем её
-            if (lastPage && allowedPages.includes(lastPage)) {
-                // Дополнительная проверка: если страница vote.html, проверяем есть ли голосования
-                if (lastPage === 'vote.html') {
-                    const hasVotes = state.players.some(p => p.hasVoted === true);
-                    if (hasVotes) {
-                        console.log('Восстанавливаем страницу голосования');
-                        loadPage('vote.html', container);
-                        return true;
-                    } else {
-                        console.log('Голосований нет, но запрошена vote.html - показываем profile');
-                        loadPage('profile.html', container);
-                        return true;
-                    }
-                }
-                
-                // Для profile и cards-all-players - восстанавливаем
-                console.log(`Восстанавливаем последнюю страницу: ${lastPage}`);
-                loadPage(lastPage, container);
-                return true;
-            }
-            
-            // Если нет сохранённой страницы - определяем по голосованиям
-            const hasVotes = state.players.some(p => p.hasVoted === true);
-            
-            if (hasVotes) {
-                console.log('Обнаружено голосование, показываем vote.html');
-                loadPage('vote.html', container);
-            } else {
-                console.log('Игра активна, показываем profile.html');
-                loadPage('profile.html', container);
-            }
-            return true;
-        }
-            
-            loadPage('profile.html', container);
-            return true;
-            
-        } catch (error) {
-            console.error('Ошибка при восстановлении состояния:', error);
-            if (roomCode && currentPlayer) {
-                console.log('Ошибка восстановления, но данные есть - показываем player-list');
-                loadPage('player-list.html', container);
-            } else {
-                loadPage('main-page-content.html', container);
-            }
-            return false;
-        }
-    }
     
-    // Запускаем восстановление состояния
-    await restoreGameState();
-};
-
-// Функция для восстановления состояния вскрытых карт
-function restoreRevealedCardsState() {
-    const revealedCards = JSON.parse(sessionStorage.getItem('revealedCards') || '{}');
-    console.log('Восстановление состояния карт из sessionStorage:', revealedCards);
-    
-    const cards = document.querySelectorAll('.profile-card');
-    cards.forEach((card, idx) => {
-        if (revealedCards[idx] && !card.classList.contains('card-opened')) {
-            card.style.background = '#FFCBE5';
-            card.style.backgroundColor = '#FFCBE5';
-            card.style.borderRadius = '50px';
-            card.classList.add('card-opened');
-            card.style.pointerEvents = 'none';
-            card.style.opacity = '0.7';
-            card.style.cursor = 'default';
-            console.log(`Восстановлена карта ${idx}`);
-        }
-    });
-}
-
-function startDiscussionPhase(timeLeft, container) {
-    currentGamePhase = 'discussion';
-    // Если сервер ещё не запустил 5-минутный таймер, запускаем на клиенте (как fallback)
-    if (!discussionTimerInterval) {
-        discussionTimerInterval = setInterval(() => {
-            timeLeft--;
-            updateDiscussionTimerUI(timeLeft);
-            if (timeLeft <= 0) {
-                clearInterval(discussionTimerInterval);
-                discussionTimerInterval = null;
-                showToast('Время на обсуждение вышло, голосуйте!', 'warning');
-                finishVotingPhase(container);
-            }
-        }, 1000);
+    // проверка на то что игрок уже является членом комнаты
+    if (roomCode && currentPlayer) {
+        loadPage('player-list.html', container);
+    } else {
+        loadPage('main-page-content.html', container);
     }
 }
-
-function updateDiscussionTimerUI(timeLeft) {
-    const timerEl = document.querySelector('.vote-timer-text, .profile-timer-text, .cards-timer-text');
-    if (timerEl) {
-        const min = Math.floor(timeLeft / 60);
-        const sec = timeLeft % 60;
-        timerEl.textContent = `${min}:${sec.toString().padStart(2, '0')}`;
-        timerEl.style.color = timeLeft <= 30 ? '#FF3B30' : '#333';
-        timerEl.style.fontWeight = timeLeft <= 10 ? 'bold' : 'normal';
-    }
-}
-function blockNavigation(block, container) {
+function blockNavigation(block) {
     isNavigationBlocked = block;
     const profileIcon = document.querySelector('.icon-right');
     const cards = document.querySelectorAll('.profile-card');
 
     if (block) {
-        // Блокируем иконку профиля
+        // Блокируем иконку профиля (делаем её неактивной визуально)
         if (profileIcon) {
             profileIcon.style.pointerEvents = 'none';
             profileIcon.style.opacity = '0.5';
+            
+            // Создаём новый элемент, чтобы поймать клик для уведомления
             const newIcon = profileIcon.cloneNode(true);
             profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+            
             newIcon.addEventListener('click', (e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                showToast('Сейчас этап обсуждения и голосования. Переход на профиль временно заблокирован.', 'warning');
+                showToast('Сейчас этап обсуждения. Переход на профиль заблокирован.', 'warning');
             });
-            newIcon.style.pointerEvents = 'auto'; // Чтобы ловить клик для тоста
+            
+            // возврат
+            newIcon.style.pointerEvents = 'auto'; 
             newIcon.style.opacity = '0.7';
         }
-        // Блокируем карты
+        // Блокировка карт
         cards.forEach(card => {
             if (!card.classList.contains('card-opened')) {
                 card.style.pointerEvents = 'none';
@@ -723,12 +570,12 @@ function blockNavigation(block, container) {
             }
         });
     } else {
+        // анлок интерфейса
         if (profileIcon) {
             profileIcon.style.pointerEvents = 'auto';
             profileIcon.style.opacity = '1';
             const newIcon = profileIcon.cloneNode(true);
             profileIcon.parentNode.replaceChild(newIcon, profileIcon);
-            // Восстанавливаем стандартный обработчик
             newIcon.addEventListener('click', () => {
                 if (timerInterval) clearInterval(timerInterval);
                 loadPage('profile.html', container);
@@ -743,15 +590,12 @@ function blockNavigation(block, container) {
         });
     }
 }
-function finishVotingPhase(container) {
+function finishVotingPhase() {
     currentGamePhase = 'voting';
-    blockNavigation(false, container); // Снятие блокировки
-    // Переход на страницу голосования, если мы ещё не там
     if (!container.querySelector('.vote-players-list')) {
         loadPage('vote.html', container);
     }
 }
-
 // Функция для загрузки HTML страницы
 function loadPage(pageName, container) {
 
@@ -763,9 +607,6 @@ function loadPage(pageName, container) {
         return;
     }
     
-    // Сохраняем текущую страницу в sessionStorage
-    sessionStorage.setItem('currentPage', pageName);
-
     fetch(`/pages/${pageName}`)
 
         // Когда файл загрузился, читаем его как текст
@@ -1844,10 +1685,6 @@ function addPageHandlers(container) {
                 const data = await res.json();
                 console.log('карты получены:', data.hand);
                 renderProfileCards(data.hand);
-
-                setTimeout(() => {
-                    restoreRevealedCardsState();
-                }, 150);
                 
             } catch (err) {
                 console.error('ошибка загрузки карт:', err);
@@ -3190,7 +3027,7 @@ if (voteContainer) {
             const crossHTML = (!isMyself && !isKicked) 
             
             // Крестик только для не-себя и не-выгнанных и не-проголосовавших
-          //  const crossHTML = (!isMyself && !isKicked && !isVoter) 
+            //const crossHTML = (!isMyself && !isKicked && !isVoter) 
                 ? `<div class="vote-player-icon" 
                     style="position: absolute; width: 50px; height: 50px; right: 8px; top: 50%; transform: translateY(-50%); background: url('../images/x.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer;" 
                     data-target="${player.uuid}" 
@@ -3296,6 +3133,12 @@ if (voteContainer) {
     console.log('playerUuid:', playerUuid);
     console.log('roomCode:', roomCode);
     console.log('IS_TEST_MODE:', IS_TEST_MODE);
+
+    const myKickedUuid = sessionStorage.getItem('kickedPlayerUuid');
+    if (myKickedUuid && String(playerUuid).trim() === String(myKickedUuid).trim()) {
+        showToast('Вы выбыли из проекта и не можете голосовать!', 'error');
+        return; 
+    }
     
     if (IS_TEST_MODE) {
         // Тест локальное обновление
@@ -3404,14 +3247,14 @@ if (voteContainer) {
                 body: JSON.stringify({ roomCode, kickedUuid })
             }).catch(err => console.error('Ошибка завершения:', err));
         }
-        
+        blockNavigation(false);
         // 3. Переход: следующий раунд или финал
         if (currentRound < maxRounds) {
             setTimeout(() => {
                 const nextRound = currentRound + 1;
                 sessionStorage.setItem('currentRound', nextRound.toString());
                 showToast(`Раунд ${nextRound} начинается...`, 'info');
-                loadPage('vote.html', container);
+                loadPage('profile.html', container);
             }, 2000);
         } else {
             // Раунды кончились - финал
@@ -3437,39 +3280,36 @@ if (voteContainer) {
         socket.emit('register', { playerUuid, roomCode });
 
         socket.on('update_timer', (data) => {
-            console.log('Синхронизация таймера голосования:', data.timeLeft);
-            timeLeft = data.timeLeft;
-            
-            const timerText = container.querySelector('.vote-timer-text');
-            if (timerText) {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-            }
-        });
+        console.log('Синхронизация таймера голосования:', data.timeLeft);
+        timeLeft = data.timeLeft;
+        
+        const timerText = container.querySelector('.vote-timer-text');
+        if (timerText) {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+    });
 
-        socket.on('player-voted', (data) => {
-            console.log('Получен голос от сервера:', data);
-            
-            // Обновляем список проголосовавших
-            if (data.voter?.uuid && !voteState.voters.includes(data.voter.uuid)) {
-                voteState.voters.push(data.voter.uuid);
-            }
-            
-            // Обновляем счётчик голосов за каждого игрока
-            if (data.target?.uuid) {
-                if (!voteState.votes[data.target.uuid]) {
-                    voteState.votes[data.target.uuid] = [];
-                }
-                // Защита от дублей
-                if (!voteState.votes[data.target.uuid].includes(data.voter.uuid)) {
-                    voteState.votes[data.target.uuid].push(data.voter.uuid);
-                }
-            }
-            
-            // Мгновенно перерисовываем интерфейс
-            loadVotePlayers();
-        });
+    socket.on('player-voted', (data) => {
+    console.log('Получен голос от сервера:', data);
+    
+    // список проголосовавших
+    if (data.voter?.uuid && !voteState.voters.includes(data.voter.uuid)) {
+        voteState.voters.push(data.voter.uuid);
+    }
+    
+    // счётчик голосов за каждого игрока
+    if (data.target?.uuid) {
+        if (!voteState.votes[data.target.uuid]) {
+            voteState.votes[data.target.uuid] = [];
+        }
+        if (!voteState.votes[data.target.uuid].includes(data.voter.uuid)) {
+            voteState.votes[data.target.uuid].push(data.voter.uuid);
+        }
+    }
+    loadVotePlayers();
+});
         
         // Слушаем завершение голосования
         socket.on('vote-finished', (data) => {
