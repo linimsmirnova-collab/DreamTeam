@@ -451,6 +451,14 @@ window.onload = async function() {
 
         socket.on('complete-round', (data) => {
             console.log('Раунд завершен, обсуждение:', data);
+
+            if (data.player) {
+            let kickedList = JSON.parse(sessionStorage.getItem('kickedPlayersList') || '[]');
+            if (!kickedList.some(p => p.uuid === data.player.uuid)) {
+                kickedList.push(data.player);
+                sessionStorage.setItem('kickedPlayersList', JSON.stringify(kickedList));
+            }
+        }
             
             if (data.current_round) {
                 sessionStorage.setItem('currentRound', data.current_round.toString());
@@ -480,10 +488,22 @@ window.onload = async function() {
 
         socket.on('complete-game', (data) => {
             console.log('Игра завершена:', data);
-            
+            if (data.final_party) {
             sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
+
+    }
+            if (data.excludedPlayer) {
+            let kickedList = JSON.parse(sessionStorage.getItem('kickedPlayersList') || '[]');
+//тут проверки на дубликаты ещё чтобы 2 раза не добавлялось
+            if (!kickedList.some(p => p.uuid === data.excludedPlayer.uuid)) {
+            kickedList.push(data.excludedPlayer);
+            sessionStorage.setItem('kickedPlayersList', JSON.stringify(kickedList));
+        }
+    }
             
+            setTimeout(() => {
             loadPage('final-team.html', container);
+            }, 1500);
         });
 
 
@@ -2755,50 +2775,52 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
     // прокрутка страницы 
     
     // загрузка списка игроков с сервера 
-    let finalPlayers = [];  // Игроки в финале
-    let kickedPlayers = []; // Выгнанные игроки
-    
-    async function loadFinalTeam() {
-        if (IS_TEST_MODE) {
-    //для теста
-            finalPlayers = [
-                { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
-                    { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
-                    { cardType: 2, name: 'Агрессивный', isOpen: false },
-                    { cardType: 3, name: '1', isOpen: false },
-                    { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
-                    { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
-                    { cardType: 6, name: 'Figma\nC++', isOpen: false }
-                ]},
-                { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
-                { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
-                { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
-            ];
-            kickedPlayers = [
-                { uuid: 'test-5', nickname: 'РандомНик4' },
-                { uuid: 'test-6', nickname: 'РандомНик5' }
-            ];
-            renderFinalTeam(finalPlayers, kickedPlayers);
-            return;
-        }
-        
-        try {
-            // Запрашиваем финальный состав с сервера
-            const res = await fetch(`/api/game/final-team?code=${roomCode}`, {
-                credentials: 'include'
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
-            finalPlayers = data.finalPlayers || [];
-            kickedPlayers = data.kickedPlayers || [];
-            
-            renderFinalTeam(finalPlayers, kickedPlayers);
-            
-        } catch (err) {
-            console.error('ошибка загрузки финала:', err);
-        }
+    // загрузка списка игроков с сервера 
+let finalPlayers = [];  // Игроки в финале
+let kickedPlayers = []; // Выгнанные игроки
+
+async function loadFinalTeam() {
+    if (IS_TEST_MODE) {
+        // для теста
+        finalPlayers = [
+            { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
+                { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
+                { cardType: 2, name: 'Агрессивный', isOpen: false },
+                { cardType: 3, name: '1', isOpen: false },
+                { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
+                { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
+                { cardType: 6, name: 'Figma\nC++', isOpen: false }
+            ]},
+            { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
+            { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
+            { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
+        ];
+        kickedPlayers = [
+            { uuid: 'test-5', nickname: 'РандомНик4' },
+            { uuid: 'test-6', nickname: 'РандомНик5' }
+        ];
+        renderFinalTeam(finalPlayers, kickedPlayers);
+        return;
     }
+    try {
+        // Получаем финальных игроков из sessionStorage
+        const storedFinal = JSON.parse(sessionStorage.getItem('finalPlayers') || '[]');
+        finalPlayers = storedFinal;
+        
+        // Получаем выгнанных игроков из sessionStorage
+        const storedKicked = JSON.parse(sessionStorage.getItem('kickedPlayers') || '[]');
+        kickedPlayers = storedKicked;
+        
+        console.log('Финальные игроки из sessionStorage:', finalPlayers);
+        console.log('Выгнанные игроки из sessionStorage:', kickedPlayers);
+        
+        renderFinalTeam(finalPlayers, kickedPlayers);
+        
+    } catch (err) {
+        console.error('Ошибка загрузки финальных данных:', err);
+        showToast('Не удалось загрузить финальный состав', 'error');
+    }
+}
     
     // отрисовка списка игроков
     function renderFinalTeam(players, kicked) {

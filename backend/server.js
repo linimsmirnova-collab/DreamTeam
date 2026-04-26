@@ -1014,45 +1014,50 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
         
         if (allVoted) {
-            const excludedPlayer = manager.CompleteRound();
-
-            if (session.game_state !== gameState.completed) {
-            session.current_round++;
-            console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
-    }
-            // с подсчётом только активных игроков
-        const activeCount = session.players_list.filter(p => p.active).length;
-        if (activeCount <= session.players_final_count) {
+    const excludedPlayer = manager.CompleteRound();
+    
+    // 1. СНАЧАЛА проверяем, достигнут ли финальный размер команды
+    const activeCount = session.players_list.filter(p => p.active).length;
+    
+    if (activeCount <= session.players_final_count) {
         session.game_state = gameState.completed;
         io.to(roomCode).emit('complete-game', {
-        final_party: session.players_list.filter(p => p.active),
-        excludedPlayer: excludedPlayer,
+            final_party: session.players_list.filter(p => p.active),
+            excludedPlayer: excludedPlayer,
+        });
+        
+        try {
+            await db.saveGameState(session);
+            console.log('Игра завершена, данные сохранены.');
+        } catch (error) {
+            console.error('Не удалось сохранить игру:', error);
+        }
+        
+        return res.status(200).json({ success: true });
+    }
+    
+    //только если игра не завершена, увеличиваем раунд
+    if (session.game_state !== gameState.completed) {
+        session.current_round++;
+        console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
+    }
+    
+    //Отправляем complete-round
+    io.to(roomCode).emit('complete-round', {
+        player: excludedPlayer,
+        current_round: session.current_round,
+        rounds_count: session.rounds_count,
     });
     
     try {
         await db.saveGameState(session);
-        console.log('Игра завершена, данные сохранены.');
+        console.log('Раунд сохранён в БД');
     } catch (error) {
-        console.error('Не удалось сохранить игру:', error);
+        console.error('Не удалось сохранить раунд:', error);
     }
+    
     return res.status(200).json({ success: true });
 }
-            
-            io.to(roomCode).emit('complete-round', {
-                player: excludedPlayer,
-                current_round: session.current_round,
-                rounds_count: session.rounds_count,
-            });
-            
-            try {
-                await db.saveGameState(session);
-                console.log('Раунд сохранён в БД');
-            } catch (error) {
-                console.error('Не удалось сохранить раунд:', error);
-            }
-            
-            return res.status(200).json({ success: true });
-        }
         
         res.status(200).json({ success: true, message: 'Ваш голос учтён' });
         
