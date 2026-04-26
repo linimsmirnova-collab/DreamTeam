@@ -65,9 +65,9 @@ class GameManager {
                 player.isVoted = false;
                 player.votedOnPlayer = null;
             }
-            session.current_round += 1;
+            //session.current_round += 1;
             // количество раундов увеличивается так как голосование пропущено
-            session.rounds_count += 1;
+            //session.rounds_count += 1;
             return null;
         }
 
