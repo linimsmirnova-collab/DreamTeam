@@ -97,64 +97,116 @@ function authenticatePlayer(req, res, next) {
 }
 
 // Эндпоинт создания комнаты
-app.post('/api/room/create', async (req, res) => {
+app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     try {
-        const { randomEvents, maxPlayers, nickname } = req.body;
+        const player = req.player;
+        const roomCode = req.roomId;
+        const {vote_id} = req.body;
 
-        // Простейшие проверки
-        if (maxPlayers < 4 || maxPlayers > 16) {
-            return res.status(400).json({ error: 'Количество игроков должно быть от 4 до 16' });
+        const manager = req.manager;
+        const session = manager.GameSession;
+
+        // Проверка, не голосовал ли уже
+        if (player.isVoted) {
+            return res.status(400).json({error: 'Вы уже проголосовали в этом раунде'});
+        }
+        if (!player.active) {
+            return res.status(403).json({error: 'Вы исключены из команды и не можете голосовать'});
         }
 
-        // Генерация уникального кода комнаты
-        const roomCode = generateRoomId().toString();
+        let targetPlayer = null;
 
-        // Создание менеджера с передачей DataStorage
-        const manager = new GameManager(db);
+        // Обработка пропуска голоса
+        if (vote_id !== 'skip') {
+            targetPlayer = session.players_list.find(p => p.uuid == vote_id);
 
-        const newPlayer = new Player(Player.nextId_next(), true, nickname);
+            if (!targetPlayer || !targetPlayer.active) {
+                return res.status(404).json({error: 'Игрок не найден или исключён'});
+            }
 
-        const project = await db.getProject()
+            if (targetPlayer.uuid === player.uuid) {
+                return res.status(400).json({error: 'Нельзя голосовать за самого себя'});
+            }
 
-        const {rounds, targetTeamSize} = calculateGameParams(maxPlayers)
+            player.votedOnPlayer = targetPlayer;
+        }
 
-        console.log('target teamSize', targetTeamSize);
+        player.isVoted = true;
 
-        // Создание игровой сессии
-        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, targetTeamSize, rounds, project)
-
-        console.log(manager.GameSession.players_list);
-        console.log(manager.GameSession.project);
-        console.log('Создаётся комната с количеством игроков:', maxPlayers);//добавила
-
-
-        // Получаем создателя, чтобы узнать его ID
-        const creator = manager.GameSession.creater;
-        console.log(`айдишник ${creator.uuid}`);
-
-        // Устанавливаем статус комнаты
-        manager.GameSession.game_state = gameState.waiting;
-
-        // Сохраняем менеджера в активные
-        activeManagers.set(roomCode, manager);
-
-        // Устанавливаем httpOnly cookie с ID создателя и кодом комнаты
-        setPlayerSessionCookie(res, creator.uuid, roomCode);
-
-        // Отправляем клиенту код комнаты (и, возможно, никнейм создателя), и объект проекта({id: , name: ,description: })
-        res.status(201).json({
-            roomId: roomCode,
-            nickname: creator.nickname,
-            project: manager.GameSession.project,
-            maxPlayers: maxPlayers,
-            playerId: creator.uuid,
+        // Отправляем событие через WebSocket
+        io.to(roomCode).emit('player-voted', {
+            voter: {
+                uuid: player.uuid,
+                nickname: player.nickname
+            },
+            target: targetPlayer ? {
+                uuid: targetPlayer.uuid,
+                nickname: targetPlayer.nickname
+            } : null
         });
 
+        // Проверяем, все ли активные игроки проголосовали
+        const activePlayers = session.players_list.filter(p => p.active);
+        const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
+
+        if (allVoted) {
+            // Останавливаем таймеры
+            const timerKey = roomCode + '_5min';
+            if (roomTimers.has(timerKey)) {
+                clearInterval(roomTimers.get(timerKey));
+                roomTimers.delete(timerKey);
+            }
+            if (roomTimers.has(roomCode)) {
+                clearInterval(roomTimers.get(roomCode));
+                roomTimers.delete(roomCode);
+            }
+
+            const excludedPlayer = manager.CompleteRound();
+            const activeCount = session.players_list.filter(p => p.active).length;
+            
+            if (activeCount <= session.players_final_count) {
+                session.game_state = gameState.completed;
+                io.to(roomCode).emit('complete-game', {
+                    final_party: session.players_list.filter(p => p.active),
+                    excludedPlayer: excludedPlayer,
+                });
+
+                try {
+                    await db.saveGameState(session);
+                } catch (error) {
+                    console.error('Не удалось сохранить игру:', error);
+                }
+
+                return res.status(200).json({success: true});
+            }
+            
+            // Только если игра не завершена, увеличиваем раунд
+            if (session.game_state !== gameState.completed) {
+                session.current_round++;
+            }
+            
+            io.to(roomCode).emit('complete-round', {
+                player: excludedPlayer,
+                current_round: session.current_round,
+                rounds_count: session.rounds_count,
+            });
+            
+            try {
+                await db.saveGameState(session);
+            } catch (error) {
+                console.error('Не удалось сохранить раунд:', error);
+            }
+
+            return res.status(200).json({success: true});
+        }
+
+        res.status(200).json({success: true, message: 'Ваш голос учтён'});
+        
     } catch (error) {
-        console.error('Ошибка создания комнаты:', error);
-        res.status(500).json({ error: 'Не удалось создать комнату' });
+        console.error('Ошибка при обработке голосования:', error);
+        res.status(500).json({error: 'Ошибка сервера: ' + error.message});
     }
-})
+});
 
 // Эндпоинт присоединения к комнате
 app.post('/api/room/join', (req, res) => {
@@ -1159,37 +1211,32 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     try {
         const player = req.player;
         const roomCode = req.roomId;
-        const {vote_id} = req.body;
+        const { vote_id } = req.body;
 
         const manager = req.manager;
         const session = manager.GameSession;
 
-        // Проверка, не голосовал ли уже
+        // Проверки
         if (player.isVoted) {
-            return res.status(400).json({error: 'Вы уже проголосовали в этом раунде'});
+            return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
         }
+        
         if (!player.active) {
-<<<<<<< Updated upstream
-            return res.status(403).json({error: 'Вы исключены из команды и не можете голосовать'});
-=======
             return res.status(403).json({ error: 'Вы исключены из команды и не можете голосовать' });
->>>>>>> Stashed changes
         }
 
         let targetPlayer = null;
 
-        // Обработка пропуска голоса
+        // Обработка голоса
         if (vote_id !== 'skip') {
-            // Ищем целевого игрока ТОЛЬКО если голосуем не за пропуск
             targetPlayer = session.players_list.find(p => p.uuid == vote_id);
 
             if (!targetPlayer || !targetPlayer.active) {
-                return res.status(404).json({error: 'Игрок, за которого вы пытаетесь голосовать, не найден или исключён'});
+                return res.status(404).json({ error: 'Игрок не найден или исключён' });
             }
 
-            // Проверка, чтобы игрок не голосовал за себя (ТОЛЬКО ПОСЛЕ того как нашли targetPlayer)
             if (targetPlayer.uuid === player.uuid) {
-                return res.status(400).json({error: 'Нельзя голосовать за самого себя'});
+                return res.status(400).json({ error: 'Нельзя голосовать за самого себя' });
             }
 
             player.votedOnPlayer = targetPlayer;
@@ -1197,7 +1244,7 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
 
         player.isVoted = true;
 
-        // Отправляем событие всем в комнате через WebSocket
+        // WebSocket событие
         io.to(roomCode).emit('player-voted', {
             voter: {
                 uuid: player.uuid,
@@ -1209,114 +1256,67 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             } : null
         });
 
-        // Проверяем, все ли активные игроки проголосовали
+        // Проверка всех голосов
         const activePlayers = session.players_list.filter(p => p.active);
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
 
         if (allVoted) {
-<<<<<<< Updated upstream
-            const excludedPlayer = manager.CompleteRound();
-
-            // 1. СНАЧАЛА проверяем, достигнут ли финальный размер команды
-            const activeCount = session.players_list.filter(p => p.active).length;
-
-=======
-            //1. Сначала останавливаем 5-минутный таймер
+            // Останавливаем таймеры
             const timerKey = roomCode + '_5min';
             if (roomTimers.has(timerKey)) {
                 clearInterval(roomTimers.get(timerKey));
                 roomTimers.delete(timerKey);
-                console.log(`5-минутный таймер остановлен для комнаты ${roomCode}`);
             }
-            // 2. Также останавливаем обычный таймер на всякий случай
             if (roomTimers.has(roomCode)) {
                 clearInterval(roomTimers.get(roomCode));
                 roomTimers.delete(roomCode);
-                console.log(`Обычный таймер остановлен для комнаты ${roomCode}`);
             }
 
-            // 3. Теперь обрабатываем результаты голосования
             const excludedPlayer = manager.CompleteRound();
-            
-            // 4. СНАЧАЛА проверяем, достигнут ли финальный размер команды
             const activeCount = session.players_list.filter(p => p.active).length;
-            
->>>>>>> Stashed changes
+
             if (activeCount <= session.players_final_count) {
                 session.game_state = gameState.completed;
                 io.to(roomCode).emit('complete-game', {
                     final_party: session.players_list.filter(p => p.active),
                     excludedPlayer: excludedPlayer,
                 });
-<<<<<<< Updated upstream
 
-=======
-                
->>>>>>> Stashed changes
                 try {
                     await db.saveGameState(session);
-                    console.log('Игра завершена, данные сохранены.');
                 } catch (error) {
                     console.error('Не удалось сохранить игру:', error);
                 }
-<<<<<<< Updated upstream
 
-                return res.status(200).json({success: true});
-            }
-
-            //только если игра не завершена, увеличиваем раунд
-=======
-                
                 return res.status(200).json({ success: true });
             }
-            
-            // 5. Только если игра не завершена, увеличиваем раунд
->>>>>>> Stashed changes
+
+            // Увеличиваем раунд
             if (session.game_state !== gameState.completed) {
                 session.current_round++;
-                console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
             }
-<<<<<<< Updated upstream
 
-            //Отправляем complete-round
-=======
-            
-            // 6. Отправляем событие о завершении раунда
->>>>>>> Stashed changes
             io.to(roomCode).emit('complete-round', {
                 player: excludedPlayer,
                 current_round: session.current_round,
                 rounds_count: session.rounds_count,
             });
-<<<<<<< Updated upstream
 
-=======
-            
->>>>>>> Stashed changes
             try {
                 await db.saveGameState(session);
-                console.log('Раунд сохранён в БД');
             } catch (error) {
                 console.error('Не удалось сохранить раунд:', error);
             }
-<<<<<<< Updated upstream
 
-            return res.status(200).json({success: true});
-        }
-
-        res.status(200).json({success: true, message: 'Ваш голос учтён'});
-
-=======
-            
             return res.status(200).json({ success: true });
         }
-        
-        res.status(200).json({ success: true, message: 'Ваш голос учтён' });
-        
->>>>>>> Stashed changes
+
+        // Не все проголосовали
+        return res.status(200).json({ success: true, message: 'Ваш голос учтён' });
+
     } catch (error) {
         console.error('Ошибка при обработке голосования:', error);
-        res.status(500).json({error: 'Ошибка сервера: ' + error.message});
+        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
     }
 });
 
