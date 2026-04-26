@@ -413,6 +413,7 @@ window.onload = async function() {
         
         // Слушаем событие начала игры
         socket.on('game-start', (data) => {
+            currentGamePhase = 'revelation';
             console.log(`game-start:`, data);
             
             // Останавливаем все интервалы при получении события
@@ -450,16 +451,10 @@ window.onload = async function() {
         });
 
         socket.on('complete-round', (data) => {
+            currentGamePhase = 'voting';
             console.log('Раунд завершен, обсуждение:', data);
-
-            if (data.player) {
-            let kickedList = JSON.parse(sessionStorage.getItem('kickedPlayersList') || '[]');
-            if (!kickedList.some(p => p.uuid === data.player.uuid)) {
-                kickedList.push(data.player);
-                sessionStorage.setItem('kickedPlayersList', JSON.stringify(kickedList));
-            }
-        }
             
+            // Обновляем номер раунда в sessionStorage
             if (data.current_round) {
                 sessionStorage.setItem('currentRound', data.current_round.toString());
                 console.log(`Обновлён раунд: ${data.current_round} из ${data.rounds_count}`);
@@ -469,41 +464,38 @@ window.onload = async function() {
                 sessionStorage.setItem('maxRounds', data.rounds_count.toString());
             }
             
-            showToast('Пора обсудить, кого выгнать, и проголосовать', 'warning');
-
-            blockNavigation(true);
-
-            if (socket?.connected) {
-                socket.emit('start_timer5');
-            }
-            
-            // Останавливаем таймер вскрытия карт
+            //Останавливаем таймер вскрытия карт
             if (socket && socket.connected) {
-                socket.emit('stop_timer');
+                console.log('Отправляем stop_timer на сервер');
+                socket.emit('stop_timer');  // Останавливаем 60-секундный таймер вскрытия
+            }
+
+            // Показываем уведомление о переходе к голосованию
+            showToast('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ! Переход к голосованию...', 'warning');
+
+            // Блокируем навигацию
+            blockNavigation(true, container);
+
+            // Запускаем 5-минутный таймер через сервер
+            if (socket && socket.connected) {
+                console.log('Запускаем 5-минутный таймер голосования');
                 socket.emit('start_timer5');
+            } else {
+                // Fallback для тестового режима
+                console.log('Тестовый режим: запускаем локальный таймер');
+                startLocalVoteTimer(container);
             }
             
+            // Загружаем страницу голосования
             loadPage('vote.html', container);
         });
 
         socket.on('complete-game', (data) => {
             console.log('Игра завершена:', data);
-            if (data.final_party) {
-            sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
-
-    }
-            if (data.excludedPlayer) {
-            let kickedList = JSON.parse(sessionStorage.getItem('kickedPlayersList') || '[]');
-//тут проверки на дубликаты ещё чтобы 2 раза не добавлялось
-            if (!kickedList.some(p => p.uuid === data.excludedPlayer.uuid)) {
-            kickedList.push(data.excludedPlayer);
-            sessionStorage.setItem('kickedPlayersList', JSON.stringify(kickedList));
-        }
-    }
             
-            setTimeout(() => {
+            sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
+            
             loadPage('final-team.html', container);
-            }, 1500);
         });
 
 
@@ -558,6 +550,101 @@ window.onload = async function() {
             if (typeof updateRevealedCardInAllPlayers === 'function') {
                 updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
             }
+
+            // ПРОВЕРКА на завершение вскрытия всех карт
+            // Даем время на обновление DOM после обновления карты
+            setTimeout(() => {
+                // Проверяем, открыта ли страница всех игроков (там есть .player-card-block)
+                const allPlayers = document.querySelectorAll('.player-card-block');
+                
+                // Если страница всех игроков не открыта, пробуем найти карты на странице профиля
+                let allCardsRevealed = true;
+                
+                if (allPlayers.length > 0) {
+                    // Проверяем на странице всех игроков
+                    allPlayers.forEach(block => {
+                        const cards = block.querySelectorAll('.mini-card-value');
+                        cards.forEach(card => {
+                            if (card.textContent === '?') {
+                                allCardsRevealed = false;
+                            }
+                        });
+                    });
+                } else {
+                    // Проверяем на странице профиля
+                    const profileCards = document.querySelectorAll('.profile-card');
+                    if (profileCards.length > 0) {
+                        profileCards.forEach(card => {
+                            if (!card.classList.contains('card-opened')) {
+                                allCardsRevealed = false;
+                            }
+                        });
+                    } else {
+                        allCardsRevealed = false;
+                    }
+                }
+                
+                // Если все карты вскрыты и игра ещё в фазе вскрытия
+                if (allCardsRevealed && allPlayers.length > 0 && currentGamePhase === 'revelation') {
+                    console.log('Все карты вскрыты (принудительно)! Переходим к голосованию');
+                    currentGamePhase = 'voting';
+                    showToast('Все игроки вскрыли карты! Переход к голосованию...', 'success');
+                    
+                    // Останавливаем локальный таймер
+                    if (timerInterval) {
+                        clearInterval(timerInterval);
+                        timerInterval = null;
+                    }
+                    
+                    // Останавливаем таймер на сервере
+                    if (socket && socket.connected) {
+                        socket.emit('stop_timer');
+                        // Запускаем 5-минутный таймер голосования
+                        socket.emit('start_timer5');
+                    }
+                    
+                    // Блокируем навигацию
+                    if (typeof blockNavigation === 'function') {
+                        blockNavigation(true, document.querySelector('.container'));
+                    }
+                    
+                    // Переходим к голосованию
+                    setTimeout(() => {
+                        loadPage('vote.html', document.querySelector('.container'));
+                    }, 1500);
+                }
+            }, 500); // Небольшая задержка для обновления DOM
+
+        });
+
+        socket.on('revelation_complete', (data) => {
+            currentGamePhase = 'voting';
+            console.log('Этап вскрытия завершён:', data);
+            
+            // Останавливаем таймер вскрытия, если он ещё работает
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            
+            // Показываем уведомление
+            showToast('Все игроки вскрыли карты! Начинается голосование', 'success');
+            
+            // Останавливаем таймер на сервере
+            socket.emit('stop_timer');
+            
+            // Запускаем 5-минутный таймер голосования
+            socket.emit('start_timer5');
+            
+            // Блокируем навигацию (опционально)
+            if (typeof blockNavigation === 'function') {
+                blockNavigation(true, document.querySelector('.container'));
+            }
+            
+            // Переходим на страницу голосования
+            setTimeout(() => {
+                loadPage('vote.html', document.querySelector('.container'));
+            }, 1500);
         });
     }
 
@@ -1366,6 +1453,10 @@ function addPageHandlers(container) {
 
     if (isProfilePage) {
         console.log('страница профиля загружена');
+
+        // Очищаем таймер при загрузке
+        const timerText = container.querySelector('.profile-timer-text');
+        if (timerText) timerText.textContent = '';
         
         // получаем данные из sessionStorage
         const roomCode = sessionStorage.getItem('currentRoomCode');
@@ -1379,6 +1470,7 @@ function addPageHandlers(container) {
         let currentSelectedIndex = null;    // Индекс текущей выбранной карты
         let isModalOpen = false;            // Флаг открытого модального окна
         let timerInterval = null;           // ID таймера (чтобы остановить)
+        let isTimerStarted = false;
 
         // Отображаем имя текущего игрока
         const nickEl = container.querySelector('.profile-nick-text');
@@ -1409,8 +1501,7 @@ function addPageHandlers(container) {
                 console.log('Текущий ход (данные с сервера):', data);
                 
                 if (data && data.uuid) {
-                    // Обновляем индикатор хода
-                    updateTurnIndicator(data.uuid, 60);
+                    updateTurnIndicator(data.uuid, undefined);
                 }
                 
                 return data;
@@ -1419,64 +1510,74 @@ function addPageHandlers(container) {
             }
         }
 
-        // Индикатор хода и таймер
+        // Индикатор хода и таймер 
         function updateTurnIndicator(currentPlayerUuid, timeLeft) {
             const turnText = container.querySelector('.profile-turn-text');
             const timerText = container.querySelector('.profile-timer-text');
             const turnBadge = container.querySelector('.profile-turn-badge');
             
             const isMyTurn = String(currentPlayerUuid) === String(playerUuid);
-            console.log('updateTurnIndicator - мой ход?', isMyTurn, 'current:', currentPlayerUuid, 'мой:', playerUuid);
+            const wasMyTurn = String(currentTurnPlayerUuid) === String(playerUuid);
+            
+            console.log(`updateTurnIndicator: isMyTurn=${isMyTurn}, wasMyTurn=${wasMyTurn}, currentTurnPlayerUuid=${currentTurnPlayerUuid}, newUuid=${currentPlayerUuid}`);
 
             // Обновляем текст статуса хода
             if (turnText) {
                 turnText.textContent = isMyTurn ? 'Ваш ход' : 'Ход другого игрока';
                 turnText.style.color = isMyTurn ? '#FE5499' : '#999';
             }
-
-            // Если сменился игрок
-            if (currentTurnPlayerUuid !== currentPlayerUuid) {
-                console.log('Смена хода! Был:', currentTurnPlayerUuid, 'Стал:', currentPlayerUuid);
-                currentTurnPlayerUuid = currentPlayerUuid;
-                
-                // Управление блокировкой/разблокировкой карт
-                const allCards = document.querySelectorAll('.profile-card');
-                
-                if (isMyTurn) {
-                    // Мой ход - разблокируем только НЕоткрытые карты
-                    console.log('Мой ход, разблокируем карты');
-                    allCards.forEach(card => {
-                        if (!card.classList.contains('card-opened')) {
-                            card.style.opacity = '1';
-                            card.style.pointerEvents = 'auto';
-                            card.style.cursor = 'pointer';
-                        }
-                    });
-                    
-                    // Запускаем серверный таймер
-                    if (socket && socket.connected) {
-                        console.log('Запуск серверного таймера (мой ход)');
-                        socket.emit('start_timer');
+            
+            // Обновляем бейдж
+            if (turnBadge) {
+                turnBadge.style.background = isMyTurn ? '#FFFFFF' : '#DADADA';
+                turnBadge.style.borderColor = isMyTurn ? '#FFCBE5' : '#999';
+            }
+            
+            // Управление блокировкой/разблокировкой карт
+            const allCards = document.querySelectorAll('.profile-card');
+            
+            if (isMyTurn) {
+                // Мой ход - разблокируем все НЕоткрытые карты
+                console.log('Мой ход, разблокируем карты');
+                allCards.forEach(card => {
+                    if (!card.classList.contains('card-opened')) {
+                        card.style.opacity = '1';
+                        card.style.pointerEvents = 'auto';
+                        card.style.cursor = 'pointer';
                     }
-                } else {
-                    // Не мой ход - блокируем все НЕоткрытые карты
-                    console.log('Не мой ход, блокируем карты');
-                    allCards.forEach(card => {
-                        if (!card.classList.contains('card-opened')) {
-                            card.style.pointerEvents = 'none';
-                            card.style.opacity = '0.6';
-                        }
-                    });
+                });
+                
+                // Запускаем таймер ТОЛЬКО если это реальная смена хода (сменился игрок)
+                if (currentTurnPlayerUuid !== currentPlayerUuid && socket && socket.connected && !isTimerStarted) {
+                    console.log('Смена хода на меня, запускаем таймер');
+                    socket.emit('start_timer');
+                    isTimerStarted = true;
+                }
+            } else {
+                // Не мой ход - блокируем все НЕоткрытые карты
+                console.log('Не мой ход, блокируем карты');
+                allCards.forEach(card => {
+                    if (!card.classList.contains('card-opened')) {
+                        card.style.pointerEvents = 'none';
+                        card.style.opacity = '0.6';
+                    }
+                });
+                
+                // Сбрасываем флаг таймера, если ход перешёл от меня к другому
+                if (wasMyTurn && !isMyTurn) {
+                    isTimerStarted = false;
                 }
             }
             
-            // Обновляем таймер
+            // Сохраняем текущего игрока
+            currentTurnPlayerUuid = currentPlayerUuid;
+            
+            // Обновляем отображение таймера, если пришло время
             if (timerText && timeLeft !== undefined) {
                 const minutes = Math.floor(timeLeft / 60);
                 const seconds = timeLeft % 60;
                 timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 
-                // Подсветка при остатке 10 секунд
                 if (isMyTurn && timeLeft <= 10) {
                     timerText.style.color = '#ff0000';
                     timerText.style.fontWeight = 'bold';
@@ -1485,14 +1586,7 @@ function addPageHandlers(container) {
                     timerText.style.fontWeight = '';
                 }
             }
-            
-            // Обновляем бейдж
-            if (turnBadge) {
-                turnBadge.style.background = isMyTurn ? '#FFFFFF' : '#DADADA';
-                turnBadge.style.borderColor = isMyTurn ? '#FFCBE5' : '#999';
-            }
         }
-
         // Обновление вскрытой карты на странице профиля
         function updateRevealedCard(playerUuidFromEvent, openCard) {
             console.log('updateRevealedCard вызвана');
@@ -1598,6 +1692,7 @@ function addPageHandlers(container) {
         // Обработчик окончания таймера
         function handleTimerEnd(data) {
             console.log('Таймер закончился:', data);
+            isTimerStarted = false;  // Сбрасываем флаг
             showToast('Время вышло! Ход переходит другому игроку', 'warning');
             
             // Запрашиваем новый ход
@@ -1644,12 +1739,15 @@ function addPageHandlers(container) {
                 }
             });
             
-
             socket.on('force-reveal-card', handleForceRevealCard);
             socket.on('timer_end', handleTimerEnd);
             socket.on('update_timer', handleUpdateTimer);
             socket.on('turn-update', (data) => {
                 console.log('turn-update на profile:', data);
+                // Если пришёл новый ход (и это не наш), сбрасываем флаг
+                if (String(data.currentPlayerUuid) !== String(playerUuid)) {
+                    isTimerStarted = false;
+                }
                 updateTurnIndicator(data.currentPlayerUuid, data.timeLeft);
             });
         }
@@ -1915,6 +2013,12 @@ function addPageHandlers(container) {
             iconLeft.parentNode.replaceChild(newIconLeft, iconLeft);
             
             newIconLeft.addEventListener('click', () => {
+
+                //Проверка: нельзя переходить во время вскрытия
+                if (currentGamePhase === 'revelation') {
+                    showToast('Сейчас идёт этап вскрытия карт! Голосование начнётся позже.', 'warning');
+                    return;
+                }
                 console.log('переход на vote');
                 if (timerInterval) clearInterval(timerInterval);
                 loadPage('vote.html', container);
@@ -2383,8 +2487,31 @@ function addPageHandlers(container) {
                     timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
                 }
             });
+
+            socket.on('update_timer5', (data) => {
+                const timerText = container.querySelector('.cards-timer-text');
+                if (timerText && data.timeLeft !== undefined) {
+                    const minutes = Math.floor(data.timeLeft / 60);
+                    const seconds = data.timeLeft % 60;
+                    timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                }
+            });
         }
         
+        function setupCardsPageTimer() {
+            const timerText = container.querySelector('.cards-timer-text');
+            if (!timerText) return;
+            
+            if (currentGamePhase === 'revelation') {
+                // Фаза вскрытия - показываем 60-секундный таймер
+                timerText.style.color = '#FE5499';
+            } else if (currentGamePhase === 'voting') {
+                // Фаза голосования - показываем 5-минутный таймер
+                timerText.textContent = '5:00';
+                timerText.style.color = '#F17BAB';
+            }
+        }
+
         // Индикатор хода
         function updateTurnIndicator(currentPlayerUuid, timeLeft) {
             const turnText = container.querySelector('.cards-turn-text');
@@ -2429,6 +2556,13 @@ function addPageHandlers(container) {
             iconRight.parentNode.replaceChild(newIconRight, iconRight);
             
             newIconRight.addEventListener('click', () => {
+
+                //Проверка
+                if (currentGamePhase === 'voting') {
+                    showToast('Сейчас идёт этап голосования! Вы не можете вернуться в профиль.', 'warning');
+                    return;
+                }
+
                 console.log('Возврат на profile.html');
                 if (window.cardsAllInterval) {
                     clearInterval(window.cardsAllInterval);
@@ -2455,6 +2589,12 @@ function addPageHandlers(container) {
             iconLeft.parentNode.replaceChild(newIconLeft, iconLeft);
             
             newIconLeft.addEventListener('click', () => {
+                //Проверка: нельзя переходить во время вскрытия
+                if (currentGamePhase === 'revelation') {
+                    showToast('Сейчас идёт этап вскрытия карт! Голосование начнётся позже.', 'warning');
+                    return;
+                }
+
                 console.log('Переход на vote.html');
                 if (window.cardsAllInterval) {
                     clearInterval(window.cardsAllInterval);
@@ -2775,52 +2915,50 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
     // прокрутка страницы 
     
     // загрузка списка игроков с сервера 
-    // загрузка списка игроков с сервера 
-let finalPlayers = [];  // Игроки в финале
-let kickedPlayers = []; // Выгнанные игроки
-
-async function loadFinalTeam() {
-    if (IS_TEST_MODE) {
-        // для теста
-        finalPlayers = [
-            { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
-                { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
-                { cardType: 2, name: 'Агрессивный', isOpen: false },
-                { cardType: 3, name: '1', isOpen: false },
-                { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
-                { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
-                { cardType: 6, name: 'Figma\nC++', isOpen: false }
-            ]},
-            { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
-            { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
-            { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
-        ];
-        kickedPlayers = [
-            { uuid: 'test-5', nickname: 'РандомНик4' },
-            { uuid: 'test-6', nickname: 'РандомНик5' }
-        ];
-        renderFinalTeam(finalPlayers, kickedPlayers);
-        return;
+    let finalPlayers = [];  // Игроки в финале
+    let kickedPlayers = []; // Выгнанные игроки
+    
+    async function loadFinalTeam() {
+        if (IS_TEST_MODE) {
+    //для теста
+            finalPlayers = [
+                { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
+                    { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
+                    { cardType: 2, name: 'Агрессивный', isOpen: false },
+                    { cardType: 3, name: '1', isOpen: false },
+                    { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
+                    { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
+                    { cardType: 6, name: 'Figma\nC++', isOpen: false }
+                ]},
+                { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
+                { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
+                { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
+            ];
+            kickedPlayers = [
+                { uuid: 'test-5', nickname: 'РандомНик4' },
+                { uuid: 'test-6', nickname: 'РандомНик5' }
+            ];
+            renderFinalTeam(finalPlayers, kickedPlayers);
+            return;
+        }
+        
+        try {
+            // Запрашиваем финальный состав с сервера
+            const res = await fetch(`/api/game/final-team?code=${roomCode}`, {
+                credentials: 'include'
+            });
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            
+            const data = await res.json();
+            finalPlayers = data.finalPlayers || [];
+            kickedPlayers = data.kickedPlayers || [];
+            
+            renderFinalTeam(finalPlayers, kickedPlayers);
+            
+        } catch (err) {
+            console.error('ошибка загрузки финала:', err);
+        }
     }
-    try {
-        // Получаем финальных игроков из sessionStorage
-        const storedFinal = JSON.parse(sessionStorage.getItem('finalPlayers') || '[]');
-        finalPlayers = storedFinal;
-        
-        // Получаем выгнанных игроков из sessionStorage
-        const storedKicked = JSON.parse(sessionStorage.getItem('kickedPlayers') || '[]');
-        kickedPlayers = storedKicked;
-        
-        console.log('Финальные игроки из sessionStorage:', finalPlayers);
-        console.log('Выгнанные игроки из sessionStorage:', kickedPlayers);
-        
-        renderFinalTeam(finalPlayers, kickedPlayers);
-        
-    } catch (err) {
-        console.error('Ошибка загрузки финальных данных:', err);
-        showToast('Не удалось загрузить финальный состав', 'error');
-    }
-}
     
     // отрисовка списка игроков
     function renderFinalTeam(players, kicked) {
@@ -3361,6 +3499,7 @@ if (voteContainer) {
 
         // 3. Переход: следующий раунд или финал
         if (currentRound < maxRounds) {
+            currentGamePhase = 'revelation';
             setTimeout(() => {
                 showToast('Переход к следующему раунду...', 'info');
                 loadPage('profile.html', container);
@@ -3484,6 +3623,12 @@ if (voteContainer) {
     });
     
     container.querySelector('.icon-right')?.addEventListener('click', () => {
+        //Проверка: нельзя переходить во время голосования
+        if (currentGamePhase === 'voting') {
+            showToast('Сейчас идёт этап голосования! Вы не можете вернуться в профиль.', 'warning');
+            return;
+        }
+
         console.log('Переход на profile');
         if (voteTimerInterval) clearInterval(voteTimerInterval);
         loadPage('profile.html', container);

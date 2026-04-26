@@ -2947,3 +2947,9 @@ span {
 //    opacity: 1 !important;
 //    pointer-events: auto !important;
 //}
+
+.profile-timer-text:empty,
+.cards-timer-text:empty,
+.vote-timer-text:empty {
+    visibility: hidden; 
+}
