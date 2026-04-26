@@ -41,15 +41,12 @@ class GameManager {
     // Фискирует и возращает исключение игрока, фиксирует завершение раунда, если никто не исключён увеличивает количество раундов, и возращает null
     CompleteRound() {
         const session = this.#gameSession;
-        if (!session) return;
+        if (!session) return null;
 
-        // 1. Собираем активных игроков
         const activePlayers = session.players_list.filter(p => p.active);
-        if (activePlayers.length === 0) return;
+        if (activePlayers.length === 0) return null;
 
-        // 2. Подсчёт голосов ТОЛЬКО за реальных игроков (игнорируем пропуски)
-        const voteCounts = new Map(); // key: uuid игрока, value: количество голосов
-
+        const voteCounts = new Map();
         for (const player of session.players_list) {
             if (player.isVoted && player.votedOnPlayer !== null) {
                 const targetUuid = player.votedOnPlayer.uuid;
@@ -57,48 +54,51 @@ class GameManager {
             }
         }
 
-        // 3. Если никто ни за кого не голосовал (все пропустили) – просто переходим к следующему раунду
+        // Все пропустили
         if (voteCounts.size === 0) {
             console.log('Никто ни за кого не проголосовал (все скип), исключения нет');
-            // Сбрасываем состояние голосования для всех
             for (const player of session.players_list) {
                 player.isVoted = false;
                 player.votedOnPlayer = null;
             }
-            session.current_round += 1;
-            // количество раундов увеличивается так как голосование пропущено
+            //session.current_round += 1;
             session.rounds_count += 1;
             return null;
         }
 
-        // 4. Находим максимальное количество голосов среди активных игроков
         let maxVotes = -1;
         for (const player of activePlayers) {
             const votes = voteCounts.get(player.uuid) || 0;
             if (votes > maxVotes) maxVotes = votes;
         }
 
-        // 5. Собираем кандидатов (активные игроки с maxVotes)
         const candidates = activePlayers.filter(p => (voteCounts.get(p.uuid) || 0) === maxVotes);
-        if (candidates.length === 0) return;
+        if (candidates.length === 0) return null;
 
-        // 6. Случайный выбор среди кандидатов
-        const randomIndex = Math.floor(Math.random() * candidates.length);
-        const excludedPlayer = candidates[randomIndex];
+        // Несколько кандидатов – ничья, пропускаем раунд
+        if (candidates.length > 1) {
+            console.log(`Несколько кандидатов (${candidates.length}) набрали одинаковое количество голосов (${maxVotes}), исключения нет`);
+            for (const player of session.players_list) {
+                player.isVoted = false;
+                player.votedOnPlayer = null;
+            }
+            //session.current_round += 1;
+            session.rounds_count += 1;
+            return null;
+        }
+
+        // Единственный кандидат – исключаем
+        const excludedPlayer = candidates[0];
         excludedPlayer.active = false;
         console.log(`Игрок ${excludedPlayer.nickname} исключён (получил ${maxVotes} голосов)`);
 
-        // 7. Сбрасываем состояние голосования для всех
         for (const player of session.players_list) {
             player.isVoted = false;
             player.votedOnPlayer = null;
         }
-
-        // 8. Переход к следующему раунду
-        session.current_round += 1;
+        //session.current_round += 1;
         session.players_count -= 1;
 
-        // Возрат исключённого игрока
         return excludedPlayer;
     }
 }
