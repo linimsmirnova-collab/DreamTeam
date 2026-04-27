@@ -2055,6 +2055,13 @@ function addPageHandlers(container) {
     // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ВСЕХ ИГРОКОВ (cards-all-players.html) =====
     // Проверяем наличие контейнера для карточек игроков
     const playersContainerCheck = container.querySelector('.players-cards-container');
+    //обработчик для обновления карт
+    socket.on('cards-opened', (data) => {
+    console.log('Все карты вскрыты сервером:', data);
+    playersData = data.players;
+    renderPlayersList(playersData);
+    showToast('Все карты вскрыты!', 'success');
+});
 
     if (playersContainerCheck) {
         console.log('cards-all-players загружен');
@@ -2942,22 +2949,17 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
             return;
         }
         
-        try {
-            // Запрашиваем финальный состав с сервера
-            const res = await fetch(`/api/game/final-team?code=${roomCode}`, {
-                credentials: 'include'
-            });
-            if (!res.ok) throw new Error(`HTTP ${res.status}`);
-            
-            const data = await res.json();
-            finalPlayers = data.finalPlayers || [];
-            kickedPlayers = data.kickedPlayers || [];
-            
-            renderFinalTeam(finalPlayers, kickedPlayers);
-            
-        } catch (err) {
-            console.error('ошибка загрузки финала:', err);
-        }
+    const storedFinal = sessionStorage.getItem('finalPlayers');
+    const storedKicked = sessionStorage.getItem('kickedPlayersList');
+    
+    if (storedFinal) {
+        finalPlayers = JSON.parse(storedFinal);
+        kickedPlayers = storedKicked ? JSON.parse(storedKicked) : [];
+        renderFinalTeam(finalPlayers, kickedPlayers);
+    } else {
+        console.warn('Нет данных финальных игроков в sessionStorage');
+        renderFinalTeam([], []);
+    }
     }
     
     // отрисовка списка игроков
@@ -3090,6 +3092,11 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
                     });
                     
                     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                    if (window.activateResultsButton) {
+                     window.activateResultsButton();
+                    }
+                    loadPage('cards-all-players.html', container);
                     
                     console.log('все карты вскрыты');
                     // Сервер сам разошлёт событие всем игрокам
@@ -3106,16 +3113,48 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
     }
     
     // кнопка "Посмотреть результаты" 
-    const resultsBtn = container.querySelector('.final-results-btn');
-    
-    if (resultsBtn) {
-        if (isCreator) {
-            // только для создателя
-            resultsBtn.style.display = 'block';
-            resultsBtn.style.cursor = 'pointer';
+  const resultsBtn = container.querySelector('.final-results-btn');
+
+if (resultsBtn) {
+    if (isCreator) {
+        resultsBtn.style.display = 'block';
+        resultsBtn.style.opacity = '0.5';
+        resultsBtn.style.cursor = 'not-allowed';
+        resultsBtn.style.pointerEvents = 'auto';
+        
+        const badge = resultsBtn.querySelector('.final-results-badge');
+        const text = resultsBtn.querySelector('.final-results-text');
+        if (badge) {
+            badge.style.background = '#DADADA';
+            badge.style.borderColor = '#9B3D63';
+        }
+        if (text) {
+            text.style.color = '#9B3D63';
+            text.style.textShadow = 'none';
+        }
+        
+        // Флаг, что карты ещё не вскрыты
+        let cardsRevealed = false;
+        
+        resultsBtn.onclick = () => {
+            if (!cardsRevealed) {
+                showToast('Сначала вскройте все карты!', 'warning');
+                return;
+            }
             
-            const badge = resultsBtn.querySelector('.final-results-badge');
-            const text = resultsBtn.querySelector('.final-results-text');
+            sessionStorage.setItem('finalResults', JSON.stringify({
+                finalPlayers,
+                kickedPlayers,
+                roomCode
+            }));
+            loadPage('answers.html', container);
+        };
+        
+        // ✅ Сохраняем функцию для активации из revealBtn
+        window.activateResultsButton = () => {
+            cardsRevealed = true;
+            resultsBtn.style.opacity = '1';
+            resultsBtn.style.cursor = 'pointer';
             if (badge) {
                 badge.style.background = '#F17BAB';
                 badge.style.borderColor = '#7F375A';
@@ -3124,40 +3163,28 @@ console.log(`текущий раунд на vote.html: ${currentRound} из ${ma
                 text.style.color = '#FFFFFF';
                 text.style.textShadow = `1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A`;
             }
-            
-            resultsBtn.onclick = () => {
-                // финальные данные для страницы ответов
-                sessionStorage.setItem('finalResults', JSON.stringify({
-                    finalPlayers,
-                    kickedPlayers,
-                    roomCode
-                }));
-                
-                // Переход на answers.html (или results.html)
-                loadPage('answers.html', container);
-            };
-        } else {
-            // Для не-создателя: кнопка видна, но неактивна (серая)
-            resultsBtn.style.display = 'block';
-            resultsBtn.style.cursor = 'not-allowed';
-            
-            const badge = resultsBtn.querySelector('.final-results-badge');
-            const text = resultsBtn.querySelector('.final-results-text');
-            if (badge) {
-                badge.style.background = '#DADADA';
-                badge.style.borderColor = '#9B3D63';
-            }
-            if (text) {
-                text.style.color = '#9B3D63';
-                text.style.textShadow = 'none';
-            }
-            
-
-            text.textContent = 'Ожидание создателя';
-            
-            resultsBtn.onclick = null;
+        };
+        
+    } else {
+        // Для не-создателя
+        resultsBtn.style.display = 'block';
+        resultsBtn.style.cursor = 'not-allowed';
+        
+        const badge = resultsBtn.querySelector('.final-results-badge');
+        const text = resultsBtn.querySelector('.final-results-text');
+        if (badge) {
+            badge.style.background = '#DADADA';
+            badge.style.borderColor = '#9B3D63';
         }
+        if (text) {
+            text.style.color = '#9B3D63';
+            text.style.textShadow = 'none';
+            text.textContent = 'Ожидание создателя';
+        }
+        
+        resultsBtn.onclick = null;
     }
+}
     
     // На финальной странице иконки обычно не нужны, но если есть:
     container.querySelector('.icon-left')?.addEventListener('click', () => {
