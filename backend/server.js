@@ -1208,7 +1208,6 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
 
         if (allVoted) {
-            const excludedPlayer = manager.CompleteRound();
 
             //1. Сначала останавливаем 5-минутный таймер
             const timerKey = roomCode + '_5min';
