@@ -97,116 +97,64 @@ function authenticatePlayer(req, res, next) {
 }
 
 // Эндпоинт создания комнаты
-app.post('/api/game/create', authenticatePlayer, async (req, res) => {
+app.post('/api/room/create', async (req, res) => {
     try {
-        const player = req.player;
-        const roomCode = req.roomId;
-        const {vote_id} = req.body;
+        const { randomEvents, maxPlayers, nickname } = req.body;
 
-        const manager = req.manager;
-        const session = manager.GameSession;
-
-        // Проверка, не голосовал ли уже
-        if (player.isVoted) {
-            return res.status(400).json({error: 'Вы уже проголосовали в этом раунде'});
-        }
-        if (!player.active) {
-            return res.status(403).json({error: 'Вы исключены из команды и не можете голосовать'});
+        // Простейшие проверки
+        if (maxPlayers < 4 || maxPlayers > 16) {
+            return res.status(400).json({ error: 'Количество игроков должно быть от 4 до 16' });
         }
 
-        let targetPlayer = null;
+        // Генерация уникального кода комнаты
+        const roomCode = generateRoomId().toString();
 
-        // Обработка пропуска голоса
-        if (vote_id !== 'skip') {
-            targetPlayer = session.players_list.find(p => p.uuid == vote_id);
+        // Создание менеджера с передачей DataStorage
+        const manager = new GameManager(db);
 
-            if (!targetPlayer || !targetPlayer.active) {
-                return res.status(404).json({error: 'Игрок не найден или исключён'});
-            }
+        const newPlayer = new Player(Player.nextId_next(), true, nickname);
 
-            if (targetPlayer.uuid === player.uuid) {
-                return res.status(400).json({error: 'Нельзя голосовать за самого себя'});
-            }
+        const project = await db.getProject()
 
-            player.votedOnPlayer = targetPlayer;
-        }
+        const {rounds, targetTeamSize} = calculateGameParams(maxPlayers)
 
-        player.isVoted = true;
+        console.log('target teamSize', targetTeamSize);
 
-        // Отправляем событие через WebSocket
-        io.to(roomCode).emit('player-voted', {
-            voter: {
-                uuid: player.uuid,
-                nickname: player.nickname
-            },
-            target: targetPlayer ? {
-                uuid: targetPlayer.uuid,
-                nickname: targetPlayer.nickname
-            } : null
+        // Создание игровой сессии
+        await manager.CreateGameSession(roomCode, newPlayer, randomEvents, maxPlayers, targetTeamSize, rounds, project)
+
+        console.log(manager.GameSession.players_list);
+        console.log(manager.GameSession.project);
+        console.log('Создаётся комната с количеством игроков:', maxPlayers);//добавила
+
+
+        // Получаем создателя, чтобы узнать его ID
+        const creator = manager.GameSession.creater;
+        console.log(`айдишник ${creator.uuid}`);
+
+        // Устанавливаем статус комнаты
+        manager.GameSession.game_state = gameState.waiting;
+
+        // Сохраняем менеджера в активные
+        activeManagers.set(roomCode, manager);
+
+        // Устанавливаем httpOnly cookie с ID создателя и кодом комнаты
+        setPlayerSessionCookie(res, creator.uuid, roomCode);
+
+        // Отправляем клиенту код комнаты (и, возможно, никнейм создателя), и объект проекта({id: , name: ,description: })
+        res.status(201).json({
+            roomId: roomCode,
+            nickname: creator.nickname,
+            project: manager.GameSession.project,
+            maxPlayers: maxPlayers,
+            playerId: creator.uuid,
         });
 
-        // Проверяем, все ли активные игроки проголосовали
-        const activePlayers = session.players_list.filter(p => p.active);
-        const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
-
-        if (allVoted) {
-            // Останавливаем таймеры
-            const timerKey = roomCode + '_5min';
-            if (roomTimers.has(timerKey)) {
-                clearInterval(roomTimers.get(timerKey));
-                roomTimers.delete(timerKey);
-            }
-            if (roomTimers.has(roomCode)) {
-                clearInterval(roomTimers.get(roomCode));
-                roomTimers.delete(roomCode);
-            }
-
-            const excludedPlayer = manager.CompleteRound();
-            const activeCount = session.players_list.filter(p => p.active).length;
-            
-            if (activeCount <= session.players_final_count) {
-                session.game_state = gameState.completed;
-                io.to(roomCode).emit('complete-game', {
-                    final_party: session.players_list.filter(p => p.active),
-                    excludedPlayer: excludedPlayer,
-                });
-
-                try {
-                    await db.saveGameState(session);
-                } catch (error) {
-                    console.error('Не удалось сохранить игру:', error);
-                }
-
-                return res.status(200).json({success: true});
-            }
-            
-            // Только если игра не завершена, увеличиваем раунд
-            if (session.game_state !== gameState.completed) {
-                session.current_round++;
-            }
-            
-            io.to(roomCode).emit('complete-round', {
-                player: excludedPlayer,
-                current_round: session.current_round,
-                rounds_count: session.rounds_count,
-            });
-            
-            try {
-                await db.saveGameState(session);
-            } catch (error) {
-                console.error('Не удалось сохранить раунд:', error);
-            }
-
-            return res.status(200).json({success: true});
-        }
-
-        res.status(200).json({success: true, message: 'Ваш голос учтён'});
-        
     } catch (error) {
-        console.error('Ошибка при обработке голосования:', error);
-        res.status(500).json({error: 'Ошибка сервера: ' + error.message});
+        console.error('Ошибка создания комнаты:', error);
+        res.status(500).json({ error: 'Не удалось создать комнату' });
     }
-});
+})
 
 // Эндпоинт присоединения к комнате
 app.post('/api/room/join', (req, res) => {
@@ -614,14 +562,14 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Еесли таймер уже запущен - не создаем новый
-        if (roomTimers.has(roomCode)) {
-            console.log(`Таймер для комнаты ${roomCode} уже запущен, игнорируем повторный запуск`);
-            return;
-        }
-
         const session = manager.GameSession;
-        let currentPlayer = session.currentMover;
+        const currentPlayer = session.currentMover;
+        
+        // Останавливаем предыдущий таймер для этой комнаты, если есть
+        if (roomTimers.has(roomCode)) {
+            clearTimeout(roomTimers.get(roomCode));
+            roomTimers.delete(roomCode);
+        }
         
         let timeLeft = 60; // 60 секунд
         
@@ -635,11 +583,9 @@ io.on('connection', (socket) => {
                 // Таймер закончился - очищаем интервал
                 clearInterval(interval);
                 
-                // Получаем актуального текущего игрока
-                currentPlayer = session.currentMover;
-                
                 // Проверяем, не вскрыл ли игрок карту за это время
-                if (currentPlayer && currentPlayer.hand) {
+                if (session.currentMover && session.currentMover.uuid === currentPlayer.uuid) {
+                    // Игрок не вскрыл карту - принудительно вскрываем случайную
                     console.log(`Игрок ${currentPlayer.nickname} не вскрыл карту за 60 секунд, принудительное вскрытие`);
                     
                     // Находим невскрытые карты
@@ -680,30 +626,6 @@ io.on('connection', (socket) => {
                     }
                 }
                 
-                // Проверяем, все ли игроки вскрыли карты
-                const updatedActivePlayers = session.players_list.filter(p => p.active);
-                const playersWithOpenCards = updatedActivePlayers.filter(p => p.openCards && p.openCards.length > 0);
-                
-                console.log(`Проверка: ${playersWithOpenCards.length} из ${updatedActivePlayers.length} игроков вскрыли карты`);
-                
-                if (playersWithOpenCards.length === updatedActivePlayers.length && updatedActivePlayers.length > 0) {
-                    console.log('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ (принудительно)! Отправляем revelation_complete');
-                    
-                    // Останавливаем таймер
-                    clearInterval(interval);
-                    
-                    // Отправляем событие о завершении этапа вскрытия
-                    io.to(roomCode).emit('revelation_complete', {
-                        message: 'Все игроки вскрыли карты!',
-                        nextPhase: 'voting',
-                        current_round: session.current_round,
-                        rounds_count: session.rounds_count
-                    });
-                    
-                    roomTimers.delete(roomCode);
-                    return; // Выходим, не переключаем ход
-                }
-                
                 // Переключаем ход на следующего игрока
                 const activePlayers = session.players_list.filter(p => p.active);
                 if (activePlayers.length > 0) {
@@ -716,71 +638,6 @@ io.on('connection', (socket) => {
                         timeLeft: 60
                     });
                     console.log(`Ход переключён на игрока: ${session.currentMover.nickname}`);
-                    
-                    // Запускаем новый таймер для следующего игрока
-                    let newTimeLeft = 60;
-                    io.to(roomCode).emit('update_timer', { timeLeft: newTimeLeft });
-                    
-                    const newInterval = setInterval(() => {
-                        newTimeLeft--;
-                        if (newTimeLeft <= 0) {
-                            clearInterval(newInterval);
-                            
-                            // Принудительное вскрытие для нового игрока
-                            const newCurrentPlayer = session.currentMover;
-                            if (newCurrentPlayer && newCurrentPlayer.hand) {
-                                const newUnopenedCards = newCurrentPlayer.hand.filter(card => !card.isOpen);
-                                if (newUnopenedCards.length > 0) {
-                                    const newRandomIndex = Math.floor(Math.random() * newUnopenedCards.length);
-                                    const newForcedCard = newUnopenedCards[newRandomIndex];
-                                    const newOriginalIndex = newCurrentPlayer.hand.findIndex(card => card.id === newForcedCard.id);
-                                    
-                                    newForcedCard.open();
-                                    newCurrentPlayer.openCards.push(newForcedCard);
-                                    
-                                    io.to(roomCode).emit('force-reveal-card', {
-                                        player: {
-                                            uuid: newCurrentPlayer.uuid,
-                                            nickname: newCurrentPlayer.nickname
-                                        },
-                                        openCard: {
-                                            id: newForcedCard.id,
-                                            cardType: newForcedCard.cardType,
-                                            name: newForcedCard.name,
-                                            index: newOriginalIndex,
-                                            wasForced: true
-                                        },
-                                        message: `Игрок ${newCurrentPlayer.nickname} не успел открыть карту! Принудительно открыта карта "${newForcedCard.name}"`
-                                    });
-                                }
-                            }
-                            
-                            // Переключаем ход дальше
-                            const newActivePlayers = session.players_list.filter(p => p.active);
-                            if (newActivePlayers.length > 0) {
-                                const newCurrentIndex = newActivePlayers.findIndex(p => p.uuid === newCurrentPlayer.uuid);
-                                const newNextIndex = (newCurrentIndex + 1) % newActivePlayers.length;
-                                session.currentMover = newActivePlayers[newNextIndex];
-                                
-                                io.to(roomCode).emit('turn-update', {
-                                    currentPlayerUuid: session.currentMover.uuid,
-                                    timeLeft: 60
-                                });
-                            }
-                            
-                            io.to(roomCode).emit('timer_end', { 
-                                message: 'Время вышло!',
-                                forcedReveal: true
-                            });
-                            
-                            roomTimers.delete(roomCode);
-                        } else {
-                            io.to(roomCode).emit('update_timer', { timeLeft: newTimeLeft });
-                        }
-                    }, 1000);
-                    
-                    roomTimers.set(roomCode, newInterval);
-                    return; // Важно: выходим, чтобы не удалять новый таймер
                 }
                 
                 io.to(roomCode).emit('timer_end', { 
@@ -797,7 +654,6 @@ io.on('connection', (socket) => {
         roomTimers.set(roomCode, interval);
     });
 
-    
     // Добавляем обработчик для остановки таймера (когда игрок успел открыть карту)
     socket.on('stop_timer', () => {
         const socketInfo = socketMap.get(socket.id);
@@ -888,90 +744,14 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
     });
     console.log(`Первый ход у игрока: ${session.currentMover.nickname}`);
 
-    // Запуск таймера для первого игрока
-    // Останавливаем предыдущий таймер для этой комнаты, если есть
-    if (roomTimers.has(session.roomCode)) {
-        clearInterval(roomTimers.get(session.roomCode));
-        roomTimers.delete(session.roomCode);
-    }
-
-    let timeLeft = 60;
-
-    // Отправляем начальное значение
-    io.to(session.roomCode).emit('update_timer', { timeLeft });
-
-    // Создаём интервал для обновления таймера каждую секунду
-    const interval = setInterval(() => {
-        timeLeft--;
-        if (timeLeft <= 0) {
-            clearInterval(interval);
-            
-            // Проверяем, не вскрыл ли игрок карту за это время
-            if (session.currentMover && session.currentMover === session.currentMover) {
-                // Игрок не вскрыл карту - принудительно вскрываем случайную
-                const currentPlayer = session.currentMover;
-                console.log(`Игрок ${currentPlayer.nickname} не вскрыл карту за 60 секунд, принудительное вскрытие`);
-                
-                const unopenedCards = currentPlayer.hand.filter(card => !card.isOpen);
-                
-                if (unopenedCards.length > 0) {
-                    const randomIndex = Math.floor(Math.random() * unopenedCards.length);
-                    const forcedCard = unopenedCards[randomIndex];
-                    const originalIndex = currentPlayer.hand.findIndex(card => card.id === forcedCard.id);
-                    
-                    forcedCard.open();
-                    currentPlayer.openCards.push(forcedCard);
-                    
-                    io.to(session.roomCode).emit('force-reveal-card', {
-                        player: {
-                            uuid: currentPlayer.uuid,
-                            nickname: currentPlayer.nickname
-                        },
-                        openCard: {
-                            id: forcedCard.id,
-                            cardType: forcedCard.cardType,
-                            name: forcedCard.name,
-                            index: originalIndex,
-                            wasForced: true
-                        },
-                        message: `Игрок ${currentPlayer.nickname} не успел открыть карту! Принудительно открыта карта "${forcedCard.name}"`
-                    });
-                }
-            }
-            
-            // Переключаем ход на следующего игрока
-            const activePlayers = session.players_list.filter(p => p.active);
-            if (activePlayers.length > 0) {
-                const currentIndex = activePlayers.findIndex(p => p.uuid === session.currentMover.uuid);
-                const nextIndex = (currentIndex + 1) % activePlayers.length;
-                session.currentMover = activePlayers[nextIndex];
-                
-                io.to(session.roomCode).emit('turn-update', {
-                    currentPlayerUuid: session.currentMover.uuid,
-                    timeLeft: 60
-                });
-                console.log(`Ход переключён на игрока: ${session.currentMover.nickname}`);
-            }
-            
-            io.to(session.roomCode).emit('timer_end', { 
-                message: 'Время вышло!',
-                forcedReveal: true
-            });
-            
-            roomTimers.delete(session.roomCode);
-        } else {
-            io.to(session.roomCode).emit('update_timer', { timeLeft });
-        }
-    }, 1000);
-
-    roomTimers.set(session.roomCode, interval);
-
     // Отправляем событие всем в комнате
     io.to(session.roomCode).emit('game-start', {
         message: 'Игра началась! Переход на страницу профиля.'
     });
 
     // Ежесекундное обновление таймера через вебсокет
+
+
     res.json({ success: true });
 });
 
@@ -1054,32 +834,7 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
         });
         console.log(`Ход переключён на игрока: ${session.currentMover.nickname}`);
 
-        // Проверка: все ли карту вскрыли?
-        const updatedActivePlayers = session.players_list.filter(p => p.active);
-        const playersWithOpenCards = updatedActivePlayers.filter(p => p.openCards && p.openCards.length > 0);
-
-        console.log(`Проверка: ${playersWithOpenCards.length} из ${updatedActivePlayers.length} игроков вскрыли карты`);
-
-        if (playersWithOpenCards.length === updatedActivePlayers.length && updatedActivePlayers.length > 0) {
-            console.log('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ! Отправляем revelation_complete');
-
-            // Останавливаем таймер
-            if (roomTimers.has(roomCode)) {
-                clearInterval(roomTimers.get(roomCode));
-                roomTimers.delete(roomCode);
-            }
-            
-            // Отправляем событие о завершении этапа вскрытия
-            io.to(roomCode).emit('revelation_complete', {
-                message: 'Все игроки вскрыли карты!',
-                nextPhase: 'voting',
-                current_round: session.current_round,
-                rounds_count: session.rounds_count
-            });
-        }
-
         res.sendStatus(200);
-
     } catch (error) {
         console.error("Ошибка при вскрытии карты", error);
         res.status(500).json({ error: 'Ошибка сервера' });
@@ -1204,39 +959,37 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });*/
-
-
-// Эндпоинт обрабатывающий голосование игроков, и включающий основную работу логики программы
 app.post('/api/game/create', authenticatePlayer, async (req, res) => {
     try {
         const player = req.player;
         const roomCode = req.roomId;
-        const { vote_id } = req.body;
+        const {vote_id} = req.body;
 
         const manager = req.manager;
         const session = manager.GameSession;
 
-        // Проверки
+        // Проверка, не голосовал ли уже
         if (player.isVoted) {
-            return res.status(400).json({ error: 'Вы уже проголосовали в этом раунде' });
+            return res.status(400).json({error: 'Вы уже проголосовали в этом раунде'});
         }
-        
         if (!player.active) {
-            return res.status(403).json({ error: 'Вы исключены из команды и не можете голосовать' });
+            return res.status(403).json({error: 'Вы исключены из команды и не можете голосовать'});
         }
 
         let targetPlayer = null;
 
-        // Обработка голоса
+        // Обработка пропуска голоса
         if (vote_id !== 'skip') {
+            // Ищем целевого игрока ТОЛЬКО если голосуем не за пропуск
             targetPlayer = session.players_list.find(p => p.uuid == vote_id);
 
             if (!targetPlayer || !targetPlayer.active) {
-                return res.status(404).json({ error: 'Игрок не найден или исключён' });
+                return res.status(404).json({error: 'Игрок, за которого вы пытаетесь голосовать, не найден или исключён'});
             }
 
+            // Проверка, чтобы игрок не голосовал за себя (ТОЛЬКО ПОСЛЕ того как нашли targetPlayer)
             if (targetPlayer.uuid === player.uuid) {
-                return res.status(400).json({ error: 'Нельзя голосовать за самого себя' });
+                return res.status(400).json({error: 'Нельзя голосовать за самого себя'});
             }
 
             player.votedOnPlayer = targetPlayer;
@@ -1244,7 +997,7 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
 
         player.isVoted = true;
 
-        // WebSocket событие
+        // Отправляем событие всем в комнате через WebSocket
         io.to(roomCode).emit('player-voted', {
             voter: {
                 uuid: player.uuid,
@@ -1256,23 +1009,14 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             } : null
         });
 
-        // Проверка всех голосов
+        // Проверяем, все ли активные игроки проголосовали
         const activePlayers = session.players_list.filter(p => p.active);
         const allVoted = activePlayers.length > 0 && activePlayers.every(p => p.isVoted === true);
 
         if (allVoted) {
-            // Останавливаем таймеры
-            const timerKey = roomCode + '_5min';
-            if (roomTimers.has(timerKey)) {
-                clearInterval(roomTimers.get(timerKey));
-                roomTimers.delete(timerKey);
-            }
-            if (roomTimers.has(roomCode)) {
-                clearInterval(roomTimers.get(roomCode));
-                roomTimers.delete(roomCode);
-            }
-
             const excludedPlayer = manager.CompleteRound();
+
+            // 1. СНАЧАЛА проверяем, достигнут ли финальный размер команды
             const activeCount = session.players_list.filter(p => p.active).length;
 
             if (activeCount <= session.players_final_count) {
@@ -1284,18 +1028,21 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
 
                 try {
                     await db.saveGameState(session);
+                    console.log('Игра завершена, данные сохранены.');
                 } catch (error) {
                     console.error('Не удалось сохранить игру:', error);
                 }
 
-                return res.status(200).json({ success: true });
+                return res.status(200).json({success: true});
             }
 
-            // Увеличиваем раунд
+            //только если игра не завершена, увеличиваем раунд
             if (session.game_state !== gameState.completed) {
                 session.current_round++;
+                console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
             }
 
+            //Отправляем complete-round
             io.to(roomCode).emit('complete-round', {
                 player: excludedPlayer,
                 current_round: session.current_round,
@@ -1304,19 +1051,19 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
 
             try {
                 await db.saveGameState(session);
+                console.log('Раунд сохранён в БД');
             } catch (error) {
                 console.error('Не удалось сохранить раунд:', error);
             }
 
-            return res.status(200).json({ success: true });
+            return res.status(200).json({success: true});
         }
 
-        // Не все проголосовали
-        return res.status(200).json({ success: true, message: 'Ваш голос учтён' });
+        res.status(200).json({success: true, message: 'Ваш голос учтён'});
 
     } catch (error) {
         console.error('Ошибка при обработке голосования:', error);
-        res.status(500).json({ error: 'Ошибка сервера: ' + error.message });
+        res.status(500).json({error: 'Ошибка сервера: ' + error.message});
     }
 });
 
