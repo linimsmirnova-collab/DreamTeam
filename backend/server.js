@@ -1293,7 +1293,45 @@ app.get('/api/vote/players', authenticatePlayer, (req, res) => {
         res.status(500).json({ error: 'Не удалось получить список игроков' });
     }
 });
-
+// Эндпоинт для массового вскрытия карт (только для создателя)
+app.post('/api/game/reveal-all-cards', authenticatePlayer, (req, res) => {
+    try {
+        const session = req.manager.GameSession;
+        const roomCode = session.roomCode;
+        
+        // Проверяем, что отправитель - создатель
+        if (!req.player.be_creator) {
+            return res.status(403).json({ error: 'Только создатель может вскрыть все карты' });
+        }
+        
+        // Вскрываем все карты всех активных игроков
+        const activePlayers = session.players_list.filter(p => p.active);
+        for (const player of activePlayers) {
+            if (player.hand) {
+                for (const card of player.hand) {
+                    if (!player.openCards.some(oc => oc.id === card.id)) {
+                        card.open();
+                        player.openCards.push(card);
+                    }
+                }
+            }
+        }
+        
+        // Уведомляем всех игроков
+        io.to(roomCode).emit('cards-opened', {
+            players: activePlayers.map(p => ({
+                uuid: p.uuid,
+                nickname: p.nickname,
+                openCards: p.openCards
+            }))
+        });
+        
+        res.json({ success: true });
+    } catch (error) {
+        console.error('Ошибка вскрытия карт:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
 // function getLocalIP() {
 //     const nets = require('os').networkInterfaces();
 //     for (const name of Object.keys(nets)) {
