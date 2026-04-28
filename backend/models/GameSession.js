@@ -17,6 +17,7 @@ class GameSession {
     game_state = null;
     usedFeatureIds = new Set();
     report = null;
+    playersRevealedThisRound = null; // Set для отслеживания вскрывших карту в текущем раунде
 
     set roomCode(roomCode) {
         this.#room_code = roomCode;
@@ -47,6 +48,7 @@ class GameSession {
         this.project = project;
         this.players_final_count = final_players_count;
         this.rounds_count = rounds;
+        this.playersRevealedThisRound = new Set();
     }
 }
 

@@ -450,46 +450,6 @@ window.onload = async function() {
             console.log('WebSocket отключен');
         });
 
-        socket.on('complete-round', (data) => {
-            currentGamePhase = 'voting';
-            console.log('Раунд завершен, обсуждение:', data);
-            
-            // Обновляем номер раунда в sessionStorage
-            if (data.current_round) {
-                sessionStorage.setItem('currentRound', data.current_round.toString());
-                console.log(`Обновлён раунд: ${data.current_round} из ${data.rounds_count}`);
-            }
-            
-            if (data.rounds_count) {
-                sessionStorage.setItem('maxRounds', data.rounds_count.toString());
-            }
-            
-            //Останавливаем таймер вскрытия карт
-            if (socket && socket.connected) {
-                console.log('Отправляем stop_timer на сервер');
-                socket.emit('stop_timer');  // Останавливаем 60-секундный таймер вскрытия
-            }
-
-            // Показываем уведомление о переходе к голосованию
-            showToast('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ! Переход к голосованию...', 'warning');
-
-            // Блокируем навигацию
-            blockNavigation(true, container);
-
-            // Запускаем 5-минутный таймер через сервер
-            if (socket && socket.connected) {
-                console.log('Запускаем 5-минутный таймер голосования');
-                socket.emit('start_timer5');
-            } else {
-                // Fallback для тестового режима
-                console.log('Тестовый режим: запускаем локальный таймер');
-                startLocalVoteTimer(container);
-            }
-            
-            // Загружаем страницу голосования
-            loadPage('vote.html', container);
-        });
-
         socket.on('complete-game', (data) => {
             console.log('Игра завершена:', data);
             
@@ -585,7 +545,8 @@ window.onload = async function() {
                 }
                 
                 // Если все карты вскрыты и игра ещё в фазе вскрытия
-                if (allCardsRevealed && allPlayers.length > 0 && currentGamePhase === 'revelation') {
+                if (allCardsRevealed && allPlayers.length > 0 && currentGamePhase === 'revelation' && !window._revelationCompleted) {
+                    window._revelationCompleted = true; // Устанавливаем флаг
                     console.log('Все карты вскрыты (принудительно)! Переходим к голосованию');
                     currentGamePhase = 'voting';
                     showToast('Все игроки вскрыли карты! Переход к голосованию...', 'success');
@@ -618,6 +579,7 @@ window.onload = async function() {
         });
 
         socket.on('revelation_complete', (data) => {
+            window._revelationCompleted = false; // Сбрасываем флаг для следующего раунда
             currentGamePhase = 'voting';
             console.log('Этап вскрытия завершён:', data);
             
@@ -635,8 +597,8 @@ window.onload = async function() {
             
             // Запускаем 5-минутный таймер голосования
             socket.emit('start_timer5');
-            
-            // Блокируем навигацию (опционально)
+        
+            // Не блокируем навигацию полностью, только переход на профиль
             if (typeof blockNavigation === 'function') {
                 blockNavigation(true, document.querySelector('.container'));
             }
@@ -740,28 +702,49 @@ window.onload = async function() {
 function blockNavigation(block, container) {
     isNavigationBlocked = block;
     const profileIcon = document.querySelector('.icon-right');
+    const voteIcon = document.querySelector('.icon-left');
+    const cardsIcon = document.querySelector('.icon-center');
     const cards = document.querySelectorAll('.profile-card');
 
     if (block) {
-        // Блокируем иконку профиля (делаем её неактивной визуально)
+        // Блокируем иконку ПРОФИЛЯ только на этапе голосования
         if (profileIcon) {
-            profileIcon.style.pointerEvents = 'none';
-            profileIcon.style.opacity = '0.5';
-            
-            // Создаём новый элемент, чтобы поймать клик для уведомления
-            const newIcon = profileIcon.cloneNode(true);
-            profileIcon.parentNode.replaceChild(newIcon, profileIcon);
-            
-            newIcon.addEventListener('click', (e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                showToast('Сейчас этап обсуждения. Переход на профиль заблокирован.', 'warning');
-            });
-            
-            // возврат
-            newIcon.style.pointerEvents = 'auto'; 
-            newIcon.style.opacity = '0.7';
+            if (currentGamePhase === 'voting') {
+                profileIcon.style.pointerEvents = 'none';
+                profileIcon.style.opacity = '0.5';
+                
+                const newIcon = profileIcon.cloneNode(true);
+                profileIcon.parentNode.replaceChild(newIcon, profileIcon);
+                newIcon.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    showToast('Сейчас этап голосования! Переход на профиль заблокирован.', 'warning');
+                });
+                newIcon.style.pointerEvents = 'auto';
+                newIcon.style.opacity = '0.7';
+            } else {
+                profileIcon.style.pointerEvents = 'auto';
+                profileIcon.style.opacity = '1';
+            }
         }
+
+        // Блокируем иконку ГОЛОСОВАНИЯ на этапе вскрытия карт И после раунда
+        if (voteIcon) {
+            if (currentGamePhase === 'revelation' || currentGamePhase === 'waiting') {
+                voteIcon.style.pointerEvents = 'none';
+                voteIcon.style.opacity = '0.5';
+            } else if (currentGamePhase === 'voting') {
+                voteIcon.style.pointerEvents = 'auto';
+                voteIcon.style.opacity = '1';
+            }
+        }
+        
+        // Иконка "Карточки всех игроков" ВСЕГДА активна
+        if (cardsIcon) {
+            cardsIcon.style.pointerEvents = 'auto';
+            cardsIcon.style.opacity = '1';
+        }
+
         // Блокировка карт
         cards.forEach(card => {
             if (!card.classList.contains('card-opened')) {
@@ -770,8 +753,9 @@ function blockNavigation(block, container) {
                 card.style.filter = 'grayscale(50%)';
             }
         });
+        // Блокировка карт (только на этапе вскрытия, когда НЕ ваш ход)
     } else {
-        // анлок интерфейса
+        // Полная разблокировка
         if (profileIcon) {
             profileIcon.style.pointerEvents = 'auto';
             profileIcon.style.opacity = '1';
@@ -782,13 +766,31 @@ function blockNavigation(block, container) {
                 loadPage('profile.html', container);
             });
         }
-        cards.forEach(card => {
-            if (!card.classList.contains('card-opened')) {
-                card.style.pointerEvents = 'auto';
-                card.style.opacity = '1';
-                card.style.filter = 'none';
+
+        // Разблокируем иконку голосования
+         if (voteIcon) {
+            if (currentGamePhase === 'revelation') {
+                voteIcon.style.pointerEvents = 'none';
+                voteIcon.style.opacity = '0.5';
+            } else {
+                voteIcon.style.pointerEvents = 'auto';
+                voteIcon.style.opacity = '1';
             }
-        });
+            const newVoteIcon = voteIcon.cloneNode(true);
+            voteIcon.parentNode.replaceChild(newVoteIcon, voteIcon);
+            newVoteIcon.addEventListener('click', () => {
+                if (currentGamePhase === 'revelation') {
+                    return;
+                }
+                if (timerInterval) clearInterval(timerInterval);
+                loadPage('vote.html', container);
+            });
+        }
+
+        if (cardsIcon) {
+            cardsIcon.style.pointerEvents = 'auto';
+            cardsIcon.style.opacity = '1';
+        }
     }
 }
 
@@ -1464,6 +1466,30 @@ function addPageHandlers(container) {
         const currentPlayer = sessionStorage.getItem('currentPlayer');
         const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;//если ложь то по умолчанию 4 тк мин 4
         
+        // Блокируем навигацию в зависимости от фазы игры
+        if (currentGamePhase === 'revelation') {
+            // На этапе вскрытия карт - блокируем ТОЛЬКО иконку голосования
+            blockNavigation(true, container);
+            // Принудительно разблокируем иконку профиля
+            const profileIcon = document.querySelector('.icon-right');
+            if (profileIcon) {
+                profileIcon.style.pointerEvents = 'auto';
+                profileIcon.style.opacity = '1';
+            }
+        } else if (currentGamePhase === 'voting') {
+            // На этапе голосования - блокируем иконку профиля
+            blockNavigation(true, container);
+            // Принудительно разблокируем иконку голосования
+            const voteIcon = document.querySelector('.icon-left');
+            if (voteIcon) {
+                voteIcon.style.pointerEvents = 'auto';
+                voteIcon.style.opacity = '1';
+            }
+        } else {
+            // Полная разблокировка
+            blockNavigation(false, container);
+        }
+
         // Состояние для таймера и хода
         let currentTurnPlayerUuid = null;   // Чей сейчас ход (UUID)
         let currentSelectedCard = null;     // Текущая выбранная карта
@@ -2016,7 +2042,6 @@ function addPageHandlers(container) {
 
                 //Проверка: нельзя переходить во время вскрытия
                 if (currentGamePhase === 'revelation') {
-                    showToast('Сейчас идёт этап вскрытия карт! Голосование начнётся позже.', 'warning');
                     return;
                 }
                 console.log('переход на vote');
@@ -2057,11 +2082,11 @@ function addPageHandlers(container) {
     const playersContainerCheck = container.querySelector('.players-cards-container');
     //обработчик для обновления карт
     socket.on('cards-opened', (data) => {
-    console.log('Все карты вскрыты сервером:', data);
-    playersData = data.players;
-    renderPlayersList(playersData);
-    showToast('Все карты вскрыты!', 'success');
-});
+        console.log('Все карты вскрыты сервером:', data);
+        playersData = data.players;
+        renderPlayersList(playersData);
+        showToast('Все карты вскрыты!', 'success');
+    });
 
     if (playersContainerCheck) {
         console.log('cards-all-players загружен');
@@ -2073,6 +2098,31 @@ function addPageHandlers(container) {
         const project = JSON.parse(sessionStorage.getItem('project') || '{}');
         const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;
         
+        // СИНХРОНИЗАЦИЯ СОСТОЯНИЯ ИКОНОК
+        if (currentGamePhase === 'revelation') {
+            const voteIcon = document.querySelector('.icon-left');
+            if (voteIcon) {
+                voteIcon.style.pointerEvents = 'none';
+                voteIcon.style.opacity = '0.5';
+            }
+            const profileIcon = document.querySelector('.icon-right');
+            if (profileIcon) {
+                profileIcon.style.pointerEvents = 'auto';
+                profileIcon.style.opacity = '1';
+            }
+        } else if (currentGamePhase === 'voting') {
+            const profileIcon = document.querySelector('.icon-right');
+            if (profileIcon) {
+                profileIcon.style.pointerEvents = 'none';
+                profileIcon.style.opacity = '0.5';
+            }
+            const voteIcon = document.querySelector('.icon-left');
+            if (voteIcon) {
+                voteIcon.style.pointerEvents = 'auto';
+                voteIcon.style.opacity = '1';
+            }
+        }
+
         // Маппинг типов карт (8 карт: 1-6 + дополнительные языки)
         const CARD_TYPES = [
             { type: 1, label: 'Роль' },           // строка 1, колонка 1
@@ -2556,7 +2606,6 @@ function addPageHandlers(container) {
             }
         }
         
-        // Навигация - обновляем обработчики иконок
         const iconRight = document.querySelector('.icon-right');
         if (iconRight) {
             const newIconRight = iconRight.cloneNode(true);
@@ -2564,7 +2613,7 @@ function addPageHandlers(container) {
             
             newIconRight.addEventListener('click', () => {
 
-                //Проверка
+                // Проверяем, разрешён ли переход на профиль
                 if (currentGamePhase === 'voting') {
                     showToast('Сейчас идёт этап голосования! Вы не можете вернуться в профиль.', 'warning');
                     return;
@@ -2598,8 +2647,6 @@ function addPageHandlers(container) {
             newIconLeft.addEventListener('click', () => {
                 //Проверка: нельзя переходить во время вскрытия
                 if (currentGamePhase === 'revelation') {
-                    showToast('Сейчас идёт этап вскрытия карт! Голосование начнётся позже.', 'warning');
-                    return;
                 }
 
                 console.log('Переход на vote.html');
@@ -3219,6 +3266,19 @@ if (voteContainer) {
     if (maxRoundsEl) maxRoundsEl.textContent = maxRounds;
 
     console.log(`Текущий раунд: ${currentRound} из ${maxRounds}`);
+
+    // На этапе голосования: иконка профиля заблокирована, голосование активно
+    const profileIcon = document.querySelector('.icon-right');
+    if (profileIcon) {
+        profileIcon.style.pointerEvents = 'none';
+        profileIcon.style.opacity = '0.5';
+    }
+    const voteIcon = document.querySelector('.icon-left');
+    if (voteIcon) {
+        voteIcon.style.pointerEvents = 'auto';
+        voteIcon.style.opacity = '1';
+    }
+
     // Состояние голосования
     let voteState = {
         voters: [],           // UUID игроков, которые уже проголосовали
@@ -3414,6 +3474,8 @@ if (voteContainer) {
         showToast('Вы выбыли из проекта и не можете голосовать!', 'error');
         return; 
     }
+
+    showToast(targetUuid ? 'Голос учтен' : 'Вы пропустили голосование', 'success');
     
     if (IS_TEST_MODE) {
         // Тест локальное обновление
@@ -3461,7 +3523,6 @@ if (voteContainer) {
         }
         const result = await res.json();
         console.log('Голос успешно отправлен:', result);
-        showToast(targetUuid ? 'Голос учтён' : 'Вы пропустили голосование', 'success');
 
         await loadVotePlayers()
     } catch (err) {
@@ -3551,54 +3612,104 @@ if (voteContainer) {
         if (!socket) {
             socket = io();
         }
-        socket.on('complete-game', (data) => {
-        console.log('Игра завершена сервером. Переход к финалу:', data);
-        blockNavigation(false); // Снимаем блокировку
-    
-    // Сохранение финального состава в sessionStorage для final-team.html
-        if (data.final_party) {
-        sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
-    }
-    
-    //переход на страницу итогов
-    setTimeout(() => {
-        loadPage('final-team.html', container);
-    }, 1500);
-});
-        
+
         socket.emit('register', { playerUuid, roomCode });
+    
+        socket.on('complete-round', (data) => {
+            window._revelationCompleted = false;//Сбрасываем флаг для нового раунда
+            console.log('=== РАУНД ЗАВЕРШЁН (все проголосовали) ===');
+            console.log('Данные от сервера:', data);
+            
+            const maxRounds = data.rounds_count;
+            const completedRound = data.current_round - 1;
+            console.log(`Завершён раунд ${completedRound} из ${maxRounds}`);
+
+            /// Обновляем sessionStorage
+            if (data.current_round) {
+                sessionStorage.setItem('currentRound', data.current_round.toString());
+            }
+            if (maxRounds) {
+                sessionStorage.setItem('maxRounds', maxRounds.toString());
+            }
+            
+            // Если завершённый раунд НЕ последний
+            if (completedRound < maxRounds) {
+                // Ещё есть раунды - переход к следующему раунду
+                showToast('Все игроки проголосовали! Переход к следующему раунду...', 'info');
+                
+                // Для следующего раунда: иконка голосования должна быть заблокирована
+                currentGamePhase = 'revelation';
+
+                blockNavigation(false, container);
+                
+                setTimeout(() => {
+                    // Очищаем состояние голосования
+                    voteState = {
+                        voters: [],
+                        votes: {},
+                        kickedPlayer: null,
+                        isFinished: false
+                    };
+                    // Переход на страницу профиля для следующего раунда
+                    loadPage('profile.html', container);
+                }, 2000);
+            } else {
+                // Это был последний раунд - ждём complete-game
+                console.log('Последний раунд завершён, ожидаем complete-game...');
+                showToast('Все раунды завершены! Формирование финальной команды...', 'info');
+                
+                setTimeout(() => {
+                    blockNavigation(false, container);
+                }, 500);
+            }
+        });
+
+        socket.on('complete-game', (data) => {
+            console.log('Игра завершена сервером. Переход к финалу:', data);
+            blockNavigation(false); // Снимаем блокировку
+    
+            // Сохранение финального состава в sessionStorage для final-team.html
+            if (data.final_party) {
+                sessionStorage.setItem('finalPlayers', JSON.stringify(data.final_party));
+            }
+    
+            //переход на страницу итогов
+            setTimeout(() => {
+                loadPage('final-team.html', container);
+            }, 1500);
+        });
 
         socket.on('update_timer', (data) => {
-        console.log('Синхронизация таймера голосования:', data.timeLeft);
-        timeLeft = data.timeLeft;
+            console.log('Синхронизация таймера голосования:', data.timeLeft);
+            timeLeft = data.timeLeft;
         
-        const timerText = container.querySelector('.vote-timer-text');
-        if (timerText) {
-            const minutes = Math.floor(timeLeft / 60);
-            const seconds = timeLeft % 60;
-            timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-        }
-    });
+            const timerText = container.querySelector('.vote-timer-text');
+            if (timerText) {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+        });
 
-    socket.on('player-voted', (data) => {
-    console.log('Получен голос от сервера:', data);
+        socket.on('player-voted', (data) => {
+            console.log('Получен голос от сервера:', data);
     
-    // список проголосовавших
-    if (data.voter?.uuid && !voteState.voters.includes(data.voter.uuid)) {
-        voteState.voters.push(data.voter.uuid);
-    }
-    
-    // счётчик голосов за каждого игрока
-    if (data.target?.uuid) {
-        if (!voteState.votes[data.target.uuid]) {
-            voteState.votes[data.target.uuid] = [];
-        }
-        if (!voteState.votes[data.target.uuid].includes(data.voter.uuid)) {
-            voteState.votes[data.target.uuid].push(data.voter.uuid);
-        }
-    }
-    loadVotePlayers();
-});
+            // список проголосовавших
+            if (data.voter?.uuid && !voteState.voters.includes(data.voter.uuid)) {
+                voteState.voters.push(data.voter.uuid);
+            }
+            
+            // счётчик голосов за каждого игрока
+            if (data.target?.uuid) {
+                if (!voteState.votes[data.target.uuid]) {
+                    voteState.votes[data.target.uuid] = [];
+                }
+                if (!voteState.votes[data.target.uuid].includes(data.voter.uuid)) {
+                    voteState.votes[data.target.uuid].push(data.voter.uuid);
+                }
+            }
+            loadVotePlayers();
+        });
         
         // Слушаем завершение голосования
         socket.on('vote-finished', (data) => {
@@ -3649,16 +3760,8 @@ if (voteContainer) {
         loadPage('cards-all-players.html', container);
     });
     
-    container.querySelector('.icon-right')?.addEventListener('click', () => {
-        //Проверка: нельзя переходить во время голосования
-        if (currentGamePhase === 'voting') {
-            showToast('Сейчас идёт этап голосования! Вы не можете вернуться в профиль.', 'warning');
-            return;
-        }
-
-        console.log('Переход на profile');
-        if (voteTimerInterval) clearInterval(voteTimerInterval);
-        loadPage('profile.html', container);
+    container.querySelector('.icon-left')?.addEventListener('click', () => {
+        console.log('Уже на странице голосования');
     });
     
     loadVotePlayers();

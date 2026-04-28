@@ -961,6 +961,14 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
         openCard.open();
         player.openCards.push(openCard);
 
+        if (!session.playersRevealedThisRound) {
+            session.playersRevealedThisRound = new Set();
+        }
+        session.playersRevealedThisRound.add(player.uuid);
+        
+        // Получаем актуальный список активных игроков для лога
+        const activePlayersForLog = session.players_list.filter(p => p.active);
+        console.log(`Игрок ${player.nickname} вскрыл карту. Всего вскрыли в этом раунде: ${session.playersRevealedThisRound.size} из ${activePlayersForLog.length}`);
         console.log(`Игрок ${player.nickname} вскрыл карту под индексом ${cardIndex}:`, openCard);
 
         io.to(roomCode).emit('reveal-card', {
@@ -1003,12 +1011,12 @@ app.post('/api/game/reveal-card', authenticatePlayer, async (req, res) => {
 
          // Проверка: все ли карту вскрыли?
         const updatedActivePlayers = session.players_list.filter(p => p.active);
-        const playersWithOpenCards = updatedActivePlayers.filter(p => p.openCards && p.openCards.length > 0);
-
-        console.log(`Проверка: ${playersWithOpenCards.length} из ${updatedActivePlayers.length} игроков вскрыли карты`);
-
-        if (playersWithOpenCards.length === updatedActivePlayers.length && updatedActivePlayers.length > 0) {
-            console.log('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ! Отправляем revelation_complete');
+        
+        if (session.playersRevealedThisRound.size === updatedActivePlayers.length && updatedActivePlayers.length > 0) {
+            console.log('Все игроки вскрыли карты в этом раунде! Отправляем revelation_complete');
+            
+            // Очищаем Set для следующего раунда
+            session.playersRevealedThisRound.clear();
 
             // Останавливаем таймер
             if (roomTimers.has(roomCode)) {
@@ -1249,15 +1257,21 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
             // 5. Только если игра не завершена, увеличиваем раунд
             if (session.game_state !== gameState.completed) {
                 session.current_round++;
+                // Очищаем Set для нового раунда
+                if (session.playersRevealedThisRound) {
+                    session.playersRevealedThisRound.clear();
+                }
                 console.log(`след раунд: ${session.current_round} из ${session.rounds_count}`);
             }
 
             // 6. Отправляем событие о завершении раунда
-            io.to(roomCode).emit('complete-round', {
-                player: excludedPlayer,
-                current_round: session.current_round,
-                rounds_count: session.rounds_count,
-            });
+            setTimeout(() => {
+                io.to(roomCode).emit('complete-round', {
+                    player: excludedPlayer,
+                    current_round: session.current_round,
+                    rounds_count: session.rounds_count,
+                });
+            }, 200);
 
             try {
                 await db.saveGameState(session);
