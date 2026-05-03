@@ -2943,307 +2943,222 @@ function addPageHandlers(container) {
 
 // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ ИТОГОВ (final-team.html) =====
 const finalContainer = container.querySelector('.final-players-list, [data-page="final-team"]');
-
 if (finalContainer) {
     console.log('Final-team: страница загружена');
-    
-    // Данные из sessionStorage
+
     const roomCode = sessionStorage.getItem('currentRoomCode');
     const playerUuid = sessionStorage.getItem('currentPlayerUuid');
     const currentPlayer = sessionStorage.getItem('currentPlayer');
-    const isCreator = sessionStorage.getItem('isCreator') === 'true'; 
-    
-    const maxRounds = parseInt(sessionStorage.getItem('maxRounds')) || 3;
-    const currentRound = parseInt(sessionStorage.getItem('currentRound')) || 1;
+    const isCreator = sessionStorage.getItem('isCreator') === 'true';
 
-    const roundsCompletedEl = container.querySelector('#rounds-completed');//css селектор
-    const maxRoundsEl = container.querySelector('#max-rounds');
+    // 1. СКРЫТИЕ ИГРОВОГО UI (Таймер, "Ваш ход", нижняя панель навигации)
+    const hideGameUI = () => {
+        const selectors = [
+            '.profile-timer-text', '.cards-timer-text',
+            '.profile-turn-text', '.cards-turn-text',
+            '.profile-turn-badge', '.cards-turn-badge',
+            '.bottom-panel', '.nav-bar', '.profile-footer', '.cards-footer',
+            '.vote-skip', '.vote-modal' // Скрываем элементы голосования, если остались
+        ];
+        selectors.forEach(sel => {
+            const el = container.querySelector(sel);
+            if (el) el.style.display = 'none';
+        });
+        // Блокируем иконки навигации, так как игра завершена
+        document.querySelectorAll('.icon-left, .icon-center, .icon-right').forEach(icon => {
+            icon.style.pointerEvents = 'none';
+            icon.style.opacity = '0.3';
+        });
+    };
+    hideGameUI();
 
-if (roundsCompletedEl) {
-    roundsCompletedEl.textContent = currentRound - 1; // Прошедших раундов
-}
-if (maxRoundsEl) {
-    maxRoundsEl.textContent = maxRounds; // Всего раундов
-}
-console.log(`текущий раунд на vote.html: ${currentRound} из ${maxRounds}`);
-    // прокрутка страницы 
-    
-    // загрузка списка игроков с сервера 
-    let finalPlayers = [];  // Игроки в финале
-    let kickedPlayers = []; // Выгнанные игроки
-    
-    async function loadFinalTeam() {
-        if (IS_TEST_MODE) {
-    //для теста
-            finalPlayers = [
-                { uuid: 'test-1', nickname: currentPlayer || 'МойНик', be_creator: true, hand: [
-                    { cardType: 1, name: 'Проектировщик-тестировщик', isOpen: false },
-                    { cardType: 2, name: 'Агрессивный', isOpen: false },
-                    { cardType: 3, name: '1', isOpen: false },
-                    { cardType: 4, name: 'Тайм-менеджмент', isOpen: false },
-                    { cardType: 5, name: 'Рисует схемы на салфетках', isOpen: false },
-                    { cardType: 6, name: 'Figma\nC++', isOpen: false }
-                ]},
-                { uuid: 'test-2', nickname: 'РандомНик1', be_creator: false, hand: [] },
-                { uuid: 'test-3', nickname: 'РандомНик2', be_creator: false, hand: [] },
-                { uuid: 'test-4', nickname: 'РандомНик3', be_creator: false, hand: [] }
-            ];
-            kickedPlayers = [
-                { uuid: 'test-5', nickname: 'РандомНик4' },
-                { uuid: 'test-6', nickname: 'РандомНик5' }
-            ];
-            renderFinalTeam(finalPlayers, kickedPlayers);
-            return;
-        }
-        
-    const storedFinal = sessionStorage.getItem('finalPlayers');
-    const storedKicked = sessionStorage.getItem('kickedPlayersList');
-    
-    if (storedFinal) {
-        finalPlayers = JSON.parse(storedFinal);
-        kickedPlayers = storedKicked ? JSON.parse(storedKicked) : [];
-        renderFinalTeam(finalPlayers, kickedPlayers);
-    } else {
-        console.warn('Нет данных финальных игроков в sessionStorage');
-        renderFinalTeam([], []);
-    }
-    }
-    
-    // отрисовка списка игроков
+    // Данные
+    let finalPlayers = [];
+    let kickedPlayers = [];
+
+    // 2. ОТРИСОВКА С УЧЁТОМ ВСЕХ ВСКРЫТЫХ КАРТ (включая выбывших)
     function renderFinalTeam(players, kicked) {
         const playersList = container.querySelector('.final-players-list');
-        const statsCount = container.querySelector('.final-stats-count');
+        const countContainer = container.querySelector('.final-stats-count')?.parentElement;
         
         if (!playersList) return;
-        
-        // обновляем счётчик 
-        if (statsCount) {
-            statsCount.textContent = players.length;
+
+        // Обновляем текст количества (Проблема 3)
+        if (countContainer) {
+            countContainer.innerHTML = `Количество: ${players.length}`;
+            countContainer.style.fontSize = '16px';
+            countContainer.style.color = '#7F375A';
+            countContainer.style.textAlign = 'center';
         }
-        
-        // очищаем и перерисовываем список
+
         playersList.innerHTML = '';
-        
-        // Рендерим игроков в команде
+
+        // Рендер оставшихся игроков
         players.forEach(player => {
             const playerItem = document.createElement('div');
             playerItem.className = 'final-player-item';
             playerItem.dataset.playerUuid = player.uuid;
-            
-            // Генерируем карточки (вскрытые или скрытые)
+
             let cardsHTML = '';
             if (player.hand && player.hand.length > 0) {
-                const allRevealed = player.hand.every(c => c.isOpen);
+                // Принудительно помечаем все карты как открытые (Проблема 2)
+                player.hand.forEach(c => c.isOpen = true);
                 
-                if (allRevealed || isCreator) {
-                    // Показываем карты
-                    player.hand.forEach(card => {
-                        const label = CARD_TYPE_TO_LABEL[card.cardType];
-                        cardsHTML += `
-                            <div class="mini-card">
-                                <div class="mini-card-label">${label}</div>
-                                <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
-                            </div>
-                        `;
-                    });
-                }
+                player.hand.forEach(card => {
+                    const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                    cardsHTML += `
+                        <div class="mini-card" style="background: #FFCBE5; border-radius: 50px; opacity: 0.8;">
+                            <div class="mini-card-label">${label}</div>
+                            <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
+                        </div>
+                    `;
+                });
             }
-            
+
             playerItem.innerHTML = `
                 <div class="final-player-badge"></div>
                 <div class="final-player-name">${player.nickname}</div>
-                ${cardsHTML ? `<div class="player-cards-expanded"><div class="player-cards-grid">${cardsHTML}</div></div>` : ''}
+                ${cardsHTML ? `<div class="player-cards-expanded" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><div class="player-cards-grid" style="display:contents;">${cardsHTML}</div></div>` : ''}
             `;
-            
-            // клик по нику - показать/скрыть карты (для не-создателя)
-            if (!isCreator && cardsHTML) {
-                const nameEl = playerItem.querySelector('.final-player-name');
-                const cardsExpanded = playerItem.querySelector('.player-cards-expanded');
-                
-                if (nameEl && cardsExpanded) {
-                    nameEl.style.cursor = 'pointer';
-                    nameEl.onclick = () => {
-                        if (cardsExpanded.style.display === 'none' || !cardsExpanded.style.display) {
-                            cardsExpanded.style.display = 'flex';
-                            playerItem.classList.add('open');
-                            nameEl.style.color = '#F17BAB';
-                        } else {
-                            cardsExpanded.style.display = 'none';
-                            playerItem.classList.remove('open');
-                            nameEl.style.color = '#FE5499';
-                        }
-                    };
-                }
-            }
-            
             playersList.appendChild(playerItem);
         });
-        
-        // рендер выгнанных игроков 
+
+        // Рендер выгнанных игроков (их карты тоже розовые)
         kicked.forEach(player => {
             const kickedItem = document.createElement('div');
             kickedItem.className = 'final-player-item eliminated';
             kickedItem.dataset.playerUuid = player.uuid;
-            
+
+            let kickedCardsHTML = '';
+            if (player.hand && player.hand.length > 0) {
+                player.hand.forEach(c => c.isOpen = true);
+                player.hand.forEach(card => {
+                    const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                    kickedCardsHTML += `
+                        <div class="mini-card" style="background: #E8B8D0; border-radius: 50px; opacity: 0.6; filter: grayscale(30%);">
+                            <div class="mini-card-label">${label}</div>
+                            <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
+                        </div>
+                    `;
+                });
+            }
+
             kickedItem.innerHTML = `
                 <div class="final-player-badge"></div>
                 <div class="final-player-name">${player.nickname}</div>
+                ${kickedCardsHTML ? `<div class="player-cards-expanded" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;"><div class="player-cards-grid" style="display:contents;">${kickedCardsHTML}</div></div>` : ''}
             `;
-            
             playersList.appendChild(kickedItem);
         });
     }
-    
-    // вскрытие карт
-    if (!IS_TEST_MODE && playerUuid && roomCode) {
-        if (!socket) {
-            socket = io();
+
+    // Загрузка данных
+    async function loadFinalTeam() {
+        const storedFinal = sessionStorage.getItem('finalPlayers');
+        const storedKicked = sessionStorage.getItem('kickedPlayersList');
+        if (storedFinal) {
+            finalPlayers = JSON.parse(storedFinal);
+            kickedPlayers = storedKicked ? JSON.parse(storedKicked) : [];
         }
-        
-        socket.emit('register', { playerUuid, roomCode });
-        
-        socket.on('reveal-all-cards', (data) => {
-            console.log('все карты вскрыты:', data);
+        renderFinalTeam(finalPlayers, kickedPlayers);
+    }
+
+    // 3. ОБРАБОТКА СОБЫТИЯ ВСКРЫТИЯ КАРТ (Проблема 1)
+    if (socket) {
+        socket.removeAllListeners('cards-opened'); // Убираем глобальные дубли
+        socket.on('cards-opened', (data) => {
+            console.log('📦 Карты вскрыты сервером:', data);
+            
+            // Синхронизируем данные, если сервер прислал обновлённый список
+            if (data.players && Array.isArray(data.players)) {
+                finalPlayers = data.players.filter(p => p.active || p.active === undefined);
+                kickedPlayers = data.players.filter(p => !p.active);
+            }
+            
+            // Принудительно открываем все карты на клиенте
+            [...finalPlayers, ...kickedPlayers].forEach(p => {
+                if (p.hand) p.hand.forEach(c => c.isOpen = true);
+            });
+
             renderFinalTeam(finalPlayers, kickedPlayers);
+            showToast('Все карты вскрыты!', 'success');
+
+            // Активируем кнопку результатов ТОЛЬКО у создателя
+            if (isCreator && window.activateResultsButton) {
+                window.activateResultsButton();
+            }
         });
     }
-    
-    // вскрыть "вскрыть все карты" 
+
+    // 4. КНОПКА "ПОСМОТРЕТЬ РЕЗУЛЬТАТЫ" (Проблема 1 и 3)
+    const resultsBtn = container.querySelector('.final-results-btn');
+    if (resultsBtn) {
+        if (isCreator) {
+            resultsBtn.style.display = 'block';
+            resultsBtn.style.cursor = 'pointer';
+            resultsBtn.style.pointerEvents = 'none'; // Изначально неактивна
+            resultsBtn.style.opacity = '0.5';
+            const text = resultsBtn.querySelector('.final-results-text');
+            if (text) text.textContent = 'Посмотреть результаты';
+
+            resultsBtn.onclick = () => {
+                sessionStorage.setItem('finalResults', JSON.stringify({ finalPlayers, kickedPlayers, roomCode }));
+                loadPage('answers.html', container);
+            };
+
+            window.activateResultsButton = () => {
+                resultsBtn.style.pointerEvents = 'auto';
+                resultsBtn.style.opacity = '1';
+                const badge = resultsBtn.querySelector('.final-results-badge');
+                const text = resultsBtn.querySelector('.final-results-text');
+                if (badge) {
+                    badge.style.background = '#F17BAB';
+                    badge.style.borderColor = '#7F375A';
+                }
+                if (text) {
+                    text.style.color = '#FFFFFF';
+                    text.style.textShadow = '1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A';
+                }
+            };
+        } else {
+            // Для остальных игроков: кнопка видна, но неактивна
+            resultsBtn.style.display = 'block';
+            resultsBtn.style.pointerEvents = 'none';
+            resultsBtn.style.opacity = '0.5';
+            resultsBtn.style.cursor = 'not-allowed';
+            const text = resultsBtn.querySelector('.final-results-text');
+            const badge = resultsBtn.querySelector('.final-results-badge');
+            if (badge) { badge.style.background = '#DADADA'; badge.style.borderColor = '#9B3D63'; }
+            if (text) {
+                text.textContent = 'Ожидание действий создателя...';
+                text.style.color = '#9B3D63';
+            }
+        }
+    }
+
+    // Кнопка "Вскрыть все карты" (если осталась на странице)
     const revealBtn = container.querySelector('.final-reveal-btn');
-    
     if (revealBtn) {
         if (isCreator) {
-            //показывается кнопка только создателю
             revealBtn.style.display = 'block';
-            revealBtn.style.cursor = 'pointer';
-            
             revealBtn.onclick = async () => {
-                if (IS_TEST_MODE) {
-                    finalPlayers.forEach(p => {
-                        if (p.hand) p.hand.forEach(c => c.isOpen = true);
-                    });
-                    renderFinalTeam(finalPlayers, kickedPlayers);
-                    if (socket) {
-                        socket.emit('reveal-all-cards', { roomCode, finalPlayers });
-                    }
-                    return;
-                }
-                
                 try {
-                    // запрос на сервер
-                    const res = await fetch('/api/game/reveal-all-cards', {
+                    await fetch('/api/game/reveal-all-cards', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
                         body: JSON.stringify({ roomCode })
                     });
-                    
-                    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
-                    if (window.activateResultsButton) {
-                     window.activateResultsButton();
-                    }
-                    loadPage('cards-all-players.html', container);
-                    
-                    console.log('все карты вскрыты');
-                    // Сервер сам разошлёт событие всем игрокам
-                    
                 } catch (err) {
-                    console.error('ошибка вскрытия:', err);
-                    alert('Не удалось вскрыть карты');
+                    console.error('Ошибка вскрытия:', err);
                 }
             };
         } else {
-            // Скрываем кнопку для не-создателя
             revealBtn.style.display = 'none';
         }
     }
-    
-    // кнопка "Посмотреть результаты" 
-  const resultsBtn = container.querySelector('.final-results-btn');
 
-if (resultsBtn) {
-    if (isCreator) {
-        resultsBtn.style.display = 'block';
-        resultsBtn.style.opacity = '0.5';
-        resultsBtn.style.cursor = 'not-allowed';
-        resultsBtn.style.pointerEvents = 'auto';
-        
-        const badge = resultsBtn.querySelector('.final-results-badge');
-        const text = resultsBtn.querySelector('.final-results-text');
-        if (badge) {
-            badge.style.background = '#DADADA';
-            badge.style.borderColor = '#9B3D63';
-        }
-        if (text) {
-            text.style.color = '#9B3D63';
-            text.style.textShadow = 'none';
-        }
-        
-        // Флаг, что карты ещё не вскрыты
-        let cardsRevealed = false;
-        
-        resultsBtn.onclick = () => {
-            if (!cardsRevealed) {
-                showToast('Сначала вскройте все карты!', 'warning');
-                return;
-            }
-            
-            sessionStorage.setItem('finalResults', JSON.stringify({
-                finalPlayers,
-                kickedPlayers,
-                roomCode
-            }));
-            loadPage('answers.html', container);
-        };
-        
-        // ✅ Сохраняем функцию для активации из revealBtn
-        window.activateResultsButton = () => {
-            cardsRevealed = true;
-            resultsBtn.style.opacity = '1';
-            resultsBtn.style.cursor = 'pointer';
-            if (badge) {
-                badge.style.background = '#F17BAB';
-                badge.style.borderColor = '#7F375A';
-            }
-            if (text) {
-                text.style.color = '#FFFFFF';
-                text.style.textShadow = `1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A`;
-            }
-        };
-        
-    } else {
-        // Для не-создателя
-        resultsBtn.style.display = 'block';
-        resultsBtn.style.cursor = 'not-allowed';
-        
-        const badge = resultsBtn.querySelector('.final-results-badge');
-        const text = resultsBtn.querySelector('.final-results-text');
-        if (badge) {
-            badge.style.background = '#DADADA';
-            badge.style.borderColor = '#9B3D63';
-        }
-        if (text) {
-            text.style.color = '#9B3D63';
-            text.style.textShadow = 'none';
-            text.textContent = 'Ожидание создателя';
-        }
-        
-        resultsBtn.onclick = null;
-    }
-}
-    
-    // На финальной странице иконки обычно не нужны, но если есть:
-    container.querySelector('.icon-left')?.addEventListener('click', () => {
-        if (confirm('Покинуть комнату?')) {
-            if (socket) socket.disconnect();
-            sessionStorage.clear();
-            loadPage('main-page-content.html', container);
-        }
-    });
-    
     loadFinalTeam();
-    
     console.log('Final-team: логика инициализирована');
 }
 
