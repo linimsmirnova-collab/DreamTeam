@@ -3742,25 +3742,45 @@ if (voteContainer) {
                 card.className = 'results-card';
                 const questionText = ans.questionText || `Вопрос ${ans.questionId}`;
                 card.innerHTML = `
-                <div class="results-question">${questionText}</div>
-                <div class="results-description">${ans.comment || ''}</div>
-                <div class="results-answer">
-                    <div class="results-text">${ans.answerText}</div>
-                    <div class="results-score">${ans.score > 0 ? `+${ans.score}` : ans.score}</div>
-                </div>
-            `;
+            <div class="results-question">${escapeHtml(questionText)}</div>
+            <div class="results-description">${escapeHtml(ans.comment || '')}</div>
+            <div class="results-answer">
+                <div class="results-text">${escapeHtml(ans.answerText)}</div>
+                <div class="results-score">${ans.score > 0 ? `+${ans.score}` : ans.score}</div>
+            </div>
+        `;
                 containerCards.appendChild(card);
             });
+
+            // Разделяем verdict по шаблону "Заголовок – Описание"
+            let verdictLabel = data.verdict;
+            let verdictText = '';
+            const dashIndex = data.verdict.indexOf('–'); // длинное тире
+            if (dashIndex !== -1) {
+                verdictLabel = data.verdict.substring(0, dashIndex).trim();
+                verdictText = data.verdict.substring(dashIndex + 1).trim();
+            }
 
             const verdictCard = document.createElement('div');
             verdictCard.className = 'results-verdict';
             verdictCard.innerHTML = `
-            <div class="verdict-title">Вердикт</div>
-            <div class="verdict-score">${data.totalScore}</div>
-            <div class="verdict-label">${data.verdict}</div>
-            <div class="verdict-text">${data.verdict}</div>
-        `;
+        <div class="verdict-title">Вердикт</div>
+        <div class="verdict-score">${data.totalScore}</div>
+        <div class="verdict-label">${escapeHtml(verdictLabel)}</div>
+        <div class="verdict-text">${escapeHtml(verdictText)}</div>
+    `;
             containerCards.appendChild(verdictCard);
+        }
+
+// Вспомогательная функция для экранирования HTML (безопасность)
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
         }
 
         // Кнопка "Вернуться в главное меню"
