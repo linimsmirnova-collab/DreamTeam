@@ -2629,21 +2629,23 @@ span {
 }
 /* ===== СТРАНИЦА ИТОГОВ (final-team.html) ===== */
 
-/* Прокрутка списка игроков */
+/* Контейнер списка игроков с прокруткой */
 .final-players-list {
     position: absolute;
     width: 360px;
     left: 17px;
     top: 170px;
-    bottom: 180px;  /* Отступ снизу для кнопок "Вскрыть" и "Результаты" */
-    overflow-y: auto;  /* ВКЛЮЧАЕТ ВЕРТИКАЛЬНУЮ ПРОКРУТКУ */
+    bottom: 180px; /* Отступ снизу для кнопок */
+    overflow-y: auto;
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    padding-right: 8px;  /* Место для скроллбара */
+    gap: 15px; /* Отступ между игроками */
+    padding-right: 8px;
     box-sizing: border-box;
 }
+
+/* Скроллбар */
 .final-players-list::-webkit-scrollbar {
     width: 4px;
 }
@@ -2655,8 +2657,161 @@ span {
     background: #F17BAB;
     border-radius: 2px;
 }
-.final-players-list::-webkit-scrollbar-thumb:hover {
-    background: #7F375A;
+
+/* Блок одного игрока */
+.final-player-item {
+    position: relative; /* Важно: relative, чтобы absolute элементы внутри позиционировались относительно него */
+    width: 100%;
+    min-height: 80px; /* Минимальная высота блока */
+    flex-shrink: 0;
+    padding: 15px;
+    padding-top: 10px;
+    background: #FFFFFF;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+    
+    /* Используем Flexbox для вертикального расположения: Ник -> Карты */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 10px;
+}
+
+/* Бейдж фона игрока (оставляем абсолютным, чтобы он был фоном) */
+.final-player-item .final-player-badge {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    left: 0;
+    top: 0;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    background: #FFFFFF;
+    box-sizing: border-box;
+    z-index: 1; /* Фон под контентом */
+}
+
+/* Никнейм игрока */
+.final-player-item .final-player-name {
+    position: relative; /* Убираем absolute, чтобы он шел в потоке */
+    width: 100%;
+    text-align: center;
+    font-family: "Inria Serif";
+    font-weight: 700;
+    font-size: 20px;
+    line-height: 24px;
+    color: #FE5499;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    z-index: 2; /* Поверх фона */
+    margin-top: 5px; /* Небольшой отступ сверху */
+}
+
+/* Контейнер для раскрытых карт */
+.final-player-item .player-cards-expanded {
+    position: relative; /* Убираем absolute */
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 2;
+    margin-top: 5px;
+}
+
+/* Сетка карт внутри игрока (2 колонки) */
+.final-player-item .player-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr); /* Ровно 2 колонки */
+    gap: 8px;
+    width: 100%;
+    justify-items: center;
+}
+
+/* Мини-карточка внутри итогов */
+.final-player-item .mini-card {
+    position: relative; /* Убираем absolute */
+    width: 100%;
+    max-width: 160px; /* Ограничиваем ширину, чтобы влезало в 2 колонки */
+    aspect-ratio: 172/130;
+    background: #FFCBE5;
+    border: 2px solid #7F375A;
+    border-radius: 50px;
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 5px;
+    z-index: 2;
+}
+
+/* Лейбл карты (Роль, Стаж и т.д.) */
+.final-player-item .mini-card-label {
+    position: absolute;
+    width: 90%;
+    height: auto;
+    min-height: 20px;
+    left: 50%;
+    top: 10px;
+    transform: translateX(-50%);
+    font-family: "Inria Serif";
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #FE5499;
+    pointer-events: none;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Значение карты */
+.final-player-item .mini-card-value {
+    position: absolute;
+    width: 90%;
+    height: auto;
+    min-height: 40px;
+    left: 50%;
+    bottom: 10px;
+    transform: translateX(-50%);
+    font-family: "Inria Serif";
+    font-weight: 700;
+    font-size: 14px;
+    line-height: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    color: #FFFFFF;
+    pointer-events: none;
+    padding: 2px;
+    box-sizing: border-box;
+    word-break: break-word;
+    text-shadow: 1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A;
+}
+
+/* Стили для выгнанных игроков */
+.final-player-item.eliminated {
+    background: #F8E8F0;
+    border-color: #9B3D63;
+    opacity: 0.8;
+}
+
+.final-player-item.eliminated .final-player-badge {
+    background: #F8E8F0;
+    border-color: #9B3D63;
+}
+
+.final-player-item.eliminated .final-player-name {
+    text-decoration: line-through;
+    color: #9B3D63;
 }
 /* ===== СТРАНИЦА ГОЛОСОВАНИЯ (vote.html) ===== */
 

@@ -2977,14 +2977,14 @@ if (finalContainer) {
     let kickedPlayers = [];
     let areCardsRevealed = false; // Флаг: вскрыты ли карты
 
-    // 2. ОТРИСОВКА СПИСКА (Карты показываются ТОЛЬКО если areCardsRevealed === true)
+    // 2. ОТРИСОВКА СПИСКА (Используем CSS классы из style.css)
     function renderFinalTeam(players, kicked, revealed) {
         const playersList = container.querySelector('.final-players-list');
         const countDisplay = container.querySelector('.final-stats-count'); 
         
         if (!playersList) return;
 
-        // Обновляем количество (Проблема: просто цифра)
+        // Обновляем количество игроков (Просто цифра)
         if (countDisplay) {
             countDisplay.textContent = players.length; 
         }
@@ -2994,74 +2994,44 @@ if (finalContainer) {
         // Рендер оставшихся игроков
         players.forEach(player => {
             const playerItem = document.createElement('div');
-            playerItem.className = 'final-player-item';
+            playerItem.className = 'final-player-item'; // Класс берет стили из CSS
             playerItem.dataset.playerUuid = player.uuid;
-            
-            // Стиль для всего блока игрока: вертикальное расположение
-            playerItem.style.display = 'flex';
-            playerItem.style.flexDirection = 'column';
-            playerItem.style.gap = '10px';
-            playerItem.style.marginBottom = '20px';
-            playerItem.style.padding = '15px';
-            playerItem.style.border = '2px solid #7F375A';
-            playerItem.style.borderRadius = '15px';
-            playerItem.style.background = '#FFF0F5';
 
             // Никнейм
             const nameDiv = document.createElement('div');
             nameDiv.className = 'final-player-name';
             nameDiv.textContent = player.nickname;
-            nameDiv.style.fontSize = '18px';
-            nameDiv.style.fontWeight = 'bold';
-            nameDiv.style.color = '#FE5499';
             playerItem.appendChild(nameDiv);
 
-            // Контейнер для карт
+            // Контейнер для карт (показываем только если revealed === true)
             if (revealed && player.hand && player.hand.length > 0) {
-                const cardsContainer = document.createElement('div');
-                cardsContainer.className = 'player-cards-grid';
+                const cardsExpanded = document.createElement('div');
+                cardsExpanded.className = 'player-cards-expanded';
                 
-                // Стили для сетки карт: 2 колонки, как на фото 1
-                cardsContainer.style.display = 'grid';
-                cardsContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-                cardsContainer.style.gap = '10px';
-                cardsContainer.style.width = '100%';
+                const cardsGrid = document.createElement('div');
+                cardsGrid.className = 'player-cards-grid'; // Класс берет стили сетки из CSS
 
                 player.hand.forEach(card => {
                     const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
                     
                     const cardDiv = document.createElement('div');
-                    cardDiv.className = 'mini-card';
-                    cardDiv.style.background = '#FFCBE5';
-                    cardDiv.style.borderRadius = '15px';
-                    cardDiv.style.padding = '10px';
-                    cardDiv.style.display = 'flex';
-                    cardDiv.style.flexDirection = 'column';
-                    cardDiv.style.alignItems = 'center';
-                    cardDiv.style.justifyContent = 'center';
-                    cardDiv.style.textAlign = 'center';
-                    cardDiv.style.minHeight = '80px';
-
+                    cardDiv.className = 'mini-card'; // Класс берет стили карты из CSS
+                    
                     const labelDiv = document.createElement('div');
                     labelDiv.className = 'mini-card-label';
                     labelDiv.textContent = label;
-                    labelDiv.style.fontSize = '12px';
-                    labelDiv.style.color = '#7F375A';
-                    labelDiv.style.marginBottom = '5px';
 
                     const valueDiv = document.createElement('div');
                     valueDiv.className = 'mini-card-value';
                     valueDiv.innerHTML = card.name.replace(/\n/g, '<br>');
-                    valueDiv.style.fontSize = '14px';
-                    valueDiv.style.color = '#7F375A';
-                    valueDiv.style.fontWeight = 'bold';
 
                     cardDiv.appendChild(labelDiv);
                     cardDiv.appendChild(valueDiv);
-                    cardsContainer.appendChild(cardDiv);
+                    cardsGrid.appendChild(cardDiv);
                 });
 
-                playerItem.appendChild(cardsContainer);
+                cardsExpanded.appendChild(cardsGrid);
+                playerItem.appendChild(cardsExpanded);
             }
 
             playersList.appendChild(playerItem);
@@ -3070,70 +3040,42 @@ if (finalContainer) {
         // Рендер выгнанных игроков
         kicked.forEach(player => {
             const kickedItem = document.createElement('div');
-            kickedItem.className = 'final-player-item eliminated';
+            kickedItem.className = 'final-player-item eliminated'; // Класс eliminated берет стили из CSS
             kickedItem.dataset.playerUuid = player.uuid;
-            
-            kickedItem.style.display = 'flex';
-            kickedItem.style.flexDirection = 'column';
-            kickedItem.style.gap = '10px';
-            kickedItem.style.marginBottom = '20px';
-            kickedItem.style.padding = '15px';
-            kickedItem.style.border = '2px dashed #9B3D63';
-            kickedItem.style.borderRadius = '15px';
-            kickedItem.style.background = '#F8E8F0';
-            kickedItem.style.opacity = '0.7';
 
             const nameDiv = document.createElement('div');
             nameDiv.className = 'final-player-name';
             nameDiv.textContent = player.nickname + ' (выгнан)';
-            nameDiv.style.fontSize = '16px';
-            nameDiv.style.fontWeight = 'bold';
-            nameDiv.style.color = '#9B3D63';
             kickedItem.appendChild(nameDiv);
 
             if (revealed && player.hand && player.hand.length > 0) {
-                const cardsContainer = document.createElement('div');
-                cardsContainer.className = 'player-cards-grid';
-                cardsContainer.style.display = 'grid';
-                cardsContainer.style.gridTemplateColumns = 'repeat(2, 1fr)';
-                cardsContainer.style.gap = '10px';
-                cardsContainer.style.width = '100%';
+                const cardsExpanded = document.createElement('div');
+                cardsExpanded.className = 'player-cards-expanded';
+                
+                const cardsGrid = document.createElement('div');
+                cardsGrid.className = 'player-cards-grid';
 
                 player.hand.forEach(card => {
                     const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
                     
                     const cardDiv = document.createElement('div');
                     cardDiv.className = 'mini-card';
-                    cardDiv.style.background = '#E8B8D0';
-                    cardDiv.style.borderRadius = '15px';
-                    cardDiv.style.padding = '10px';
-                    cardDiv.style.display = 'flex';
-                    cardDiv.style.flexDirection = 'column';
-                    cardDiv.style.alignItems = 'center';
-                    cardDiv.style.justifyContent = 'center';
-                    cardDiv.style.textAlign = 'center';
-                    cardDiv.style.minHeight = '80px';
-
+                    
                     const labelDiv = document.createElement('div');
                     labelDiv.className = 'mini-card-label';
                     labelDiv.textContent = label;
-                    labelDiv.style.fontSize = '12px';
-                    labelDiv.style.color = '#7F375A';
-                    labelDiv.style.marginBottom = '5px';
 
                     const valueDiv = document.createElement('div');
                     valueDiv.className = 'mini-card-value';
                     valueDiv.innerHTML = card.name.replace(/\n/g, '<br>');
-                    valueDiv.style.fontSize = '14px';
-                    valueDiv.style.color = '#7F375A';
-                    valueDiv.style.fontWeight = 'bold';
 
                     cardDiv.appendChild(labelDiv);
                     cardDiv.appendChild(valueDiv);
-                    cardsContainer.appendChild(cardDiv);
+                    cardsGrid.appendChild(cardDiv);
                 });
 
-                kickedItem.appendChild(cardsContainer);
+                cardsExpanded.appendChild(cardsGrid);
+                kickedItem.appendChild(cardsExpanded);
             }
 
             playersList.appendChild(kickedItem);
@@ -3150,7 +3092,7 @@ if (finalContainer) {
             kickedPlayers = storedKicked ? JSON.parse(storedKicked) : [];
         }
         
-        // Изначально карты не вскрыты (areCardsRevealed = false)
+        // Изначально карты скрыты (revealed = false)
         renderFinalTeam(finalPlayers, kickedPlayers, false);
     }
 
@@ -3161,6 +3103,7 @@ if (finalContainer) {
             revealBtn.style.display = 'block';
             revealBtn.onclick = async () => {
                 try {
+                    // Отправляем запрос на сервер
                     await fetch('/api/game/reveal-all-cards', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -3168,9 +3111,13 @@ if (finalContainer) {
                         body: JSON.stringify({ roomCode })
                     });
                     
+                    // Скрываем кнопку после нажатия
                     revealBtn.style.display = 'none';
+                    
+                    // Локально обновляем вид для создателя (сервер пришлет событие, но так быстрее)
                     areCardsRevealed = true;
                     renderFinalTeam(finalPlayers, kickedPlayers, true);
+                    
                     showToast('Все карты вскрыты!', 'success');
                 } catch (err) {
                     console.error('Ошибка вскрытия:', err);
@@ -3181,13 +3128,17 @@ if (finalContainer) {
         }
     }
 
-    // Слушаем событие от сервера
+    // Слушаем событие от сервера (для синхронизации всех игроков)
     if (socket) {
         socket.on('cards-opened', (data) => {
             console.log('Карты вскрыты через сокет');
             areCardsRevealed = true;
+            
+            // Если сервер прислал данные, можно их использовать, но пока берем из sessionStorage
+            // Важно: просто перерисовываем с флагом true
             renderFinalTeam(finalPlayers, kickedPlayers, true);
             
+            // Активируем кнопку результатов у создателя
             if (isCreator && window.activateResultsButton) {
                 window.activateResultsButton();
             }
@@ -3200,7 +3151,7 @@ if (finalContainer) {
         if (isCreator) {
             resultsBtn.style.display = 'block';
             resultsBtn.style.cursor = 'pointer';
-            resultsBtn.style.pointerEvents = 'none';
+            resultsBtn.style.pointerEvents = 'none'; // Изначально неактивна
             resultsBtn.style.opacity = '0.5';
             const text = resultsBtn.querySelector('.final-results-text');
             if (text) text.textContent = 'Посмотреть результаты';
