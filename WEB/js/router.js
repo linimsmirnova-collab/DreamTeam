@@ -2958,7 +2958,7 @@ if (finalContainer) {
             '.profile-turn-text', '.cards-turn-text',
             '.profile-turn-badge', '.cards-turn-badge',
             '.bottom-panel', '.nav-bar', '.profile-footer', '.cards-footer',
-            '.vote-skip', '.vote-modal' // Скрываем элементы голосования, если остались
+            '.vote-skip', '.vote-modal'
         ];
         selectors.forEach(sel => {
             const el = container.querySelector(sel);
@@ -2975,20 +2975,18 @@ if (finalContainer) {
     // Данные
     let finalPlayers = [];
     let kickedPlayers = [];
+    let areCardsRevealed = false; // Флаг: вскрыты ли карты (по умолчанию НЕТ)
 
-    // 2. ОТРИСОВКА С УЧЁТОМ ВСЕХ ВСКРЫТЫХ КАРТ (включая выбывших)
-    function renderFinalTeam(players, kicked) {
+    // 2. ОТРИСОВКА СПИСКА (Карты показываются ТОЛЬКО если areCardsRevealed === true)
+    function renderFinalTeam(players, kicked, revealed) {
         const playersList = container.querySelector('.final-players-list');
-        const countContainer = container.querySelector('.final-stats-count')?.parentElement;
+        const countDisplay = container.querySelector('.final-stats-count'); 
         
         if (!playersList) return;
 
-        // Обновляем текст количества (Проблема 3)
-        if (countContainer) {
-            countContainer.innerHTML = `Количество: ${players.length}`;
-            countContainer.style.fontSize = '16px';
-            countContainer.style.color = '#7F375A';
-            countContainer.style.textAlign = 'center';
+        // Обновляем количество (Проблема: просто цифра)
+        if (countDisplay) {
+            countDisplay.textContent = players.length; 
         }
 
         playersList.innerHTML = '';
@@ -3000,14 +2998,16 @@ if (finalContainer) {
             playerItem.dataset.playerUuid = player.uuid;
 
             let cardsHTML = '';
-            if (player.hand && player.hand.length > 0) {
-                // Принудительно помечаем все карты как открытые (Проблема 2)
+            
+            // Показываем карты ТОЛЬКО если они вскрыты (revealed === true)
+            if (revealed && player.hand && player.hand.length > 0) {
+                // Принудительно помечаем как открытые для визуализации
                 player.hand.forEach(c => c.isOpen = true);
                 
                 player.hand.forEach(card => {
                     const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
                     cardsHTML += `
-                        <div class="mini-card" style="background: #FFCBE5; border-radius: 50px; opacity: 0.8;">
+                        <div class="mini-card" style="background: #FFCBE5; border-radius: 50px;">
                             <div class="mini-card-label">${label}</div>
                             <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
                         </div>
@@ -3023,19 +3023,21 @@ if (finalContainer) {
             playersList.appendChild(playerItem);
         });
 
-        // Рендер выгнанных игроков (их карты тоже розовые)
+        // Рендер выгнанных игроков (Проблема: теперь они тоже показываются)
         kicked.forEach(player => {
             const kickedItem = document.createElement('div');
-            kickedItem.className = 'final-player-item eliminated';
+            kickedItem.className = 'final-player-item eliminated'; // Класс eliminated для серого цвета
             kickedItem.dataset.playerUuid = player.uuid;
 
             let kickedCardsHTML = '';
-            if (player.hand && player.hand.length > 0) {
+            
+            // Если карты вскрыты, показываем и у выбывших (тоже розовые, но можно чуть бледнее)
+            if (revealed && player.hand && player.hand.length > 0) {
                 player.hand.forEach(c => c.isOpen = true);
                 player.hand.forEach(card => {
                     const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
                     kickedCardsHTML += `
-                        <div class="mini-card" style="background: #E8B8D0; border-radius: 50px; opacity: 0.6; filter: grayscale(30%);">
+                        <div class="mini-card" style="background: #E8B8D0; border-radius: 50px; opacity: 0.7;">
                             <div class="mini-card-label">${label}</div>
                             <div class="mini-card-value">${card.name.replace(/\n/g, '<br>')}</div>
                         </div>
@@ -3052,45 +3054,75 @@ if (finalContainer) {
         });
     }
 
-    // Загрузка данных
+    // Загрузка данных из sessionStorage
     async function loadFinalTeam() {
         const storedFinal = sessionStorage.getItem('finalPlayers');
         const storedKicked = sessionStorage.getItem('kickedPlayersList');
+        
         if (storedFinal) {
             finalPlayers = JSON.parse(storedFinal);
             kickedPlayers = storedKicked ? JSON.parse(storedKicked) : [];
         }
-        renderFinalTeam(finalPlayers, kickedPlayers);
+        
+        // Изначально карты не вскрыты (areCardsRevealed = false)
+        renderFinalTeam(finalPlayers, kickedPlayers, false);
     }
 
-    // 3. ОБРАБОТКА СОБЫТИЯ ВСКРЫТИЯ КАРТ (Проблема 1)
+    // 3. ЛОГИКА КНОПКИ "ВСКРЫТЬ ВСЕ КАРТЫ" (Проблема 1 и 2)
+    const revealBtn = container.querySelector('.final-reveal-btn');
+    if (revealBtn) {
+        if (isCreator) {
+            revealBtn.style.display = 'block';
+            revealBtn.onclick = async () => {
+                try {
+                    // Отправляем запрос на сервер
+                    await fetch('/api/game/reveal-all-cards', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
+                        body: JSON.stringify({ roomCode })
+                    });
+                    
+                    // Кнопку можно скрыть или деактивировать после нажатия
+                    revealBtn.style.display = 'none';
+                    
+                    // Локально обновляем состояние (сервер пришлет событие, но для скорости можно и так)
+                    areCardsRevealed = true;
+                    renderFinalTeam(finalPlayers, kickedPlayers, true);
+                    
+                    showToast('Все карты вскрыты!', 'success');
+                } catch (err) {
+                    console.error('Ошибка вскрытия:', err);
+                }
+            };
+        } else {
+            revealBtn.style.display = 'none';
+        }
+    }
+
+    // Слушаем событие от сервера, чтобы синхронизировать всех игроков
     if (socket) {
-        socket.removeAllListeners('cards-opened'); // Убираем глобальные дубли
         socket.on('cards-opened', (data) => {
-            console.log('📦 Карты вскрыты сервером:', data);
+            console.log('Карты вскрыты через сокет');
+            areCardsRevealed = true;
             
-            // Синхронизируем данные, если сервер прислал обновлённый список
-            if (data.players && Array.isArray(data.players)) {
-                finalPlayers = data.players.filter(p => p.active || p.active === undefined);
-                kickedPlayers = data.players.filter(p => !p.active);
+            // Если сервер прислал обновленные данные, используем их
+            if (data.players) {
+                // Сервер обычно шлет всех игроков, нужно разделить на активных и кикнутых
+                // Но в вашем случае finalPlayers и kickedPlayers уже есть в sessionStorage.
+                // Просто обновляем флаг раскрытия.
             }
             
-            // Принудительно открываем все карты на клиенте
-            [...finalPlayers, ...kickedPlayers].forEach(p => {
-                if (p.hand) p.hand.forEach(c => c.isOpen = true);
-            });
-
-            renderFinalTeam(finalPlayers, kickedPlayers);
-            showToast('Все карты вскрыты!', 'success');
-
-            // Активируем кнопку результатов ТОЛЬКО у создателя
+            renderFinalTeam(finalPlayers, kickedPlayers, true);
+            
+            // Активируем кнопку результатов у создателя
             if (isCreator && window.activateResultsButton) {
                 window.activateResultsButton();
             }
         });
     }
 
-    // 4. КНОПКА "ПОСМОТРЕТЬ РЕЗУЛЬТАТЫ" (Проблема 1 и 3)
+    // 4. КНОПКА "ПОСМОТРЕТЬ РЕЗУЛЬТАТЫ" (Проблема 3)
     const resultsBtn = container.querySelector('.final-results-btn');
     if (resultsBtn) {
         if (isCreator) {
@@ -3102,10 +3134,15 @@ if (finalContainer) {
             if (text) text.textContent = 'Посмотреть результаты';
 
             resultsBtn.onclick = () => {
+                if (!areCardsRevealed) {
+                    showToast('Сначала вскройте карты!', 'warning');
+                    return;
+                }
                 sessionStorage.setItem('finalResults', JSON.stringify({ finalPlayers, kickedPlayers, roomCode }));
                 loadPage('answers.html', container);
             };
 
+            // Функция активации кнопки (вызывается после вскрытия карт)
             window.activateResultsButton = () => {
                 resultsBtn.style.pointerEvents = 'auto';
                 resultsBtn.style.opacity = '1';
@@ -3121,7 +3158,7 @@ if (finalContainer) {
                 }
             };
         } else {
-            // Для остальных игроков: кнопка видна, но неактивна
+            // Для остальных игроков
             resultsBtn.style.display = 'block';
             resultsBtn.style.pointerEvents = 'none';
             resultsBtn.style.opacity = '0.5';
@@ -3133,28 +3170,6 @@ if (finalContainer) {
                 text.textContent = 'Ожидание действий создателя...';
                 text.style.color = '#9B3D63';
             }
-        }
-    }
-
-    // Кнопка "Вскрыть все карты" (если осталась на странице)
-    const revealBtn = container.querySelector('.final-reveal-btn');
-    if (revealBtn) {
-        if (isCreator) {
-            revealBtn.style.display = 'block';
-            revealBtn.onclick = async () => {
-                try {
-                    await fetch('/api/game/reveal-all-cards', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        credentials: 'include',
-                        body: JSON.stringify({ roomCode })
-                    });
-                } catch (err) {
-                    console.error('Ошибка вскрытия:', err);
-                }
-            };
-        } else {
-            revealBtn.style.display = 'none';
         }
     }
 
