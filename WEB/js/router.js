@@ -1,4 +1,4 @@
-let socket = null;
+ let socket = null;
 let cardHandlersAdded = false;
 let timerInterval = null;
 let currentTurnPlayerUuid = null;
@@ -9,6 +9,14 @@ let currentGamePhase = 'revelation';
 let isNavigationBlocked = false;
 let discussionTimerInterval = null;
 let voteTimerInterval = null;
+
+// ===== ГЛОБАЛЬНОЕ СОСТОЯНИЕ ГОЛОСОВАНИЯ =====
+let voteState = {
+    voters: [],           // UUID игроков, которые уже проголосовали
+    votes: {},            // { targetUuid: [voterUuid, ...] }
+    kickedPlayer: null,   // UUID выгнанного игрока
+    isFinished: false     // Закончено ли голосование
+};
 
 // ===== РЕЖИМ РАБОТЫ =====
 const IS_TEST_MODE = false; // true - тестовый режим (без бэкенда), false - с бэкендом
@@ -67,7 +75,15 @@ function updateRevealedCardInAllPlayers(playerUuid, openCard) {
     
     const targetUuid = String(playerUuid);
     const allBlocks = document.querySelectorAll('.player-card-block');
-    console.log('Всего блоков игроков:', allBlocks.length);
+    
+    // Сохраняем в localStorage для страницы всех игроков
+    const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCardsAll') || '{}');
+    if (!forcedCards[targetUuid]) forcedCards[targetUuid] = {};
+    forcedCards[targetUuid][openCard.index] = {
+        name: openCard.name,
+        cardType: openCard.cardType
+    };
+    localStorage.setItem('forcedRevealedCardsAll', JSON.stringify(forcedCards));
     
     for (const block of allBlocks) {
         const blockUuid = block.getAttribute('data-player-uuid');
@@ -80,9 +96,14 @@ function updateRevealedCardInAllPlayers(playerUuid, openCard) {
                 const valueEl = targetCard.querySelector('.mini-card-value');
                 if (valueEl && valueEl.textContent === '?') {
                     valueEl.textContent = openCard.name;
-                    valueEl.style.color = '#F17BAB';
+                    valueEl.style.color = '#FFFFFF';
                     valueEl.style.fontWeight = 'bold';
                     valueEl.dataset.revealed = 'true';
+
+                    // Белый фон, как у обычной карты
+                    targetCard.style.background = '#FFFFFF';
+                    targetCard.style.borderRadius = '50px';
+
                     console.log(`Обновлена карта индекс ${openCard.index} -> ${openCard.name}`);
                 }
             } else {
@@ -95,8 +116,12 @@ function updateRevealedCardInAllPlayers(playerUuid, openCard) {
                             const valueEl = card.querySelector('.mini-card-value');
                             if (valueEl && valueEl.textContent === '?') {
                                 valueEl.textContent = openCard.name;
-                                valueEl.style.color = '#F17BAB';
+                                valueEl.style.color = '#FFFFFF';
                                 valueEl.style.fontWeight = 'bold';
+
+                                card.style.background = '#FFFFFF';
+                                card.style.borderRadius = '50px';
+
                                 console.log(`Обновлена карта ${label} -> ${openCard.name}`);
                             }
                             break;
@@ -105,6 +130,31 @@ function updateRevealedCardInAllPlayers(playerUuid, openCard) {
                 }
             }
             break;
+        }
+    }
+}
+
+// Добавьте функцию восстановления для страницы всех игроков
+function restoreAllPlayersForcedCards() {
+    const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCardsAll') || '{}');
+    const allBlocks = document.querySelectorAll('.player-card-block');
+    
+    for (const block of allBlocks) {
+        const blockUuid = block.getAttribute('data-player-uuid');
+        const playerForced = forcedCards[blockUuid];
+        if (playerForced) {
+            const cards = block.querySelectorAll('.mini-card');
+            Object.entries(playerForced).forEach(([index, cardData]) => {
+                const targetCard = cards[parseInt(index)];
+                if (targetCard) {
+                    const valueEl = targetCard.querySelector('.mini-card-value');
+                    if (valueEl && valueEl.textContent === '?') {
+                        valueEl.textContent = cardData.name;
+                        valueEl.style.color = '#F17BAB';
+                        valueEl.style.fontWeight = 'bold';
+                    }
+                }
+            });
         }
     }
 }
@@ -273,6 +323,45 @@ function renderProfileCardsGlobal(hand) {
         cardsContainer.appendChild(cardDiv);
         console.log(`Создана карта: ${label} -> ${card.name}`);
     });
+
+    setTimeout(() => {
+        applyForcedRevealedCards();
+    }, 100);
+}
+
+//Синхронизация принудительных вскрытий при загрузке страницы
+function applyForcedRevealedCards() {
+    const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+    const currentPlayerUuid = sessionStorage.getItem('currentPlayerUuid');
+    
+    console.log('applyForcedRevealedCards вызвана');
+    console.log('currentPlayerUuid:', currentPlayerUuid);
+    console.log('forcedCards из localStorage:', forcedCards);
+    
+    if (!currentPlayerUuid) return;
+    
+    const playerForced = forcedCards[currentPlayerUuid];
+    if (!playerForced) return;
+    
+    console.log('Применяем принудительно вскрытые карты:', playerForced);
+    
+    const allCards = document.querySelectorAll('.profile-card');
+    console.log('Найдено карт в DOM:', allCards.length);
+    
+    // Принудительно применяем стили ко всем картам
+    allCards.forEach((card, idx) => {
+        const forcedData = playerForced[idx];
+        if (forcedData && !card.classList.contains('card-opened')) {
+            console.log(`Восстанавливаем карту ${idx}: ${forcedData.name}`);
+            card.style.background = '#FFCBE5';
+            card.style.backgroundColor = '#FFCBE5';
+            card.style.borderRadius = '50px';
+            card.classList.add('card-opened');
+            card.style.pointerEvents = 'none';
+            card.style.opacity = '0.7';
+            card.style.cursor = 'default';
+        }
+    });
 }
 
 // Генерирует случайный 6-значный код комнаты (только для тестового режима)
@@ -299,6 +388,18 @@ window.onload = async function() {
         // Единый обработчик для reveal-card
         socket.on('reveal-card', (data) => {
             console.log('Карта вскрыта (глобальный обработчик):', data);
+            
+            //Сохраняем в localStorage для добровольного вскрытия
+            const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+            const playerKey = String(data.player.uuid);
+            if (!forcedCards[playerKey]) forcedCards[playerKey] = {};
+            forcedCards[playerKey][data.openCard.index] = {
+                cardType: data.openCard.cardType,
+                name: data.openCard.name,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('forcedRevealedCards', JSON.stringify(forcedCards));
+            console.log('Сохранено добровольное вскрытие в localStorage:', forcedCards);
             
             // 1. Обновляем на странице профиля (если открыта страница профиля)
             if (typeof updateRevealedCard === 'function') {
@@ -333,7 +434,6 @@ window.onload = async function() {
        // Глобальный обработчик для timer_end
         socket.on('timer_end', (data) => {
             console.log('Таймер закончился:', data);
-            showToast('Время вышло! Ход переходит другому игроку', 'warning');
             
             // Запрашиваем новый ход и перезапускаем таймер
             if (typeof fetchCurrentTurn === 'function') {
@@ -346,22 +446,6 @@ window.onload = async function() {
                         }
                     }
                 });
-            }
-        });
-        
-        // Глобальный обработчик для force-reveal-card
-        socket.on('force-reveal-card', (data) => {
-            console.log('Принудительное вскрытие карты:', data);
-            showToast(data.message || `${data.player.nickname} не успел открыть карту!`, 'warning');
-            
-            // Обновляем карту на странице профиля (только для текущего игрока)
-            if (typeof updateRevealedCard === 'function') {
-                updateRevealedCard(String(data.player.uuid), data.openCard);
-            }
-            
-            // Обновляем карту на странице всех игроков (для всех)
-            if (typeof updateRevealedCardInAllPlayers === 'function') {
-                updateRevealedCardInAllPlayers(String(data.player.uuid), data.openCard);
             }
         });
         
@@ -413,6 +497,8 @@ window.onload = async function() {
         
         // Слушаем событие начала игры
         socket.on('game-start', (data) => {
+            localStorage.removeItem('forcedRevealedCards');
+            localStorage.removeItem('forcedRevealedCardsAll');
             currentGamePhase = 'revelation';
             console.log(`game-start:`, data);
             
@@ -469,113 +555,104 @@ window.onload = async function() {
             }
         });
 
-        socket.on('timer5_end', (data) => {
+        socket.on('timer5_end', async (data) => {
             console.log('Таймер голосования закончился:', data);
             showToast('Время голосования истекло!', 'warning');
-            if (!voteState.isFinished && lastRenderedPlayers.length > 0) {
-                finishVoting(lastRenderedPlayers);
+            
+            if (!voteState.isFinished) {
+                const roomCode = sessionStorage.getItem('currentRoomCode');
+                const res = await fetch(`/api/vote/players?code=${roomCode}`, {
+                    credentials: 'include'
+                });
+                const players = await res.json();
+                finishVoting(players.players || []);
             }
         });
 
         socket.on('force-reveal-card', (data) => {
-            console.log('force-reveal-card:', data);
+            console.log('force-reveal-card (глобальный обработчик)');
+            console.log('data.player.uuid:', data.player.uuid);
+            console.log('data.openCard.index:', data.openCard.index);
+            console.log('data.openCard.name:', data.openCard.name);
+
+            //Останавливаем таймер
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+                console.log('Таймер остановлен после force-reveal-card');
+            }
             
-            // Сохраняем состояние в sessionStorage для любого принудительного вскрытия
+            // 1. Сохраняем в sessionStorage
             const revealedCards = JSON.parse(sessionStorage.getItem('revealedCards') || '{}');
             revealedCards[data.openCard.index] = true;
             sessionStorage.setItem('revealedCards', JSON.stringify(revealedCards));
-            console.log('Сохранено в sessionStorage:', revealedCards); 
             
-            // Показываем уведомление
+            // 2. Сохраняем в localStorage
+            const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+            const playerKey = String(data.player.uuid);
+            if (!forcedCards[playerKey]) forcedCards[playerKey] = {};
+            forcedCards[playerKey][data.openCard.index] = {
+                cardType: data.openCard.cardType,
+                name: data.openCard.name,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('forcedRevealedCards', JSON.stringify(forcedCards));
+            
+            // 3. Показываем уведомление
             showToast(data.message || `Карта "${data.openCard.name}" вскрыта принудительно!`, 'warning');
             
-            // Если страница профиля открыта - обновляем визуал
-            if (document.querySelector('.profile-container')) {
-                const playerUuid = sessionStorage.getItem('currentPlayerUuid');
-                if (String(data.player.uuid) === String(playerUuid)) {
-                    const cardEl = document.querySelector(`.profile-card[data-index="${data.openCard.index}"]`);
-                    if (cardEl) {
-                        cardEl.style.background = '#FFCBE5';
-                        cardEl.style.backgroundColor = '#FFCBE5';
-                        cardEl.style.borderRadius = '50px';
-                        cardEl.classList.add('card-opened');
-                        cardEl.style.pointerEvents = 'none';
-                        cardEl.style.opacity = '0.7';
-                        cardEl.style.cursor = 'default';
+            // 4. Обновляем страницу профиля, если это моя карта
+            const currentPlayerUuid = sessionStorage.getItem('currentPlayerUuid');
+            const isMyCard = String(data.player.uuid) === String(currentPlayerUuid);
+            
+            if (isMyCard) {
+                console.log('Это моя карта! Обновляем профиль');
+
+                setTimeout(() => {
+                    if (typeof applyForcedRevealedCards === 'function') {
+                        console.log('Применяем applyForcedRevealedCards');
+                        applyForcedRevealedCards();
                     }
-                }
+                }, 100);
             }
             
-            // Обновляем страницу всех игроков, если она открыта
+            // 5. Обновляем страницу всех игроков
             if (typeof updateRevealedCardInAllPlayers === 'function') {
                 updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
             }
-
-            // ПРОВЕРКА на завершение вскрытия всех карт
-            // Даем время на обновление DOM после обновления карты
+            
+            // 6. Проверка завершения вскрытия
             setTimeout(() => {
-                // Проверяем, открыта ли страница всех игроков (там есть .player-card-block)
-                const allPlayers = document.querySelectorAll('.player-card-block');
+                const maxPlayers = parseInt(sessionStorage.getItem('maxPlayers')) || 4;
+                const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+                const playersRevealedCount = Object.keys(forcedCards).length;
+                console.log(`Проверка: вскрыто игроков: ${playersRevealedCount} из ${maxPlayers}`);
                 
-                // Если страница всех игроков не открыта, пробуем найти карты на странице профиля
-                let allCardsRevealed = true;
-                
-                if (allPlayers.length > 0) {
-                    // Проверяем на странице всех игроков
-                    allPlayers.forEach(block => {
-                        const cards = block.querySelectorAll('.mini-card-value');
-                        cards.forEach(card => {
-                            if (card.textContent === '?') {
-                                allCardsRevealed = false;
-                            }
-                        });
-                    });
-                } else {
-                    // Проверяем на странице профиля
-                    const profileCards = document.querySelectorAll('.profile-card');
-                    if (profileCards.length > 0) {
-                        profileCards.forEach(card => {
-                            if (!card.classList.contains('card-opened')) {
-                                allCardsRevealed = false;
-                            }
-                        });
-                    } else {
-                        allCardsRevealed = false;
-                    }
-                }
-                
-                // Если все карты вскрыты и игра ещё в фазе вскрытия
-                if (allCardsRevealed && allPlayers.length > 0 && currentGamePhase === 'revelation' && !window._revelationCompleted) {
-                    window._revelationCompleted = true; // Устанавливаем флаг
-                    console.log('Все карты вскрыты (принудительно)! Переходим к голосованию');
+                if (playersRevealedCount >= maxPlayers && currentGamePhase === 'revelation' && !window._revelationCompleted) {
+                    window._revelationCompleted = true;
+                    console.log('Все игроки вскрыли карты! Переходим к голосованию');
                     currentGamePhase = 'voting';
                     showToast('Все игроки вскрыли карты! Переход к голосованию...', 'success');
                     
-                    // Останавливаем локальный таймер
                     if (timerInterval) {
                         clearInterval(timerInterval);
                         timerInterval = null;
                     }
                     
-                    // Останавливаем таймер на сервере
                     if (socket && socket.connected) {
                         socket.emit('stop_timer');
-                        // Запускаем 5-минутный таймер голосования
                         socket.emit('start_timer5');
                     }
                     
-                    // Блокируем навигацию
                     if (typeof blockNavigation === 'function') {
                         blockNavigation(true, document.querySelector('.container'));
                     }
                     
-                    // Переходим к голосованию
                     setTimeout(() => {
                         loadPage('vote.html', document.querySelector('.container'));
                     }, 1500);
                 }
-            }, 500); // Небольшая задержка для обновления DOM
-
+            }, 500);
         });
 
         socket.on('revelation_complete', (data) => {
@@ -1165,6 +1242,21 @@ function addPageHandlers(container) {
         const roomCode = sessionStorage.getItem('currentRoomCode');
         const currentPlayer = sessionStorage.getItem('currentPlayer');
         
+    // Скрываем розовый скролл
+    const hideScrollStyle = document.createElement('style');
+    hideScrollStyle.textContent = `
+        .players-list {
+            scrollbar-width: none !important; 
+            -ms-overflow-style: none !important;  
+        }
+        .players-list::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;  
+        }
+    `;
+    document.head.appendChild(hideScrollStyle);
+
         // ===== РЕГИСТРАЦИЯ ВСЕХ ИГРОКОВ В WEBSOCKET (ВАЖНО!) =====
     if (!IS_TEST_MODE && socket && socket.connected) {
         const playerUuid = sessionStorage.getItem('currentPlayerUuid');
@@ -1666,60 +1758,10 @@ function addPageHandlers(container) {
             }
         }
 
-        // Обработчик принудительного вскрытия
-        function handleForceRevealCard(data) {
-            console.log('Принудительное вскрытие карты:', data);
-            
-            // Показываем уведомление
-            showToast(data.message || `Карта "${data.openCard.name}" вскрыта принудительно!`, 'warning');
-            
-            // Обновляем карту на странице профиля (если это карта текущего игрока)
-            if (String(data.player.uuid) === String(playerUuid)) {
-                // Ищем карту по индексу
-                let cardEl = document.querySelector(`.profile-card[data-index="${data.openCard.index}"]`);
-                
-                if (!cardEl && data.openCard.cardType) {
-                    const label = CARD_TYPE_TO_LABEL[data.openCard.cardType];
-                    if (label) {
-                        const cards = document.querySelectorAll('.profile-card');
-                        for (const card of cards) {
-                            const labelEl = card.querySelector('.profile-card-label');
-                            if (labelEl && labelEl.textContent.trim() === label) {
-                                cardEl = card;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-                if (cardEl) {
-                    cardEl.style.background = '#FFCBE5';
-                    cardEl.style.backgroundColor = '#FFCBE5';
-                    cardEl.style.borderRadius = '50px';
-                    cardEl.classList.add('card-opened');
-                    cardEl.style.pointerEvents = 'none';
-                    cardEl.style.opacity = '0.7';
-                    cardEl.style.cursor = 'default';
-
-                    const revealedCards = JSON.parse(sessionStorage.getItem('revealedCards') || '{}');
-                    revealedCards[data.openCard.index] = true;
-                    sessionStorage.setItem('revealedCards', JSON.stringify(revealedCards));
-                    
-                    console.log(`Принудительно открыта карта: ${data.openCard.name}`);
-                }
-            }
-            
-            // Обновляем на странице всех игроков (если она открыта)
-            if (typeof updateRevealedCardInAllPlayers === 'function') {
-                updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
-            }
-        }
-
         // Обработчик окончания таймера
         function handleTimerEnd(data) {
             console.log('Таймер закончился:', data);
             isTimerStarted = false;  // Сбрасываем флаг
-            showToast('Время вышло! Ход переходит другому игроку', 'warning');
             
             // Запрашиваем новый ход
             fetchCurrentTurn();
@@ -1749,23 +1791,33 @@ function addPageHandlers(container) {
         if (!IS_TEST_MODE && socket) {
             // Удаляем старые обработчики, чтобы не дублировать
             socket.off('reveal-card');
-            //socket.off('force-reveal-card');
             socket.off('timer_end');
             socket.off('update_timer');
             socket.off('turn-update');
+            socket.off('force-reveal-card');
         
             // Добавляем новые
             socket.on('reveal-card', (data) => {
                 console.log('reveal-card событие на profile:', data);
+                
+                //Сохраняем в localStorage
+                const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+                const playerKey = String(data.player.uuid);
+                if (!forcedCards[playerKey]) forcedCards[playerKey] = {};
+                forcedCards[playerKey][data.openCard.index] = {
+                    cardType: data.openCard.cardType,
+                    name: data.openCard.name,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('forcedRevealedCards', JSON.stringify(forcedCards));
+                
                 updateRevealedCard(data.player.uuid, data.openCard);
                 
-                // Также обновляем на странице всех игроков
                 if (typeof updateRevealedCardInAllPlayers === 'function') {
                     updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
                 }
             });
             
-            socket.on('force-reveal-card', handleForceRevealCard);
             socket.on('timer_end', handleTimerEnd);
             socket.on('update_timer', handleUpdateTimer);
             socket.on('turn-update', (data) => {
@@ -1775,6 +1827,34 @@ function addPageHandlers(container) {
                     isTimerStarted = false;
                 }
                 updateTurnIndicator(data.currentPlayerUuid, data.timeLeft);
+            });
+
+            socket.on('force-reveal-card', (data) => {
+                console.log('=== force-reveal-card на PROFILE ===');
+                console.log('data.player.uuid:', data.player.uuid);
+                console.log('data.openCard.index:', data.openCard.index);
+                console.log('data.openCard.name:', data.openCard.name);
+                
+                const myUuid = sessionStorage.getItem('currentPlayerUuid');
+                const isMyCard = String(data.player.uuid) === String(myUuid);
+                
+                if (isMyCard) {
+                    // Сохраняем в localStorage
+                    const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+                    const playerKey = String(data.player.uuid);
+                    if (!forcedCards[playerKey]) forcedCards[playerKey] = {};
+                    forcedCards[playerKey][data.openCard.index] = {
+                        cardType: data.openCard.cardType,
+                        name: data.openCard.name,
+                        timestamp: Date.now()
+                    };
+                    localStorage.setItem('forcedRevealedCards', JSON.stringify(forcedCards));
+                    
+                    // НЕМЕДЛЕННО ПРИМЕНЯЕМ ВИЗУАЛЬНЫЕ ИЗМЕНЕНИЯ
+                    setTimeout(() => {
+                        applyForcedRevealedCards();
+                    }, 50);
+                }
             });
         }
 
@@ -1982,27 +2062,12 @@ function addPageHandlers(container) {
                 cardsContainer.appendChild(cardDiv);
             });
 
-            // Восстанавливаем состояние из sessionStorage (для карт, открытых ранее в этой же вкладке браузера)
-            const revealedCards = JSON.parse(sessionStorage.getItem('revealedCards') || '{}');
-            console.log('sessionStorage revealedCards:', revealedCards);
-
-            const allCards = cardsContainer.querySelectorAll('.profile-card');
-            allCards.forEach((card, idx) => {
-                // Если карта помечена как открытая в sessionStorage И ещё не открыта
-                if (revealedCards[idx] && !card.classList.contains('card-opened')) {
-                    card.style.background = '#FFCBE5';
-                    card.style.backgroundColor = '#FFCBE5';
-                    card.style.borderRadius = '50px';
-                    card.classList.add('card-opened');
-                    card.style.pointerEvents = 'none';
-                    card.style.opacity = '0.7';
-                    card.style.cursor = 'default';
-                    console.log(`Восстановлено состояние карты ${idx} (розовый фон)`);
-                }
-            });
-            
-            // Настраиваем обработчики кликов после создания карт
-            setTimeout(setupCardClickHandlers, 100);
+            setTimeout(() => {
+                setupCardClickHandlers();
+                requestAnimationFrame(() => {
+                    applyForcedRevealedCards();
+                });
+            }, 100);
         }
 
         // ===== НАВИГАЦИЯ =====
@@ -2163,7 +2228,7 @@ function addPageHandlers(container) {
             playersContainer.style.right = '17px';
             playersContainer.style.top = '100px';
             playersContainer.style.bottom = '80px';
-            playersContainer.style.overflowY = 'auto';
+            playersContainer.style.overflowY = 'auto';//прокрутка
             playersContainer.style.overflowX = 'hidden';
             playersContainer.style.display = 'flex';
             playersContainer.style.flexDirection = 'column';
@@ -2461,6 +2526,8 @@ function addPageHandlers(container) {
                 
                 playersContainer.appendChild(playerBlock);
             });
+
+            restoreAllPlayersForcedCards();
         }
         
         // WebSocket слушатели для обновления карт
@@ -2486,16 +2553,32 @@ function addPageHandlers(container) {
                 }
                 
                 updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
-                // Принудительно перерисовываем
-                renderPlayersList(playersData);
             });
 
             // Обработчик принудительного вскрытия
-           socket.on('force-reveal-card', (data) => {
+            socket.on('force-reveal-card', (data) => {
                 console.log('force-reveal-card на cards-all-players:', data);
 
+                //Останавливаем интервал перерисовки
+                if (window.cardsAllInterval) {
+                    clearInterval(window.cardsAllInterval);
+                    window.cardsAllInterval = null;
+                    console.log('Остановлен интервал обновления списка игроков');
+                }
+
+                // Сохраняем в localStorage
+                const forcedCards = JSON.parse(localStorage.getItem('forcedRevealedCards') || '{}');
+                const playerKey = `${data.player.uuid}`;
+                if (!forcedCards[playerKey]) forcedCards[playerKey] = {};
+                forcedCards[playerKey][data.openCard.index] = {
+                    cardType: data.openCard.cardType,
+                    name: data.openCard.name,
+                    timestamp: Date.now()
+                };
+                localStorage.setItem('forcedRevealedCards', JSON.stringify(forcedCards));
+
                 // Обновляем данные в playersData
-                const targetPlayer = playersData.find(p => p.uuid === data.player.uuid);
+                const targetPlayer = playersData.find(p => String(p.uuid) === String(data.player.uuid));
                 if (targetPlayer && targetPlayer.hand) {
                     const cardToUpdate = targetPlayer.hand[data.openCard.index];
                     if (cardToUpdate && !cardToUpdate.isOpen) {
@@ -2503,11 +2586,8 @@ function addPageHandlers(container) {
                         cardToUpdate.name = data.openCard.name;
                     }
                 }
-
-                // Обновляем визуал
-                updateRevealedCardInAllPlayers(data.player.uuid, data.openCard);
-
-                // Принудительно обновляем конкретную карту в DOM
+                
+                //Обновляем одну карту
                 const allBlocks = document.querySelectorAll('.player-card-block');
                 for (const block of allBlocks) {
                     const blockUuid = block.getAttribute('data-player-uuid');
@@ -2516,10 +2596,15 @@ function addPageHandlers(container) {
                         const targetCard = cards[data.openCard.index];
                         if (targetCard) {
                             const valueEl = targetCard.querySelector('.mini-card-value');
-                            if (valueEl) {
+                            if (valueEl && valueEl.textContent === '?') {
                                 valueEl.textContent = data.openCard.name;
-                                valueEl.style.color = '#F17BAB';
+                                valueEl.style.color = '#FFFFFF';
                                 valueEl.style.fontWeight = 'bold';
+                                
+                                // Меняем фон карты
+                                targetCard.style.background = '#FFFFFF';
+                                targetCard.style.borderRadius = '50px';
+                                targetCard.style.opacity = '0.8';
                             }
                         }
                         break;
@@ -2678,6 +2763,21 @@ function addPageHandlers(container) {
     const answersContainer = container.querySelector('.answers-card, .answers-header');
     if (answersContainer) {
         console.log('Страница ответов загружена');
+
+        //Скрываем розовый скролл
+        const hideScrollStyle = document.createElement('style');
+        hideScrollStyle.textContent = `
+            .answers-content {
+                scrollbar-width: none !important; 
+                -ms-overflow-style: none !important;  
+            }
+            .answers-content::-webkit-scrollbar {
+                width: 0 !important;
+                height: 0 !important;
+                display: none !important;  
+            }
+        `;
+        document.head.appendChild(hideScrollStyle);
 
         let currentQuestions = [];
         let userAnswers = {};      // { questionId: { answerText, score, comment } }
@@ -3131,7 +3231,7 @@ if (finalContainer) {
     // Слушаем событие от сервера (для синхронизации всех игроков)
     if (socket) {
         socket.on('cards-opened', (data) => {
-            console.log('Карты вскрыты через сокет');
+            console.log('Карты вскрыты через сокет:', data);
             areCardsRevealed = true;
             
             // Если сервер прислал данные, можно их использовать, но пока берем из sessionStorage
@@ -3218,6 +3318,21 @@ if (voteContainer) {
 
     console.log(`Текущий раунд: ${currentRound} из ${maxRounds}`);
 
+    //Скрываем розовый скролл
+    const hideScrollStyle = document.createElement('style');
+    hideScrollStyle.textContent = `
+        .vote-players-list {
+            scrollbar-width: none !important; 
+            -ms-overflow-style: none !important;  
+        }
+        .vote-players-list::-webkit-scrollbar {
+            width: 0 !important;
+            height: 0 !important;
+            display: none !important;  
+        }
+    `;
+    document.head.appendChild(hideScrollStyle);
+
     // На этапе голосования: иконка профиля заблокирована, голосование активно
     const profileIcon = document.querySelector('.icon-right');
     if (profileIcon) {
@@ -3229,14 +3344,6 @@ if (voteContainer) {
         voteIcon.style.pointerEvents = 'auto';
         voteIcon.style.opacity = '1';
     }
-
-    // Состояние голосования
-    let voteState = {
-        voters: [],           // UUID игроков, которые уже проголосовали
-        votes: {},            // { targetUuid: [voterUuid, ...] }
-        kickedPlayer: null,   // UUID выгнанного игрока
-        isFinished: false     // Закончено ли голосование
-    };
     
     // загрузка игроков для голосования
     async function loadVotePlayers() {
@@ -3268,7 +3375,7 @@ if (voteContainer) {
         }
     }
     
-    //  отрисовка списка игроков 
+    // отрисовка списка игроков 
     function renderVotePlayers(players) {
         console.log('рендер игроков');
         console.log('Игроков получено:', players.length);
@@ -3276,6 +3383,7 @@ if (voteContainer) {
         console.log('voteState.voters:', voteState.voters);
         console.log('voteState.kickedPlayer:', voteState.kickedPlayer);
         console.log('Игроки:', players);
+        
         const playersList = container.querySelector('.vote-players-list');
         const voteCounter = container.querySelector('.vote-stats-count');
         
@@ -3294,37 +3402,56 @@ if (voteContainer) {
         
         sortedPlayers.forEach(player => {
             const isVoter = voteState.voters.includes(player.uuid);
-            const isKicked = player.uuid === voteState.kickedPlayer;
-            //const isMyself = player.uuid === playerUuid;
+            // Используем active флаг с сервера или сравниваем с voteState.kickedPlayer
+            const isKicked = (player.active === false) || (player.uuid === voteState.kickedPlayer);
             
-            console.log('на самого себя');
-            console.log('playerUuid из sessionStorage:', playerUuid, typeof playerUuid);
-            console.log('player.uuid из сервера:', player.uuid, typeof player.uuid);
-
-            const isMyself = String(player.uuid).trim() === String(playerUuid).trim();//чтобы не было пробелов
+            const isMyself = String(player.uuid).trim() === String(playerUuid).trim();
             
             const playerItem = document.createElement('div');
             playerItem.className = `vote-player-item${isKicked ? ' kicked' : ''}${isVoter ? ' voted' : ''}`;
             playerItem.dataset.playerUuid = player.uuid;
+            playerItem.style.position = 'relative';
 
-            playerItem.style.position = 'relative'
-
-        // блокировка голосования для самого себя
+            // Крестик только для активных игроков (не выгнанных и не себя)
             const crossHTML = (!isMyself && !isKicked) 
-            
-            // Крестик только для не-себя и не-выгнанных и не-проголосовавших
-            //const crossHTML = (!isMyself && !isKicked && !isVoter) 
                 ? `<div class="vote-player-icon" 
                     style="position: absolute; width: 50px; height: 50px; right: 8px; top: 50%; transform: translateY(-50%); background: url('../images/x.png'); background-size: contain; background-repeat: no-repeat; background-position: center; cursor: pointer;" 
                     data-target="${player.uuid}" 
                     data-target-name="${player.nickname}"></div>` 
                 : '';
 
+            // Добавляем пометку "(выгнан)" для выбывших
+            let nameSuffix = '';
+            if (isMyself && !isKicked) {
+                nameSuffix = ' (вы)';
+            } else if (isKicked) {
+                nameSuffix = ' (выгнан)';
+            }
+
             playerItem.innerHTML = `
                 <div class="vote-player-badge"></div>
-                <div class="vote-player-name">${player.nickname}${isMyself ? ' (вы)' : ''}</div>
+                <div class="vote-player-name">${player.nickname}${nameSuffix}</div>
                 ${crossHTML}
             `;
+            
+             // Принудительно убираем зачеркивание, если оно есть
+            const nameDiv = playerItem.querySelector('.vote-player-name');
+            if (nameDiv) {
+                nameDiv.style.textDecoration = 'none';  // явно убираем зачеркивание
+                if (isKicked) {
+                    nameDiv.style.color = '#999';
+                    nameDiv.style.opacity = '0.7';
+                }
+            }
+            
+            if (isKicked) {
+                const badge = playerItem.querySelector('.vote-player-badge');
+                if (badge) {
+                    badge.style.background = '#DADADA';
+                    badge.style.borderColor = '#999';
+                    badge.style.opacity = '0.5';
+                }
+            }
             
             // обработчик клика на крестик 
             const cross = playerItem.querySelector('.vote-player-icon');
@@ -3340,13 +3467,16 @@ if (voteContainer) {
             playersList.appendChild(playerItem);
         });
         
-        // счётчик обновление
+        // Подсчитываем только активных игроков для счётчика
+        const activePlayers = players.filter(p => p.active !== false && p.uuid !== voteState.kickedPlayer);
+        
+        // обновление счётчика
         if (voteCounter) {
-            voteCounter.textContent = `${voteState.voters.length} из ${players.length}`;
+            voteCounter.textContent = `${voteState.voters.length} из ${activePlayers.length}`;
         }
         
-        // проверка закончено ли голосование
-        if (voteState.voters.length >= players.length && !voteState.isFinished) {
+        // проверка закончено ли голосование (только активные игроки)
+        if (voteState.voters.length >= activePlayers.length && !voteState.isFinished) {
             finishVoting(players);
         }
     }
@@ -3567,15 +3697,15 @@ if (voteContainer) {
         socket.emit('register', { playerUuid, roomCode });
     
         socket.on('complete-round', (data) => {
-            window._revelationCompleted = false;//Сбрасываем флаг для нового раунда
-            console.log('=== РАУНД ЗАВЕРШЁН (все проголосовали) ===');
+            window._revelationCompleted = false; // Сбрасываем флаг для нового раунда
+            console.log('РАУНД ЗАВЕРШЁН (все проголосовали)');
             console.log('Данные от сервера:', data);
             
             const maxRounds = data.rounds_count;
             const completedRound = data.current_round - 1;
             console.log(`Завершён раунд ${completedRound} из ${maxRounds}`);
 
-            /// Обновляем sessionStorage
+            // Обновляем sessionStorage
             if (data.current_round) {
                 sessionStorage.setItem('currentRound', data.current_round.toString());
             }
@@ -3583,29 +3713,41 @@ if (voteContainer) {
                 sessionStorage.setItem('maxRounds', maxRounds.toString());
             }
             
+            // ВАЖНО: Сбрасываем состояние голосования для нового раунда
+            voteState = {
+                voters: [],
+                votes: {},
+                kickedPlayer: null,
+                isFinished: false
+            };
+            
+            // ВАЖНО: Сбрасываем локальные флаги
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+            isTimerStarted = false;
+            currentSelectedCard = null;
+            currentSelectedIndex = null;
+            isModalOpen = false;
+            
             // Если завершённый раунд НЕ последний
             if (completedRound < maxRounds) {
-                // Ещё есть раунды - переход к следующему раунду
+                // Переход к следующему раунду - фаза вскрытия
                 showToast('Все игроки проголосовали! Переход к следующему раунду...', 'info');
                 
-                // Для следующего раунда: иконка голосования должна быть заблокирована
+                // ВАЖНО: Устанавливаем фазу в раскрытие карт
                 currentGamePhase = 'revelation';
-
+                
+                // ВАЖНО: Очищаем localStorage для нового раунда (но не полностью, только флаги вскрытия)
                 blockNavigation(false, container);
                 
                 setTimeout(() => {
-                    // Очищаем состояние голосования
-                    voteState = {
-                        voters: [],
-                        votes: {},
-                        kickedPlayer: null,
-                        isFinished: false
-                    };
-                    // Переход на страницу профиля для следующего раунда
+                    // Принудительно перезагружаем страницу профиля
                     loadPage('profile.html', container);
                 }, 2000);
             } else {
-                // Это был последний раунд - ждём complete-game
+                // Это был последний раунд
                 console.log('Последний раунд завершён, ожидаем complete-game...');
                 showToast('Все раунды завершены! Формирование финальной команды...', 'info');
                 
@@ -3632,12 +3774,12 @@ if (voteContainer) {
 
         socket.on('update_timer', (data) => {
             console.log('Синхронизация таймера голосования:', data.timeLeft);
-            timeLeft = data.timeLeft;
+            //timeLeft = data.timeLeft;
         
             const timerText = container.querySelector('.vote-timer-text');
             if (timerText) {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
+                const minutes = Math.floor(data.timeLeft / 60);
+                const seconds = data.timeLeft % 60;
                 timerText.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
             }
         });
@@ -3723,6 +3865,21 @@ if (voteContainer) {
     // ===== ОБРАБОТЧИК ДЛЯ СТРАНИЦЫ РЕЗУЛЬТАТОВ (results.html) =====
     if (container.querySelector('.results-header')) {
         console.log('Страница результатов загружена');
+
+        //Скрываем розовый скролл
+        const hideScrollStyle = document.createElement('style');
+        hideScrollStyle.textContent = `
+            .results-cards-container {
+                scrollbar-width: none !important; 
+                -ms-overflow-style: none !important;  
+            }
+            .results-cards-container::-webkit-scrollbar {
+                width: 0 !important;
+                height: 0 !important;
+                display: none !important;  
+            }
+        `;
+        document.head.appendChild(hideScrollStyle);
 
         // Тестовые данные (10 вопросов + вердикт)
         const mockReport = {

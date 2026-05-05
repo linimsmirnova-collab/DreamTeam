@@ -562,7 +562,7 @@ io.on('connection', (socket) => {
             return;
         }
         
-        // Еесли таймер уже запущен - не создаем новый
+        // Если таймер уже запущен - не создаем новый
         if (roomTimers.has(roomCode)) {
             console.log(`Таймер для комнаты ${roomCode} уже запущен, игнорируем повторный запуск`);
             return;
@@ -608,6 +608,12 @@ io.on('connection', (socket) => {
                         forcedCard.open();
                         currentPlayer.openCards.push(forcedCard);
                         
+                        if (!session.playersRevealedThisRound) {
+                            session.playersRevealedThisRound = new Set();
+                        }
+                        session.playersRevealedThisRound.add(currentPlayer.uuid);
+                        console.log(`Игрок ${currentPlayer.nickname} добавлен в playersRevealedThisRound (принудительно)`);
+                        
                         console.log(`Принудительно вскрыта карта: ${forcedCard.name} (индекс ${originalIndex})`);
                         
                         // Отправляем событие о принудительном вскрытии
@@ -625,18 +631,35 @@ io.on('connection', (socket) => {
                             },
                             message: `Игрок ${currentPlayer.nickname} не успел открыть карту! Принудительно открыта карта "${forcedCard.name}"`
                         });
+
+                        //Останавливаем таймер после принудительного вскрытия
+                        if (roomTimers.has(roomCode)) {
+                            clearInterval(roomTimers.get(roomCode));
+                            roomTimers.delete(roomCode);
+                            console.log(`Таймер остановлен после принудительного вскрытия для комнаты ${roomCode}`);
+                        }
                     }
                 }
 
-                // Проверяем, все ли игроки вскрыли карты
+               // Проверяем, все ли игроки вскрыли карты
                 const updatedActivePlayers = session.players_list.filter(p => p.active);
-                const playersWithOpenCards = updatedActivePlayers.filter(p => p.openCards && p.openCards.length > 0);
-                
-                console.log(`Проверка: ${playersWithOpenCards.length} из ${updatedActivePlayers.length} игроков вскрыли карты`);
-                
-                if (playersWithOpenCards.length === updatedActivePlayers.length && updatedActivePlayers.length > 0) {
-                    console.log('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ (принудительно)! Отправляем revelation_complete');
+
+                const revealedCount = session.playersRevealedThisRound ? session.playersRevealedThisRound.size : 0;
+                const activeCount = updatedActivePlayers.length;
+
+                console.log(`Проверка: вскрыли карты ${revealedCount} из ${activeCount} игроков`);
+                console.log(`Кто вскрыл: ${session.playersRevealedThisRound ? Array.from(session.playersRevealedThisRound) : 'нет'}`);
+                console.log(`Активные игроки: ${updatedActivePlayers.map(p => `${p.uuid}(${p.nickname})`).join(', ')}`);
+
+                if (revealedCount === activeCount && activeCount > 0) {
+                    console.log('ВСЕ ИГРОКИ ВСКРЫЛИ КАРТЫ! Отправляем revelation_complete');
                     
+                    // Очищаем Set для следующего раунда
+                    if (session.playersRevealedThisRound) {
+                        session.playersRevealedThisRound.clear();
+                        console.log('Очищен playersRevealedThisRound для следующего раунда');
+                    }
+
                     // Останавливаем таймер
                     clearInterval(interval);
                     
@@ -685,6 +708,12 @@ io.on('connection', (socket) => {
                                     
                                     newForcedCard.open();
                                     newCurrentPlayer.openCards.push(newForcedCard);
+                                    
+                                    if (!session.playersRevealedThisRound) {
+                                        session.playersRevealedThisRound = new Set();
+                                    }
+                                    session.playersRevealedThisRound.add(newCurrentPlayer.uuid);
+                                    console.log(`Игрок ${newCurrentPlayer.nickname} добавлен в playersRevealedThisRound (принудительно)`);
                                     
                                     io.to(roomCode).emit('force-reveal-card', {
                                         player: {
@@ -869,6 +898,11 @@ app.post('/api/game/start', authenticatePlayer, async (req, res) => {
                     forcedCard.open();
                     currentPlayer.openCards.push(forcedCard);
                     
+                    if (!session.playersRevealedThisRound) {
+                        session.playersRevealedThisRound = new Set();
+                    }
+                    session.playersRevealedThisRound.add(currentPlayer.uuid);
+
                     io.to(session.roomCode).emit('force-reveal-card', {
                         player: {
                             uuid: currentPlayer.uuid,
@@ -1254,6 +1288,13 @@ app.post('/api/game/create', authenticatePlayer, async (req, res) => {
                 return res.status(200).json({success: true});
             }
 
+            // СБРАСЫВАЕМ currentMover НА ПЕРВОГО АКТИВНОГО ИГРОКА
+            const activePlayersForNextRound = session.players_list.filter(p => p.active);
+            if (activePlayersForNextRound.length > 0) {
+                session.currentMover = activePlayersForNextRound[0];
+                console.log(`[НОВЫЙ РАУНД] Первый ход у: ${session.currentMover.nickname}`);
+            }
+
             // 5. Только если игра не завершена, увеличиваем раунд
             if (session.game_state !== gameState.completed) {
                 session.current_round++;
@@ -1495,6 +1536,8 @@ app.post('/api/logout', authenticatePlayer, (req, res) => {
         });
     }
 })();
+
+/*
 //пробую добавить эндпоинт для одображения ников на голосовании
 app.get('/api/vote/players', authenticatePlayer, (req, res) => {
     try {
@@ -1517,6 +1560,34 @@ app.get('/api/vote/players', authenticatePlayer, (req, res) => {
         res.status(500).json({ error: 'Не удалось получить список игроков' });
     }
 });
+
+*/
+
+// Эндпоинт для отображения ников на голосовании
+// Эндпоинт для отображения ников на голосовании
+app.get('/api/vote/players', authenticatePlayer, (req, res) => {
+    try {
+        const manager = req.manager;
+        const session = manager.GameSession;
+        
+        // ВАЖНО: Возвращаем ВСЕХ игроков, а не только active
+        const allPlayers = session.players_list.map(p => ({
+            uuid: p.uuid,
+            nickname: p.nickname,
+            be_creator: p.be_creator,
+            hasVoted: p.isVoted || false,
+            active: p.active !== false  // добавляем флаг активности
+        }));
+        
+        res.json({
+            players: allPlayers  // теперь возвращаем всех
+        });
+    } catch (error) {
+        console.error('Ошибка получения игроков для голосования:', error);
+        res.status(500).json({ error: 'Не удалось получить список игроков' });
+    }
+});
+
 // Эндпоинт для массового вскрытия карт (только для создателя)
 app.post('/api/game/reveal-all-cards', authenticatePlayer, (req, res) => {
     try {
@@ -1578,4 +1649,4 @@ process.on('unhandledRejection', (reason, promise) => {
     console.error('Unhandled Rejection at:', promise, 'reason:', reason);
 });
 
-module.exports = { app, server, io, db, activeManagers };
+module.exports = { app, server, io, db, activeManagers }; 
