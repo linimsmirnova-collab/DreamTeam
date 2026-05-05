@@ -1523,12 +1523,10 @@ app.post('/api/game/reveal-all-cards', authenticatePlayer, (req, res) => {
         const session = req.manager.GameSession;
         const roomCode = session.roomCode;
         
-        // Проверяем, что отправитель - создатель
         if (!req.player.be_creator) {
             return res.status(403).json({ error: 'Только создатель может вскрыть все карты' });
         }
         
-        // Вскрываем все карты всех активных игроков
         const activePlayers = session.players_list.filter(p => p.active);
         for (const player of activePlayers) {
             if (player.hand) {
@@ -1541,18 +1539,41 @@ app.post('/api/game/reveal-all-cards', authenticatePlayer, (req, res) => {
             }
         }
         
-        // Уведомляем всех игроков
-        io.to(roomCode).emit('cards-opened', {
-            players: activePlayers.map(p => ({
-                uuid: p.uuid,
-                nickname: p.nickname,
-                openCards: p.openCards
-            }))
-        });
+        // ОТПРАВЛЯЕМ ВСЕМ ИГРОКАМ
+        const playersData = session.players_list.map(p => ({
+            uuid: p.uuid,
+            nickname: p.nickname,
+            active: p.active,
+            hand: p.hand || [],
+            openCards: p.openCards || []
+        }));
+        
+        io.to(roomCode).emit('cards-opened', { players: playersData });
+        console.log('cards-opened отправлено в комнату', roomCode, 'игроков:', playersData.length);
         
         res.json({ success: true });
     } catch (error) {
         console.error('Ошибка вскрытия карт:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+// Эндпоинт для получения выгнанных игроков
+app.get('/api/game/kicked-players', authenticatePlayer, (req, res) => {
+    try {
+        const session = req.manager.GameSession;
+        
+        // Собираем выгнанных игроков (активных = false)
+        const kickedPlayers = session.players_list
+            .filter(p => !p.active)
+            .map(p => ({
+                uuid: p.uuid,
+                nickname: p.nickname,
+                hand: p.hand || []
+            }));
+        
+        res.json({ kicked: kickedPlayers });
+    } catch (error) {
+        console.error('Ошибка получения выгнанных игроков:', error);
         res.status(500).json({ error: 'Ошибка сервера' });
     }
 });

@@ -2629,7 +2629,6 @@ span {
 }
 /* ===== СТРАНИЦА ИТОГОВ (final-team.html) ===== */
 
-/* Контейнер списка игроков с прокруткой */
 .final-players-list {
     position: absolute;
     width: 360px;
@@ -2640,29 +2639,16 @@ span {
     overflow-x: hidden;
     display: flex;
     flex-direction: column;
-    gap: 15px; /* Отступ между игроками */
+    gap: 15px;
     padding-right: 8px;
     box-sizing: border-box;
 }
 
-/* Скроллбар */
-.final-players-list::-webkit-scrollbar {
-    width: 4px;
-}
-.final-players-list::-webkit-scrollbar-track {
-    background: #FFCBE5;
-    border-radius: 2px;
-}
-.final-players-list::-webkit-scrollbar-thumb {
-    background: #F17BAB;
-    border-radius: 2px;
-}
-
 /* Блок одного игрока */
 .final-player-item {
-    position: relative; /* Важно: relative, чтобы absolute элементы внутри позиционировались относительно него */
+    position: relative;
     width: 100%;
-    min-height: 80px; /* Минимальная высота блока */
+    min-height: 80px;
     flex-shrink: 0;
     padding: 15px;
     padding-top: 10px;
@@ -2671,7 +2657,7 @@ span {
     border-radius: 50px;
     box-sizing: border-box;
     
-    /* Используем Flexbox для вертикального расположения: Ник -> Карты */
+    /* Flexbox для вертикального расположения: Ник -> Карты */
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -2679,7 +2665,7 @@ span {
     gap: 10px;
 }
 
-/* Бейдж фона игрока (оставляем абсолютным, чтобы он был фоном) */
+/* Фон блока игрока */
 .final-player-item .final-player-badge {
     position: absolute;
     width: 100%;
@@ -2690,12 +2676,12 @@ span {
     border-radius: 50px;
     background: #FFFFFF;
     box-sizing: border-box;
-    z-index: 1; /* Фон под контентом */
+    z-index: 1;
 }
 
 /* Никнейм игрока */
 .final-player-item .final-player-name {
-    position: relative; /* Убираем absolute, чтобы он шел в потоке */
+    position: relative; /* Важно: relative, чтобы был в потоке */
     width: 100%;
     text-align: center;
     font-family: "Inria Serif";
@@ -2706,13 +2692,13 @@ span {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
-    z-index: 2; /* Поверх фона */
-    margin-top: 5px; /* Небольшой отступ сверху */
+    z-index: 2;
+    margin-top: 5px;
 }
 
 /* Контейнер для раскрытых карт */
 .final-player-item .player-cards-expanded {
-    position: relative; /* Убираем absolute */
+    position: relative;
     width: 100%;
     display: flex;
     flex-direction: column;
@@ -2732,9 +2718,9 @@ span {
 
 /* Мини-карточка внутри итогов */
 .final-player-item .mini-card {
-    position: relative; /* Убираем absolute */
+    position: relative;
     width: 100%;
-    max-width: 160px; /* Ограничиваем ширину, чтобы влезало в 2 колонки */
+    max-width: 160px;
     aspect-ratio: 172/130;
     background: #FFCBE5;
     border: 2px solid #7F375A;
