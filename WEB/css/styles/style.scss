@@ -803,24 +803,6 @@ span {
     gap: 10px; // расстояние между игроками
     padding-right: 8px; /* Немного отступа для скролла */
 
-    /* Красивая стилизация скролла */
-    &::-webkit-scrollbar {
-        width: 4px;
-    }
-    
-    &::-webkit-scrollbar-track {
-        background: #FFCBE5;
-        border-radius: 2px;
-    }
-    
-    &::-webkit-scrollbar-thumb {
-        background: #F17BAB;
-        border-radius: 2px;
-    }
-    
-    &::-webkit-scrollbar-thumb:hover {
-        background: #7F375A;
-    }
 }
 
 // Элемент списка игроков
@@ -2050,7 +2032,6 @@ span {
         font-weight: 700;
         font-size: 20px;
         color: #9B3D63;
-        text-decoration: line-through;  // зачёркивание
     }
     
     .vote-player-icon {
@@ -2316,7 +2297,6 @@ span {
     }
     
     .final-player-name {
-        text-decoration: line-through;
         color: #9B3D63;
     }
     
