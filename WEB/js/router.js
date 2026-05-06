@@ -685,6 +685,13 @@ window.onload = async function() {
                 loadPage('vote.html', document.querySelector('.container'));
             }, 1500);
         });
+
+        //переход всех игроков на страницу результатов
+        socket.on('activate-result-button', () => {
+            console.log('Получено activate-result-button');
+            //alert('Ответы сохранены! Теперь можно посмотреть итоговый отчёт.');
+            loadPage('results.html', container);
+        });
     }
 
     async function restoreGameState() {
@@ -2998,11 +3005,7 @@ function addPageHandlers(container) {
                 currentQuestions = data.questions;
                 renderQuestions(currentQuestions);
             });
-            socket.on('activate-result-button', () => {
-                console.log('Получено activate-result-button');
-                alert('Ответы сохранены! Теперь можно посмотреть итоговый отчёт.');
-                loadPage('results.html', container);
-            });
+
         } else if (IS_TEST_MODE) {
             const mockQuestions = [
                 { id: 1, text: "Соответствуют ли языки и среды теме проекта?", options: [
