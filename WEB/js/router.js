@@ -3095,10 +3095,33 @@ if (container.querySelector('.final-players-list')) {
         activePlayers.forEach(player => {
             const playerItem = document.createElement('div');
             playerItem.className = 'final-player-item';
-            
+            playerItem.style.position = 'relative';
+            playerItem.style.width = '100%';
+            playerItem.style.minHeight = '60px';
+            playerItem.style.flexShrink = '0';
+
             const nameDiv = document.createElement('div');
             nameDiv.className = 'final-player-name';
             nameDiv.textContent = player.nickname;
+            // Принудительные стили для текста
+            nameDiv.style.position = 'absolute';
+            nameDiv.style.left = '20px';
+            nameDiv.style.top = '45%';
+            nameDiv.style.transform = 'translateY(-50%)';
+            nameDiv.style.fontFamily = "'Inria Serif'";
+            nameDiv.style.fontWeight = '700';
+            nameDiv.style.fontSize = '20px';
+            nameDiv.style.lineHeight = '24px';
+            nameDiv.style.color = '#FE5499';
+            nameDiv.style.whiteSpace = 'nowrap';
+            nameDiv.style.overflow = 'hidden';
+            nameDiv.style.textOverflow = 'ellipsis';
+            nameDiv.style.maxWidth = 'calc(100% - 100px)';
+            nameDiv.style.pointerEvents = 'none';
+            nameDiv.style.zIndex = '3';
+            nameDiv.style.textDecoration = 'none';
+            nameDiv.style.textAlign = 'left';
+            nameDiv.style.backgroundColor = 'transparent';
             playerItem.appendChild(nameDiv);
 
             // ПОКАЗЫВАЕМ КАРТЫ, ЕСЛИ ОНИ ВСКРЫТЫ
@@ -3131,10 +3154,40 @@ if (container.querySelector('.final-players-list')) {
         eliminatedPlayers.forEach(player => {
             const kickedItem = document.createElement('div');
             kickedItem.className = 'final-player-item eliminated';
+            kickedItem.style.position = 'relative';
+            kickedItem.style.width = '100%';
+            kickedItem.style.minHeight = '60px';
+            kickedItem.style.flexShrink = '0';
+
+            // Добавляем стили для фона и обводки прямо для kickedItem
+            kickedItem.style.background = '#DADADA';           // Фон бэйджа
+            kickedItem.style.border = '2px solid #7F375A';    // Обводка
+            kickedItem.style.borderRadius = '50px';           // Скругление
+            kickedItem.style.opacity = '0.7';                 // Прозрачность
             
             const nameDiv = document.createElement('div');
             nameDiv.className = 'final-player-name';
-            nameDiv.textContent = player.nickname + ' (выгнан)';
+            nameDiv.textContent = player.nickname;
+            // Принудительные стили для текста выбывшего
+            nameDiv.style.position = 'absolute';
+            nameDiv.style.left = '20px';
+            nameDiv.style.top = '45%';
+            nameDiv.style.transform = 'translateY(-50%)';
+            nameDiv.style.fontFamily = "'Inria Serif'";
+            nameDiv.style.fontWeight = '700';
+            nameDiv.style.fontSize = '20px';
+            nameDiv.style.lineHeight = '24px';
+            nameDiv.style.color = '#B36C89';
+            nameDiv.style.whiteSpace = 'nowrap';
+            nameDiv.style.overflow = 'hidden';
+            nameDiv.style.textOverflow = 'ellipsis';
+            nameDiv.style.maxWidth = 'calc(100% - 100px)';
+            nameDiv.style.pointerEvents = 'none';
+            nameDiv.style.zIndex = '3';
+            nameDiv.style.textDecoration = 'none';
+            nameDiv.style.textAlign = 'left';
+            nameDiv.style.backgroundColor = 'transparent';
+            nameDiv.style.opacity = '0.7';
             kickedItem.appendChild(nameDiv);
 
             if (areCardsRevealed && player.hand && player.hand.length > 0) {
@@ -3464,25 +3517,27 @@ if (voteContainer) {
                 ${crossHTML}
             `;
             
-             // Принудительно убираем зачеркивание, если оно есть
+            // Принудительно убираем зачеркивание, если оно есть
             const nameDiv = playerItem.querySelector('.vote-player-name');
+            const badge = playerItem.querySelector('.vote-player-badge');
+
             if (nameDiv) {
                 nameDiv.style.textDecoration = 'none';  // явно убираем зачеркивание
+                
                 if (isKicked) {
-                    nameDiv.style.color = '#999';
+                    nameDiv.style.color = '#B36C89';      // Цвет текста для выгнанных
                     nameDiv.style.opacity = '0.7';
+                } else {
+                    nameDiv.style.color = '#FE5499';
                 }
             }
-            
-            if (isKicked) {
-                const badge = playerItem.querySelector('.vote-player-badge');
-                if (badge) {
-                    badge.style.background = '#DADADA';
-                    badge.style.borderColor = '#999';
-                    badge.style.opacity = '0.5';
-                }
+
+            if (badge && isKicked) {
+                badge.style.background = '#DADADA';
+                badge.style.border = '2px solid #7F375A'; // Обводка
+                badge.style.opacity = '0.7';
             }
-            
+
             // обработчик клика на крестик 
             const cross = playerItem.querySelector('.vote-player-icon');
             if (cross) {
