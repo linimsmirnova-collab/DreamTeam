@@ -2,9 +2,10 @@
   "name": "the_dream_team",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "server.js",
   "scripts": {
-    "test": "cross-env NODE_ENV=test jest --runInBand"
+    "test": "cross-env NODE_ENV=test jest --runInBand",
+    "start": "node server.js"
   },
   "dependencies": {
     "cookie-parser": "^1.4.7",

@@ -25,7 +25,7 @@ const player = require("./models/Player");
 
 const test = false // если true, то тестовый режим, если false, то обычный режим
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 // app.use(cors({
 //     origin: 'http://localhost:5500', //добавила адрес фронтенда
