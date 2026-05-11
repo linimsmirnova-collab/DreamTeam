@@ -3048,6 +3048,37 @@ function addPageHandlers(container) {
 if (container.querySelector('.final-players-list')) {
     console.log('Final-team: страница загружена');
 
+    // Скрываем скролл и настраиваем прокрутку
+    const playersListEl = container.querySelector('.final-players-list');
+    if (playersListEl) {
+        playersListEl.style.scrollbarWidth = 'none';
+        playersListEl.style.msOverflowStyle = 'none';
+        playersListEl.style.overflowY = 'auto';
+        
+        // ФИКСИРОВАННАЯ ВЫСОТА 
+        playersListEl.style.setProperty('height', '550px', 'important');
+        playersListEl.style.setProperty('max-height', '550px', 'important');
+        playersListEl.style.paddingBottom = '20px';
+        
+        // Скрываем скролл визуально
+        const hideScrollStyle = document.createElement('style');
+        hideScrollStyle.textContent = `
+            .final-players-list {
+                scrollbar-width: none !important;
+                -ms-overflow-style: none !important;
+                height: 550px !important;
+                max-height: 550px !important;
+                overflow-y: auto !important;
+            }
+            .final-players-list::-webkit-scrollbar {
+                width: 0 !important;
+                height: 0 !important;
+                display: none !important;
+            }
+        `;
+        document.head.appendChild(hideScrollStyle);
+    }
+
     const roomCode = sessionStorage.getItem('currentRoomCode');
     const playerUuid = sessionStorage.getItem('currentPlayerUuid');
     const isCreator = sessionStorage.getItem('isCreator') === 'true';
@@ -3098,40 +3129,133 @@ if (container.querySelector('.final-players-list')) {
     activePlayers.forEach(player => {
         const playerItem = document.createElement('div');
         playerItem.className = 'final-player-item';
-        // Убираем inline-стили — пусть управляет CSS
-        // playerItem.style... — удалить
+
+        if (areCardsRevealed) {
+            // СТИЛИ ДЛЯ РЕЖИМА "КАРТЫ ВСКРЫТЫ"
+            playerItem.style.position = 'relative';
+            playerItem.style.width = '100%';
+            playerItem.style.height = 'auto';
+            playerItem.style.minHeight = 'auto';
+            playerItem.style.border = '2px solid #7F375A';
+            playerItem.style.borderRadius = '50px';
+            playerItem.style.boxSizing = 'border-box';
+            playerItem.style.padding = '6px';
+            playerItem.style.paddingBottom = '16px';
+            playerItem.style.background = '#FFFFFF';
+            playerItem.style.display = 'flex';
+            playerItem.style.flexDirection = 'column';
+            playerItem.style.marginBottom = '12px';
+        } else {
+            // СТИЛИ ДЛЯ РЕЖИМА "КАРТЫ НЕ ВСКРЫТЫ" (только бэйдж с ником)
+            playerItem.style.minHeight = '60px';//высота
+            playerItem.style.display = 'flex';//flex для центрирования
+            playerItem.style.alignItems = 'center';//центрируем по вертикали
+            playerItem.style.justifyContent = 'flex-start';//контент слева
+        }
         
         // 1. НИК (сначала, чтобы был сверху)
         const nameDiv = document.createElement('div');
         nameDiv.className = 'final-player-name';
         nameDiv.textContent = player.nickname;
-        // Минимальные стили — остальное в CSS
-        nameDiv.style.marginBottom = '12px';
-        nameDiv.style.textAlign = 'center';
+
+        nameDiv.style.fontFamily = "'Inria Serif'";
+        nameDiv.style.fontWeight = '700';
+        nameDiv.style.fontSize = '18px';
+        nameDiv.style.color = '#FE5499';
+        nameDiv.style.paddingTop = '8px';
+        nameDiv.style.paddingBottom = '4px';
+        nameDiv.style.marginBottom = '0';
+        nameDiv.style.textAlign = 'left';//текст слева
         nameDiv.style.width = '100%';
+        nameDiv.style.paddingLeft = '10px';//отступ слева
+        nameDiv.style.lineHeight = 'normal';
+
         playerItem.appendChild(nameDiv);
 
         // 2. КАРТОЧКИ (если вскрыты)
         if (areCardsRevealed && player.hand && player.hand.length > 0) {
-            const cardsExpanded = document.createElement('div');
-            cardsExpanded.className = 'player-cards-expanded';
+            // Сетка карточек
             const cardsGrid = document.createElement('div');
             cardsGrid.className = 'player-cards-grid';
+            cardsGrid.style.display = 'grid';
+            cardsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            cardsGrid.style.gap = '10px';
+            cardsGrid.style.justifyItems = 'center';
+            cardsGrid.style.alignItems = 'start';
+            cardsGrid.style.marginTop = '10px';
+            cardsGrid.style.marginBottom = '8px';
+            cardsGrid.style.padding = '0 12px';
 
             player.hand.forEach(card => {
                 const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
+
+                // Мини-карточка
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'mini-card';
-                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
-                cardDiv.innerHTML = `
-                    <div class="mini-card-label">${label}</div>
-                    <div class="mini-card-value">${cardValue}</div>
-                `;
+                cardDiv.style.position = 'relative';
+                cardDiv.style.width = '100%';
+                cardDiv.style.maxWidth = '180px'; 
+                cardDiv.style.minHeight = '100px'; //по высоте
+                cardDiv.style.border = '2px solid #7F375A';
+                cardDiv.style.borderRadius = '45px';
+                cardDiv.style.boxSizing = 'border-box';
+                cardDiv.style.display = 'flex';
+                cardDiv.style.flexDirection = 'column';
+                cardDiv.style.alignItems = 'center';
+                cardDiv.style.justifyContent = 'center';
+                cardDiv.style.padding = '10px';
+                // Розовый фон для всех карт (так как они открыты)
+                cardDiv.style.background = '#FFCBE5';
+                
+                // Заголовок карточки
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'mini-card-label';
+                labelDiv.textContent = label;
+                labelDiv.style.position = 'absolute';
+                labelDiv.style.width = 'auto';
+                labelDiv.style.maxWidth = '140px';
+                labelDiv.style.left = '50%';
+                labelDiv.style.top = '12px';
+                labelDiv.style.transform = 'translateX(-50%)';
+                labelDiv.style.fontFamily = "'Inria Serif'";
+                labelDiv.style.fontWeight = '700';
+                labelDiv.style.fontSize = '14px';
+                labelDiv.style.lineHeight = '16px';
+                labelDiv.style.display = 'flex';
+                labelDiv.style.alignItems = 'center';
+                labelDiv.style.justifyContent = 'center';
+                labelDiv.style.textAlign = 'center';
+                labelDiv.style.color = '#FE5499';
+                labelDiv.style.whiteSpace = 'nowrap';
+                
+                // Значение карточки
+                const valueDiv = document.createElement('div');
+                valueDiv.className = 'mini-card-value';
+                valueDiv.textContent = cardValue;
+                valueDiv.style.position = 'absolute';
+                valueDiv.style.width = '140px';
+                valueDiv.style.left = '50%';
+                valueDiv.style.bottom = '12px';
+                valueDiv.style.transform = 'translateX(-50%)';
+                valueDiv.style.fontFamily = "'Inria Serif'";
+                valueDiv.style.fontWeight = '700';
+                valueDiv.style.fontSize = '12px';
+                valueDiv.style.lineHeight = '17px';
+                valueDiv.style.display = 'flex';
+                valueDiv.style.alignItems = 'center';
+                valueDiv.style.justifyContent = 'center';
+                valueDiv.style.textAlign = 'center';
+                valueDiv.style.color = '#FFFFFF';
+                valueDiv.style.padding = '5px';
+                valueDiv.style.wordBreak = 'break-word';
+                valueDiv.style.textShadow = '1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A';
+                
+                cardDiv.appendChild(labelDiv);
+                cardDiv.appendChild(valueDiv);
                 cardsGrid.appendChild(cardDiv);
             });
-
-            cardsExpanded.appendChild(cardsGrid);
-            playerItem.appendChild(cardsExpanded);
+            playerItem.appendChild(cardsGrid);
         }
         playersList.appendChild(playerItem);
     });
@@ -3141,37 +3265,131 @@ if (container.querySelector('.final-players-list')) {
         const kickedItem = document.createElement('div');
         kickedItem.className = 'final-player-item eliminated';
         
+        if (areCardsRevealed) {
+            // СТИЛИ ДЛЯ РЕЖИМА "КАРТЫ ВСКРЫТЫ"
+            kickedItem.style.position = 'relative';
+            kickedItem.style.width = '100%';
+            kickedItem.style.height = 'auto';
+            kickedItem.style.minHeight = 'auto';
+            kickedItem.style.border = '2px solid #7F375A';
+            kickedItem.style.borderRadius = '50px';
+            kickedItem.style.boxSizing = 'border-box';
+            kickedItem.style.padding = '6px';
+            kickedItem.style.paddingBottom = '16px';
+            kickedItem.style.background = '#DADADA';
+            kickedItem.style.display = 'flex';
+            kickedItem.style.flexDirection = 'column';
+            kickedItem.style.marginBottom = '12px';
+            kickedItem.style.opacity = '0.7';
+        } else {
+            // СТИЛИ ДЛЯ РЕЖИМА "КАРТЫ НЕ ВСКРЫТЫ" (только бэйдж с ником)
+            kickedItem.style.minHeight = '60px';//высота
+            kickedItem.style.display = 'flex';//flex для центрирования
+            kickedItem.style.alignItems = 'center';//центрируем по вертикали
+            kickedItem.style.justifyContent = 'flex-start';//контент слева
+        }
+
         // 1. НИК (та же логика, что у активных)
         const nameDiv = document.createElement('div');
         nameDiv.className = 'final-player-name';
-        nameDiv.textContent = player.nickname + ' (выгнан)'; // опциональная пометка
-        nameDiv.style.marginBottom = '12px';
-        nameDiv.style.textAlign = 'center';
+        nameDiv.textContent = player.nickname;
+
+        nameDiv.style.fontFamily = "'Inria Serif'";
+        nameDiv.style.fontWeight = '700';
+        nameDiv.style.fontSize = '18px';
+        nameDiv.style.color = '#B36C89';
+        nameDiv.style.paddingTop = '8px';
+        nameDiv.style.paddingBottom = '4px';
+        nameDiv.style.textDecoration = 'none';
+        nameDiv.style.color = '#B36C89';
+        nameDiv.style.opacity = '0.7';
+        nameDiv.style.marginBottom = '0';  
+        nameDiv.style.textAlign = 'left'; //текст слева
         nameDiv.style.width = '100%';
-        nameDiv.style.color = '#B36C89'; // цвет для выгнанных
+        nameDiv.style.paddingLeft = '10px'; //отступ слева
+        nameDiv.style.lineHeight = 'normal';
+
         kickedItem.appendChild(nameDiv);
 
         // 2. КАРТОЧКИ (если есть)
         if (areCardsRevealed && player.hand && player.hand.length > 0) {
-            const cardsExpanded = document.createElement('div');
-            cardsExpanded.className = 'player-cards-expanded';
             const cardsGrid = document.createElement('div');
             cardsGrid.className = 'player-cards-grid';
+            cardsGrid.style.display = 'grid';
+            cardsGrid.style.gridTemplateColumns = 'repeat(2, 1fr)';
+            cardsGrid.style.gap = '10px';
+            cardsGrid.style.justifyItems = 'center';
+            cardsGrid.style.alignItems = 'start';
+            cardsGrid.style.marginTop = '10px';
+            cardsGrid.style.marginBottom = '8px';
+            cardsGrid.style.padding = '0 12px';
 
             player.hand.forEach(card => {
                 const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
+
                 const cardDiv = document.createElement('div');
                 cardDiv.className = 'mini-card';
-                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
-                cardDiv.innerHTML = `
-                    <div class="mini-card-label">${label}</div>
-                    <div class="mini-card-value">${cardValue}</div>
-                `;
+                cardDiv.style.position = 'relative';
+                cardDiv.style.width = '100%';
+                cardDiv.style.maxWidth = '180px';
+                cardDiv.style.minHeight = '100px';  //по высоте
+                cardDiv.style.border = '2px solid #7F375A';
+                cardDiv.style.borderRadius = '45px';
+                cardDiv.style.boxSizing = 'border-box';
+                cardDiv.style.display = 'flex';
+                cardDiv.style.flexDirection = 'column';
+                cardDiv.style.alignItems = 'center';
+                cardDiv.style.justifyContent = 'center';
+                cardDiv.style.padding = '10px';
+                cardDiv.style.background = '#FFCBE5';
+                
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'mini-card-label';
+                labelDiv.textContent = label;
+                labelDiv.style.position = 'absolute';
+                labelDiv.style.width = 'auto';
+                labelDiv.style.maxWidth = '140px';
+                labelDiv.style.left = '50%';
+                labelDiv.style.top = '12px';
+                labelDiv.style.transform = 'translateX(-50%)';
+                labelDiv.style.fontFamily = "'Inria Serif'";
+                labelDiv.style.fontWeight = '700';
+                labelDiv.style.fontSize = '14px';
+                labelDiv.style.lineHeight = '16px';
+                labelDiv.style.display = 'flex';
+                labelDiv.style.alignItems = 'center';
+                labelDiv.style.justifyContent = 'center';
+                labelDiv.style.textAlign = 'center';
+                labelDiv.style.color = '#FE5499';
+                labelDiv.style.whiteSpace = 'nowrap';
+                
+                const valueDiv = document.createElement('div');
+                valueDiv.className = 'mini-card-value';
+                valueDiv.textContent = cardValue;
+                valueDiv.style.position = 'absolute';
+                valueDiv.style.width = '140px';
+                valueDiv.style.left = '50%';
+                valueDiv.style.bottom = '12px';
+                valueDiv.style.transform = 'translateX(-50%)';
+                valueDiv.style.fontFamily = "'Inria Serif'";
+                valueDiv.style.fontWeight = '700';
+                valueDiv.style.fontSize = '12px';
+                valueDiv.style.lineHeight = '17px';
+                valueDiv.style.display = 'flex';
+                valueDiv.style.alignItems = 'center';
+                valueDiv.style.justifyContent = 'center';
+                valueDiv.style.textAlign = 'center';
+                valueDiv.style.color = '#FFFFFF';
+                valueDiv.style.padding = '5px';
+                valueDiv.style.wordBreak = 'break-word';
+                valueDiv.style.textShadow = '1px 0 0 #7F375A, -1px 0 0 #7F375A, 0 1px 0 #7F375A, 0 -1px 0 #7F375A, 1px 1px 0 #7F375A, -1px -1px 0 #7F375A, 1px -1px 0 #7F375A, -1px 1px 0 #7F375A';
+                
+                cardDiv.appendChild(labelDiv);
+                cardDiv.appendChild(valueDiv);
                 cardsGrid.appendChild(cardDiv);
             });
-
-            cardsExpanded.appendChild(cardsGrid);
-            kickedItem.appendChild(cardsExpanded);
+            kickedItem.appendChild(cardsGrid);
         }
         playersList.appendChild(kickedItem);
     });
