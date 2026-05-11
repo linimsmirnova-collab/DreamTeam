@@ -2003,9 +2003,10 @@ span {
   white-space: nowrap;
 }
 .final-player-item .mini-card-value {
-  position: absolute;
-  width: 150px;
-  height: 69px;
+  position: relative;
+  width: 100%;
+  height: auto;
+  padding: 10px 5px; 
   left: 50%;
   bottom: 12px;
   transform: translateX(-50%);
