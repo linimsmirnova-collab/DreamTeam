@@ -2212,21 +2212,14 @@ function addPageHandlers(container) {
 
         // Если контейнера нет - создаём его
         if (!playersContainer) {
-            playersContainer = document.createElement('div');
-            playersContainer.className = 'players-cards-container';
-            
-            // Вставляем после блока с вопросом или в нужное место
-            const groupThree = container.querySelector('.group-three');
-            if (groupThree && groupThree.parentNode) {
-                groupThree.parentNode.insertBefore(playersContainer, groupThree.nextSibling);
-            } else {
-                container.appendChild(playersContainer);
-            }
-            console.log('Создан новый контейнер .players-cards-container');
-        }
+        playersContainer = document.createElement('div');
+        playersContainer.className = 'players-cards-container';
+        container.appendChild(playersContainer);
+        console.log('Создан новый контейнер .players-cards-container');
+    }
 
         // Применяем стили к контейнеру через JS
-        if (playersContainer) {
+       /* if (playersContainer) {
             playersContainer.style.position = 'absolute';
             playersContainer.style.height = 'auto';
             playersContainer.style.minHeight = '600px';
@@ -2241,7 +2234,7 @@ function addPageHandlers(container) {
             playersContainer.style.flexDirection = 'column';
             playersContainer.style.gap = '20px';
             playersContainer.style.paddingRight = '5px';
-        }
+        }*/
 
         // Стилизация - скрываем ползунок скролла во всех браузерах
         const style = document.createElement('style');
@@ -2480,62 +2473,69 @@ function addPageHandlers(container) {
             }
         }
         
-        function renderPlayersList(players) {
-            if (!playersContainer) return;
-    
-            playersContainer.innerHTML = '';
+            function renderPlayersList(players) {
+        if (!playersContainer) return;
+
+        playersContainer.innerHTML = ''; // Очищаем контейнер перед отрисовкой
+        
+        players.forEach(player => {
+            const playerBlock = document.createElement('div');
+            playerBlock.className = 'player-card-block';
+            // Сохраняем UUID
+            playerBlock.dataset.playerUuid = String(player.uuid);
             
-            players.forEach(player => {
-                const playerBlock = document.createElement('div');
-                playerBlock.className = 'player-card-block';
-                // Сохраняем UUID как строку
-                playerBlock.dataset.playerUuid = String(player.uuid);
-                
-                // Получаем карты игрока в правильном порядке (8 карт)
-                const playerCards = getPlayerCards(player);
-                
-                // Создаем HTML для сетки 4x2
-                let cardsHTML = '<div class="player-cards-grid">';
-                
-                playerCards.forEach((card, idx) => {
-                    const isRevealed = card.isOpen;
-                    const valueClass = isRevealed ? 'revealed-value' : '';
-                    
-                    cardsHTML += `
-                        <div class="mini-card" data-card-type="${card.cardType}" data-card-index="${idx}">
-                            <div class="mini-card-label">${card.label}</div>
-                            <div class="mini-card-value ${valueClass}">${card.value}</div>
-                        </div>
-                    `;
-                });
-                
-                cardsHTML += '</div>';
-                
-                playerBlock.innerHTML = `
-                    <div class="player-name">${player.nickname}</div>
-                    ${cardsHTML}
-                `;
-                
-                // Карточки всегда видны, клик отключён
-                const cardsGrid = playerBlock.querySelector('.player-cards-grid');
-                const playerName = playerBlock.querySelector('.player-name');
+            // Получаем карты игрока в правильном порядке (8 карт)
+            const playerCards = getPlayerCards(player);
+            
+            // 1. Сначала создаем Никнейм (теперь это отдельный элемент сверху)
+            const nameDiv = document.createElement('div');
+            nameDiv.className = 'player-name';
+            nameDiv.textContent = player.nickname;
+            playerBlock.appendChild(nameDiv);
 
-                // Карточки всегда видны
-                cardsGrid.style.display = 'grid';
-                playerBlock.style.border = '2px solid #7F375A';
-                if (playerName) playerName.style.color = '#FE5499';
+            // 2. Создаем контейнер для сетки карточек
+            const cardsGrid = document.createElement('div');
+            cardsGrid.className = 'player-cards-grid';
+            
+            playerCards.forEach((card, idx) => {
+                const isRevealed = card.isOpen;
+                
+                // Создаем карточку
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'mini-card';
+                cardDiv.dataset.cardType = card.cardType;
+                cardDiv.dataset.cardIndex = idx;
+                if (isRevealed) cardDiv.dataset.revealed = "true";
 
-                // Убираем курсор pointer и onclick
-                playerBlock.style.cursor = 'default';
-                if (playerName) {
-                    playerName.style.cursor = 'default';
+                // Лейбл (тип карты)
+                const labelDiv = document.createElement('div');
+                labelDiv.className = 'mini-card-label';
+                labelDiv.textContent = card.label;
+                cardDiv.appendChild(labelDiv);
+
+                // Значение карты
+                const valueDiv = document.createElement('div');
+                valueDiv.className = 'mini-card-value';
+                // Если карта вскрыта - показываем текст, иначе ?
+                valueDiv.textContent = isRevealed ? (card.value || '?') : '?';
+                
+                // Если текст очень длинный, можно его обрезать или сделать меньше
+                if (card.value && card.value.length > 30) {
+                    valueDiv.style.fontSize = '11px';
                 }
                 
-                playersContainer.appendChild(playerBlock);
+                cardDiv.appendChild(valueDiv);
+                
+                // Если карточка типа "Языки и среды" и их много, можно сделать их чуть меньше визуально
+                // Но в grid это будет автоматически
+
+                cardsGrid.appendChild(cardDiv);
             });
 
-            restoreAllPlayersForcedCards();
-        }
+            playerBlock.appendChild(cardsGrid);
+            playersContainer.appendChild(playerBlock);
+        });
+    }
         
         // WebSocket слушатели для обновления карт
         if (!IS_TEST_MODE && socket && playerUuid && roomCode) {
@@ -3082,143 +3082,102 @@ if (container.querySelector('.final-players-list')) {
 
     // ОТРИСОВКА
     function renderFinalTeam() {
-        const playersList = container.querySelector('.final-players-list');
-        const countDisplay = document.querySelector('#final-stats-count');
+    const playersList = container.querySelector('.final-players-list');
+    const countDisplay = document.querySelector('#final-stats-count');
+    
+    if (!playersList) return;
+    
+    const activePlayers = finalPlayers.filter(p => p.active === true);
+    const eliminatedPlayers = finalPlayers.filter(p => p.active === false);
+    
+    if (countDisplay) countDisplay.textContent = activePlayers.length;
+    
+    playersList.innerHTML = '';
+
+    // === АКТИВНЫЕ ИГРОКИ ===
+    activePlayers.forEach(player => {
+        const playerItem = document.createElement('div');
+        playerItem.className = 'final-player-item';
+        // Убираем inline-стили — пусть управляет CSS
+        // playerItem.style... — удалить
         
-        if (!playersList) return;
+        // 1. НИК (сначала, чтобы был сверху)
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'final-player-name';
+        nameDiv.textContent = player.nickname;
+        // Минимальные стили — остальное в CSS
+        nameDiv.style.marginBottom = '12px';
+        nameDiv.style.textAlign = 'center';
+        nameDiv.style.width = '100%';
+        playerItem.appendChild(nameDiv);
+
+        // 2. КАРТОЧКИ (если вскрыты)
+        if (areCardsRevealed && player.hand && player.hand.length > 0) {
+            const cardsExpanded = document.createElement('div');
+            cardsExpanded.className = 'player-cards-expanded';
+            const cardsGrid = document.createElement('div');
+            cardsGrid.className = 'player-cards-grid';
+
+            player.hand.forEach(card => {
+                const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'mini-card';
+                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
+                cardDiv.innerHTML = `
+                    <div class="mini-card-label">${label}</div>
+                    <div class="mini-card-value">${cardValue}</div>
+                `;
+                cardsGrid.appendChild(cardDiv);
+            });
+
+            cardsExpanded.appendChild(cardsGrid);
+            playerItem.appendChild(cardsExpanded);
+        }
+        playersList.appendChild(playerItem);
+    });
+
+    // === ВЫГНАННЫЕ ИГРОКИ ===
+    eliminatedPlayers.forEach(player => {
+        const kickedItem = document.createElement('div');
+        kickedItem.className = 'final-player-item eliminated';
         
-        const activePlayers = finalPlayers.filter(p => p.active === true);
-        const eliminatedPlayers = finalPlayers.filter(p => p.active === false);
-        
-        if (countDisplay) countDisplay.textContent = activePlayers.length;
-        
-        playersList.innerHTML = '';
+        // 1. НИК (та же логика, что у активных)
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'final-player-name';
+        nameDiv.textContent = player.nickname + ' (выгнан)'; // опциональная пометка
+        nameDiv.style.marginBottom = '12px';
+        nameDiv.style.textAlign = 'center';
+        nameDiv.style.width = '100%';
+        nameDiv.style.color = '#B36C89'; // цвет для выгнанных
+        kickedItem.appendChild(nameDiv);
 
-        // Активные игроки
-        activePlayers.forEach(player => {
-            const playerItem = document.createElement('div');
-            playerItem.className = 'final-player-item';
-            playerItem.style.position = 'relative';
-            playerItem.style.width = '100%';
-            playerItem.style.minHeight = '60px';
-            playerItem.style.flexShrink = '0';
+        // 2. КАРТОЧКИ (если есть)
+        if (areCardsRevealed && player.hand && player.hand.length > 0) {
+            const cardsExpanded = document.createElement('div');
+            cardsExpanded.className = 'player-cards-expanded';
+            const cardsGrid = document.createElement('div');
+            cardsGrid.className = 'player-cards-grid';
 
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'final-player-name';
-            nameDiv.textContent = player.nickname;
-            // Принудительные стили для текста
-            nameDiv.style.position = 'absolute';
-            nameDiv.style.left = '20px';
-            nameDiv.style.top = '45%';
-            nameDiv.style.transform = 'translateY(-50%)';
-            nameDiv.style.fontFamily = "'Inria Serif'";
-            nameDiv.style.fontWeight = '700';
-            nameDiv.style.fontSize = '20px';
-            nameDiv.style.lineHeight = '24px';
-            nameDiv.style.color = '#FE5499';
-            nameDiv.style.whiteSpace = 'nowrap';
-            nameDiv.style.overflow = 'hidden';
-            nameDiv.style.textOverflow = 'ellipsis';
-            nameDiv.style.maxWidth = 'calc(100% - 100px)';
-            nameDiv.style.pointerEvents = 'none';
-            nameDiv.style.zIndex = '3';
-            nameDiv.style.textDecoration = 'none';
-            nameDiv.style.textAlign = 'left';
-            nameDiv.style.backgroundColor = 'transparent';
-            playerItem.appendChild(nameDiv);
+            player.hand.forEach(card => {
+                const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'mini-card';
+                const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
+                cardDiv.innerHTML = `
+                    <div class="mini-card-label">${label}</div>
+                    <div class="mini-card-value">${cardValue}</div>
+                `;
+                cardsGrid.appendChild(cardDiv);
+            });
 
-            // ПОКАЗЫВАЕМ КАРТЫ, ЕСЛИ ОНИ ВСКРЫТЫ
-            if (areCardsRevealed && player.hand && player.hand.length > 0) {
-                const cardsExpanded = document.createElement('div');
-                cardsExpanded.className = 'player-cards-expanded';
-                const cardsGrid = document.createElement('div');
-                cardsGrid.className = 'player-cards-grid';
-
-                player.hand.forEach(card => {
-                    const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
-                    const cardDiv = document.createElement('div');
-                    cardDiv.className = 'mini-card';
-                    // Показываем реальное имя карты, если оно есть
-                    const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
-                    cardDiv.innerHTML = `
-                        <div class="mini-card-label">${label}</div>
-                        <div class="mini-card-value">${cardValue}</div>
-                    `;
-                    cardsGrid.appendChild(cardDiv);
-                });
-
-                cardsExpanded.appendChild(cardsGrid);
-                playerItem.appendChild(cardsExpanded);
-            }
-            playersList.appendChild(playerItem);
-        });
-
-        // Выгнанные игроки
-        eliminatedPlayers.forEach(player => {
-            const kickedItem = document.createElement('div');
-            kickedItem.className = 'final-player-item eliminated';
-            kickedItem.style.position = 'relative';
-            kickedItem.style.width = '100%';
-            kickedItem.style.minHeight = '60px';
-            kickedItem.style.flexShrink = '0';
-
-            // Добавляем стили для фона и обводки прямо для kickedItem
-            kickedItem.style.background = '#DADADA';           // Фон бэйджа
-            kickedItem.style.border = '2px solid #7F375A';    // Обводка
-            kickedItem.style.borderRadius = '50px';           // Скругление
-            kickedItem.style.opacity = '0.7';                 // Прозрачность
-            
-            const nameDiv = document.createElement('div');
-            nameDiv.className = 'final-player-name';
-            nameDiv.textContent = player.nickname;
-            // Принудительные стили для текста выбывшего
-            nameDiv.style.position = 'absolute';
-            nameDiv.style.left = '20px';
-            nameDiv.style.top = '45%';
-            nameDiv.style.transform = 'translateY(-50%)';
-            nameDiv.style.fontFamily = "'Inria Serif'";
-            nameDiv.style.fontWeight = '700';
-            nameDiv.style.fontSize = '20px';
-            nameDiv.style.lineHeight = '24px';
-            nameDiv.style.color = '#B36C89';
-            nameDiv.style.whiteSpace = 'nowrap';
-            nameDiv.style.overflow = 'hidden';
-            nameDiv.style.textOverflow = 'ellipsis';
-            nameDiv.style.maxWidth = 'calc(100% - 100px)';
-            nameDiv.style.pointerEvents = 'none';
-            nameDiv.style.zIndex = '3';
-            nameDiv.style.textDecoration = 'none';
-            nameDiv.style.textAlign = 'left';
-            nameDiv.style.backgroundColor = 'transparent';
-            nameDiv.style.opacity = '0.7';
-            kickedItem.appendChild(nameDiv);
-
-            if (areCardsRevealed && player.hand && player.hand.length > 0) {
-                const cardsExpanded = document.createElement('div');
-                cardsExpanded.className = 'player-cards-expanded';
-                const cardsGrid = document.createElement('div');
-                cardsGrid.className = 'player-cards-grid';
-
-                player.hand.forEach(card => {
-                    const label = CARD_TYPE_TO_LABEL[card.cardType] || `Тип ${card.cardType}`;
-                    const cardDiv = document.createElement('div');
-                    cardDiv.className = 'mini-card';
-                    const cardValue = (card.isOpen || areCardsRevealed) ? (card.name || '?') : '?';
-                    cardDiv.innerHTML = `
-                        <div class="mini-card-label">${label}</div>
-                        <div class="mini-card-value">${cardValue}</div>
-                    `;
-                    cardsGrid.appendChild(cardDiv);
-                });
-
-                cardsExpanded.appendChild(cardsGrid);
-                kickedItem.appendChild(cardsExpanded);
-            }
-            playersList.appendChild(kickedItem);
-        });
-        
-        console.log('Рендер завершён, areCardsRevealed =', areCardsRevealed);
-    }
+            cardsExpanded.appendChild(cardsGrid);
+            kickedItem.appendChild(cardsExpanded);
+        }
+        playersList.appendChild(kickedItem);
+    });
+    
+    console.log('Рендер завершён, areCardsRevealed =', areCardsRevealed);
+}
 
     // ЗАГРУЗКА ДАННЫХ
     async function loadFinalTeamData() {
