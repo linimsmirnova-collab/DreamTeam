@@ -2219,7 +2219,7 @@ function addPageHandlers(container) {
     }
 
         // Применяем стили к контейнеру через JS
-       /* if (playersContainer) {
+        if (playersContainer) {
             playersContainer.style.position = 'absolute';
             playersContainer.style.height = 'auto';
             playersContainer.style.minHeight = '600px';
@@ -2234,7 +2234,7 @@ function addPageHandlers(container) {
             playersContainer.style.flexDirection = 'column';
             playersContainer.style.gap = '20px';
             playersContainer.style.paddingRight = '5px';
-        }*/
+        }
 
         // Стилизация - скрываем ползунок скролла во всех браузерах
         const style = document.createElement('style');
@@ -2704,14 +2704,7 @@ function addPageHandlers(container) {
             iconRight.parentNode.replaceChild(newIconRight, iconRight);
             
             newIconRight.addEventListener('click', () => {
-
-                // Проверяем, разрешён ли переход на профиль
-                if (currentGamePhase === 'voting') {
-                    showToast('Сейчас идёт этап голосования! Вы не можете вернуться в профиль.', 'warning');
-                    return;
-                }
-
-                console.log('Возврат на profile.html');
+              console.log('Возврат на profile.html');
                 if (window.cardsAllInterval) {
                     clearInterval(window.cardsAllInterval);
                     window.cardsAllInterval = null;
@@ -2750,10 +2743,37 @@ function addPageHandlers(container) {
             });
         }
         
+        // Добавляем розовую рамку для активной иконки
+        const cardsAllStyles = document.createElement('style');
+        cardsAllStyles.textContent = `
+            /* Активная иконка users - розовая рамка */
+            .cards-icon.active {
+                outline: 3px solid #D21B72 !important;
+                outline-offset: 0px !important;
+                box-shadow: 0 0 10px rgba(210, 27, 114, 0.5) !important;
+                border: none !important;
+                border-radius: 0 !important;
+            }
+            
+            /* Корректировка позиции иконки users */
+            .cards-icon.icon-center {
+                top: 769px !important;
+            }
+        `;
+        document.head.appendChild(cardsAllStyles);
+
         // Активируем центральную иконку
         setTimeout(() => {
-            setActiveIcon(null, 'icon-center', 'cards-icon');
-            console.log('Активирована вкладка "users"');
+            // Сначала убираем активный класс у всех иконок
+            document.querySelectorAll('.cards-icon').forEach(icon => {
+                icon.classList.remove('active');
+            });
+            // Добавляем активный класс центральной иконке
+            const centerIcon = document.querySelector('.icon-center');
+            if (centerIcon) {
+                centerIcon.classList.add('active');
+            }
+            console.log('Активирована вкладка "users" с розовой рамкой');
         }, 100);
         
         // Инициализация
